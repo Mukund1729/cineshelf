@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="CineShelf - Your personal movie collection app">
+    
+    <!-- Correct CSP that allows Google Fonts -->
+    <meta http-equiv="Content-Security-Policy" 
+          content="default-src 'self';
+                   style-src 'self' https://fonts.googleapis.com 'unsafe-inline';
+                   font-src 'self' https://fonts.gstatic.com;
+                   script-src 'self';
+                   img-src 'self' data: https://image.tmdb.org;
+                   connect-src 'self' https://api.themoviedb.org">
+    
+    <!-- Preload connections -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- Modern font loading pattern -->
+    <link rel="stylesheet" 
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" 
+          media="print"
+          onload="this.media='all'">
+    
+    <!-- Fallback for non-JS browsers -->
+    <noscript>
+      <link rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap">
+    </noscript>
+    
+    <!-- Favicon -->
+    <link rel="icon" href="/favicon.ico" type="image/x-icon">
+    
+    <!-- Theme color -->
+    <meta name="theme-color" content="#0f1c2d">
+    
+    <title>CineShelf | Track Your Movie Collection</title>
+  </head>
+  
+  <body class="bg-[#0d1117] text-white font-sans antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
