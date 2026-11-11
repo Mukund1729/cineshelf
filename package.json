@@ -1,0 +1,50 @@
+{
+  "type": "module",
+  "name": "cineshelf",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "server": "node server.js",
+    "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.81.5",
+    "axios": "^1.10.0",
+    "bcryptjs": "^3.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "express-rate-limit": "^7.5.1",
+    "framer-motion": "^12.19.2",
+    "fuse.js": "^7.1.0",
+    "jquery": "^3.7.1",
+    "jsonwebtoken": "^9.0.2",
+    "justwatch-api": "^1.0.7",
+    "mongoose": "^8.16.2",
+    "multer": "^2.0.2",
+    "node-fetch": "^3.3.2",
+    "openai": "^7.4.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "4.12.0",
+    "react-intersection-observer": "^9.16.0",
+    "react-router-dom": "^7.6.3",
+    "recharts": "^2.15.4",
+    "swiper": "^11.2.8",
+    "tailwindcss-animate": "^1.0.7",
+    "three": "^0.185.1"
+  },
+  "devDependencies": {
+    "@types/jquery": "^3.5.32",
+    "@types/node": "^24.0.7",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.0.12"
+  }
+}

@@ -1,0 +1,58 @@
+# GPT Route Debug Log
+
+## Checklist
+
+- [x] Route handler uses `express.json()` globally in server.js
+- [x] Route handler checks for `req.body` and `prompt`
+- [x] Logs request body and errors
+- [x] Checks for `OPENAI_API_KEY` at startup
+
+## Next Steps
+
+1. **Test the endpoint manually**
+
+Example curl command (run in your project root):
+
+```
+curl -X POST http://localhost:5000/api/gpt -H "Content-Type: application/json" -d '{"prompt": "Suggest a moody romantic film"}'
+```
+
+2. **Check the backend terminal for output:**
+   - Look for lines starting with `/api/gpt called. Body:`
+   - Look for `OpenAI reply:` or `GPT route error:`
+   - If you see `❌ OPENAI_API_KEY is not set in .env or not loaded.`, your .env is not being loaded for the backend process.
+
+3. **If you get a 400 error:**
+   - The request body is missing or not parsed as JSON. Make sure `express.json()` is used globally in `server.js` **before** your routes.
+
+4. **If you get a 500 error:**
+   - Check the `details` field in the error response for the real error message.
+   - If it says something about OpenAI, your API key may be invalid or you may have hit a usage limit.
+
+5. **If you get a 200 response but the frontend fails to parse:**
+   - The AI may be returning non-JSON output. Log the `reply` and try parsing it manually.
+
+## Example server.js (relevant part)
+
+```js
+import express from 'express';
+import gptRoute from './src/api/gpt.js';
+const app = express();
+app.use(express.json()); // <--- This must come BEFORE your routes
+app.use('/api', gptRoute);
+```
+
+## Example gpt.js (relevant part)
+
+```js
+router.post("/gpt", async (req, res) => {
+  if (!req.body || typeof req.body !== 'object') {
+    return res.status(400).json({ error: "Request body missing or not parsed as JSON." });
+  }
+  // ...
+});
+```
+
+## If you need more help
+- Paste the full error log from your backend terminal here.
+- Paste the full response from curl/Postman.

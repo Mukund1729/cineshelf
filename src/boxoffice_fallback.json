@@ -1,0 +1,37 @@
+[
+  {
+    "title": "Pathaan",
+    "year": 2023,
+    "revenue_inr": 10500000000,
+    "revenue_usd": 127000000,
+    "language": "hi"
+  },
+  {
+    "title": "Jawan",
+    "year": 2023,
+    "revenue_inr": 11500000000,
+    "revenue_usd": 140000000,
+    "language": "hi"
+  },
+  {
+    "title": "RRR",
+    "year": 2022,
+    "revenue_inr": 12000000000,
+    "revenue_usd": 150000000,
+    "language": "te"
+  },
+  {
+    "title": "KGF: Chapter 2",
+    "year": 2022,
+    "revenue_inr": 12000000000,
+    "revenue_usd": 150000000,
+    "language": "kn"
+  },
+  {
+    "title": "Baahubali 2: The Conclusion",
+    "year": 2017,
+    "revenue_inr": 18000000000,
+    "revenue_usd": 220000000,
+    "language": "te"
+  }
+]

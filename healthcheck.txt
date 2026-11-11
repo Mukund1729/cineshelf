@@ -1,0 +1,27 @@
+# Health Check Endpoint Added
+
+A `/health` endpoint will be added to your Express app for uptime monitoring and deployment checks.
+
+---
+
+# Rate Limiting
+
+Sensitive endpoints (like `/api/gpt`) will be protected with rate limiting using `express-rate-limit`.
+
+---
+
+# CORS
+
+CORS is already set up for your frontend. For production, update the `origin` to your deployed frontend URL.
+
+---
+
+# Next Steps
+
+- Add `/health` endpoint
+- Add rate limiting to `/api/gpt`
+- (Optional) Provide frontend API call samples
+
+---
+
+Proceeding to patch `server.js` for health check and rate limiting.

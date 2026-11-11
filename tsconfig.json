@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "module": "esnext",          // ✅ Required for import.meta
+    "target": "es2020",          // Or higher
+    "moduleResolution": "bundler",  // Optional, good for Vite
+    "types": ["vite/client"],        // Optional if using Vite
+    "jsx": "react-jsx"              // Enable JSX for React 17+
+  }
+}
