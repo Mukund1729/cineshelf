@@ -6,6 +6,7 @@ import boxofficeIndia from '../boxoffice_india.json';
 import boxofficeDaywise from '../boxoffice_daywise.json';
 import BoxOfficeDaywiseChart from '../components/BoxOfficeDaywiseChart';
 import Navbar from '../components/Navbar';
+import { apiUrl } from '../api/config';
 
 const LANGUAGES = [
   { code: 'all', label: 'All' },
@@ -111,7 +112,7 @@ export default function BoxOfficeIndia() {
                 const j = await res.json();
                 const hit = j.results?.[0];
                 if (hit?.poster_path) {
-                  rows[idx].poster = `/api/tmdb/image/w500${hit.poster_path}`;
+                  rows[idx].poster = apiUrl(`/api/tmdb/image/w500${hit.poster_path}`);
                   rows[idx].tmdbId = hit.id;
                 }
               } catch { /* ignore */ }

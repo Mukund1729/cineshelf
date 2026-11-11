@@ -8,6 +8,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as THREE from 'three';
 import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
 import Navbar from '../components/Navbar';
+import { apiUrl } from '../api/config';
 
 const TMDB_KEY =
   import.meta.env.VITE_TMDB_KEY ||
@@ -392,7 +393,7 @@ export default function TheatreBooking() {
     } else if (movie?.backdrop_path) {
       const textureLoader = new THREE.TextureLoader();
       screenTexture = textureLoader.load(
-        `/api/tmdb/image/w1280${movie.backdrop_path}`,
+        apiUrl(`/api/tmdb/image/w1280${movie.backdrop_path}`),
         (texture) => {
           if (disposed) {
             texture.dispose();
@@ -995,7 +996,7 @@ export default function TheatreBooking() {
         id: ticketId,
         movieId,
         movieTitle: movie?.title || 'Movie',
-        moviePoster: movie?.poster_path ? `/api/tmdb/image/w342${movie.poster_path}` : null,
+        moviePoster: movie?.poster_path ? apiUrl(`/api/tmdb/image/w342${movie.poster_path}`) : null,
         theatre: theatre.name,
         city: theatre.city,
         time: show?.time,
@@ -1303,7 +1304,7 @@ export default function TheatreBooking() {
                 padding: '1rem', zIndex: 10, minWidth: 180, maxWidth: 240,
               }} className="theatre-selection-card">
                 {movie?.poster_path && (
-                  <img className="theatre-selection-poster" src={`/api/tmdb/image/w185${movie.poster_path}`} alt="" style={{
+                  <img className="theatre-selection-poster" src={apiUrl(`/api/tmdb/image/w185${movie.poster_path}`)} alt="" style={{
                     width: '100%', borderRadius: 8, marginBottom: '0.75rem', aspectRatio: '2/3', objectFit: 'cover',
                   }} />
                 )}
@@ -1439,7 +1440,7 @@ export default function TheatreBooking() {
             display: 'flex', gap: '1rem',
           }}>
             {movie?.poster_path && (
-              <img src={`/api/tmdb/image/w92${movie.poster_path}`} alt="" style={{ width: 56, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+              <img src={apiUrl(`/api/tmdb/image/w92${movie.poster_path}`)} alt="" style={{ width: 56, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
             )}
             <div>
               <div style={{ fontFamily: 'Playfair Display, serif', fontWeight: 700, fontSize: '1.05rem' }}>{movie?.title}</div>

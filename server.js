@@ -42,9 +42,20 @@ const TMDB_API_KEY = process.env.TMDB_API_KEY || process.env.VITE_TMDB_KEY;
 
 const app = express();
 
-// CORS
+const allowedOrigins = new Set([
+  'http://localhost:5173',
+  'http://localhost:5174',
+  ...(process.env.FRONTEND_ORIGINS || '')
+    .split(',')
+    .map(origin => origin.trim())
+    .filter(Boolean),
+]);
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:5174'],
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
+    return callback(new Error(`CORS origin not allowed: ${origin}`));
+  },
   credentials: true,
 }));
 

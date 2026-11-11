@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Chat from '../components/Chat';
+import { apiUrl } from '../api/config';
 
 function FriendCard({ person, onRemove, onRequest, isFriend, isPending, onChat }) {
   return (
@@ -15,7 +16,7 @@ function FriendCard({ person, onRemove, onRequest, isFriend, isPending, onChat }
       onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'}
     >
       {person.avatar ? (
-        <img src={person.avatar.startsWith('/') ? `http://localhost:5000${person.avatar}` : person.avatar} alt={person.username} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+        <img src={person.avatar.startsWith('/') ? apiUrl(person.avatar) : person.avatar} alt={person.username} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
       ) : (
         <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, var(--vc-gold), #b8860b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: '#0a0f1a', flexShrink: 0 }}>
           {(person.username || person.name || 'U')[0].toUpperCase()}
@@ -65,7 +66,7 @@ function RequestCard({ request, onAccept, onReject }) {
       borderRadius: '12px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem',
     }}>
       {person?.avatar ? (
-        <img src={person.avatar.startsWith('/') ? `http://localhost:5000${person.avatar}` : person.avatar} alt={person.username} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+        <img src={person.avatar.startsWith('/') ? apiUrl(person.avatar) : person.avatar} alt={person.username} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
       ) : (
         <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--vc-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: '#0a0f1a', flexShrink: 0 }}>
           {(person?.username || 'U')[0].toUpperCase()}

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { apiUrl } from '../api/config';
 
 const NAV_LINKS = [
   { to: '/',               label: 'Home' },
@@ -234,7 +235,7 @@ export default function Navbar() {
               >
                 {user.avatar ? (
                   <img
-                    src={user.avatar.startsWith('/') ? `http://localhost:5000${user.avatar}` : user.avatar}
+                    src={user.avatar.startsWith('/') ? apiUrl(user.avatar) : user.avatar}
                     alt={user.username}
                     style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }}
                     onError={e => { e.target.style.display = 'none'; }}

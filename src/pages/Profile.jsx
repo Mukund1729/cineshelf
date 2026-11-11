@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { apiUrl } from '../api/config';
 
 const Profile = () => {
   const [profile, setProfile] = useState(null);
@@ -111,7 +112,7 @@ const Profile = () => {
   const getAvatarUrl = (avatar) => {
     if (!avatar) return null;
     if (avatar.startsWith('http')) return avatar;
-    if (avatar.startsWith('/')) return `http://localhost:5000${avatar}`;
+    if (avatar.startsWith('/')) return apiUrl(avatar);
     return avatar;
   };
 
@@ -314,10 +315,6 @@ const Profile = () => {
           {editing ? 'Cancel Edit' : 'Edit Profile'}
         </button>
       </div>
-    </div>
-          </div >
-        </div >
-      </div >
 
   {/* Messages */ }
 {
@@ -688,4 +685,3 @@ const Profile = () => {
 };
 
 export default Profile;
-

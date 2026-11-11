@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import Navbar from '../components/Navbar';
+import { apiUrl } from '../api/config';
 
 const TMDB_KEY =
   import.meta.env.VITE_TMDB_KEY ||
@@ -24,8 +25,8 @@ async function fetchFeaturedMovies() {
     const mapMovie = m => ({
       id: m.id,
       title: m.title,
-      poster: `/api/tmdb/image/w342${m.poster_path}`,
-      backdrop: `/api/tmdb/image/w780${m.backdrop_path}`,
+      poster: apiUrl(`/api/tmdb/image/w342${m.poster_path}`),
+      backdrop: apiUrl(`/api/tmdb/image/w780${m.backdrop_path}`),
       rating: m.vote_average?.toFixed(1),
       year: (m.release_date || '').slice(0, 4),
       genre: m.genre_ids?.[0] || 0,

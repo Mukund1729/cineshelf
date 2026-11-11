@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { apiUrl } from '../api/config';
 
 const STARS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -232,7 +233,7 @@ export default function Reviews() {
                 {friends.slice(0, 8).map(friend => (
                   <div key={friend._id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     {friend.avatar ? (
-                      <img src={friend.avatar.startsWith('/') ? `http://localhost:5000${friend.avatar}` : friend.avatar} alt={friend.username} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      <img src={friend.avatar.startsWith('/') ? apiUrl(friend.avatar) : friend.avatar} alt={friend.username} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                     ) : (
                       <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--vc-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#0a0f1a', flexShrink: 0 }}>
                         {(friend.username || friend.name || 'U')[0].toUpperCase()}

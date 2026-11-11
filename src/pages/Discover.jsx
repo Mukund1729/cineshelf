@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { searchMovies } from '../api/tmdb';
+import { apiUrl } from '../api/config';
 
 const HISTORY_KEY = 'vc-discover-history';
 const MAX_HISTORY = 40;
@@ -143,7 +144,7 @@ export default function Discover() {
   }, [selectedMood]);
 
   const callLLM = useCallback(async (messages, temperature = 0.75) => {
-    const res = await fetch('/api/gpt', {
+    const res = await fetch(apiUrl('/api/gpt'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages, temperature }),

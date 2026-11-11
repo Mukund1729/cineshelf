@@ -90,6 +90,20 @@ A modern, cinematic movie discovery platform built with React, Node.js, and Mong
    - Frontend: http://localhost:5174
    - Backend API: http://localhost:5000
 
+## ☁️ Deployment (Vercel + Render)
+
+The frontend is a Vite SPA deployed to Vercel; the Express API and MongoDB remain separate services. `vercel.json` configures the Vite build and client-side routes, while `render.yaml` describes the Node API service.
+
+1. Create a MongoDB Atlas database and allow connections from your API host.
+2. Import this repository into Render and create the service from `render.yaml`. Set `MONGO_URI`, a strong random `JWT_SECRET`, and `TMDB_API_KEY` in the Render dashboard. `OPENROUTER_API_KEY` is needed for AI features.
+3. Import the same repository into Vercel. Set `VITE_API_BASE_URL` to the Render service URL (for example `https://cineshelf-api.onrender.com`, without a trailing slash), and set `VITE_TMDB_KEY` to your TMDB key. Add the variable to Production and Preview environments as needed, then redeploy.
+4. Copy the exact Vercel origin (for example `https://your-project.vercel.app`, without a trailing slash) into Render's `FRONTEND_ORIGINS`, then redeploy the API. Add additional comma-separated origins if Preview deployments need API access.
+5. Verify `/health` on the Render URL, then test login/API requests and image loading on Vercel.
+
+Vercel Hobby is limited by Vercel's terms to personal or non-commercial use. Its `*.vercel.app` address is included; a `.in` or `.com` custom domain can be connected, but the domain registration itself is paid separately. Add the domain under Vercel Project Settings → Domains and follow the DNS records shown there.
+
+The Render free web service may sleep when idle, and its local filesystem is not persistent. Avatar uploads currently write to local disk, so use persistent/object storage before relying on uploaded avatars. The 3D seat map and payment flow are demo-only; bookings are stored in the user's browser, not in a production booking/payment system. Chat also has no matching backend route/WebSocket implementation in this repository yet.
+
 ## 📁 Project Structure
 
 ```

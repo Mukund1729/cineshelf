@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { apiUrl } from '../api/config';
 
 const START_YEAR = 1980;
 const END_YEAR = new Date().getFullYear();
@@ -181,7 +182,7 @@ export default function BoxOfficePage() {
                         <img
                           src={
                             movie.poster_path
-                              ? `/api/tmdb/image/w300${movie.poster_path}`
+                              ? apiUrl(`/api/tmdb/image/w300${movie.poster_path}`)
                               : 'https://via.placeholder.com/300x450?text=No+Image'
                           }
                           alt={movie.title}

@@ -2,13 +2,14 @@ import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { apiUrl } from '../api/config';
 
 // Lazy-load Three.js canvas (not critical for FCP)
 const HeroCanvas = lazy(() => import('../components/HeroCanvas'));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const IMG = (path, size = 'w500') =>
-  path ? `/api/tmdb/image/${size}${path}` : null;
+  path ? apiUrl(`/api/tmdb/image/${size}${path}`) : null;
 
 const PLACEHOLDER = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSI0NTAiIGZpbGw9IiMxYTIyMzYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZmlsbD0iIzY0NzQ4YiIgZm9udC1mYW1pbHk9InNlcmlmIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
 

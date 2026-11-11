@@ -10,6 +10,7 @@ import TrailerEmbed from '../components/TrailerEmbed';
 import JustWatch from 'justwatch-api';
 import SearchBar from "../components/SearchBar";
 import { searchMovies, searchPeople } from '../api/tmdb';
+import { apiUrl } from '../api/config';
 
 // Remove StreamingPlatforms component, integrated its logic into MovieDetail
 
@@ -265,7 +266,7 @@ const MovieDetail = () => {
       style={
         movie && movie.backdrop_path
           ? {
-              backgroundImage: `url(/api/tmdb/image/original${movie.backdrop_path})`,
+              backgroundImage: `url(${apiUrl(`/api/tmdb/image/original${movie.backdrop_path}`)})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
@@ -333,7 +334,7 @@ const MovieDetail = () => {
                         onClick={() => { setIsSearching(false); setShowSearchBar(false); setSearchQuery(''); setSearchResults([]); }}
                       >
                         <img
-                          src={`/api/tmdb/image/w92${result.poster_path || result.profile_path}`}
+                          src={apiUrl(`/api/tmdb/image/w92${result.poster_path || result.profile_path}`)}
                           alt={result.title || result.name}
                           className="w-10 h-14 object-cover rounded"
                         />
@@ -361,7 +362,7 @@ const MovieDetail = () => {
             <div className="flex-shrink-0 mx-auto md:mx-0 mb-6 md:mb-0 flex flex-col items-center gap-4">
               <div className="relative group rounded-2xl bg-gradient-to-br from-[#181c24]/80 via-[#232526]/60 to-[#10111a]/80 border-2 border-cyan-900/40 shadow-xl transition-all duration-300 hover:shadow-cyan-400/40 hover:border-cyan-400/80 hover:scale-105" style={{padding:'0.5rem', boxShadow:'0 6px 32px 0 rgba(0,255,255,0.08)'}}>
                 <img
-                  src={movie.poster_path ? `/api/tmdb/image/w400${movie.poster_path}` : '/placeholder.jpg'}
+                  src={movie.poster_path ? apiUrl(`/api/tmdb/image/w400${movie.poster_path}`) : '/placeholder.jpg'}
                   alt={movie.title}
                   className="rounded-xl shadow-lg w-44 h-auto object-cover bg-[#232526] border-2 border-cyan-900 group-hover:border-cyan-400 group-hover:shadow-cyan-400/40 transition-all duration-300"
                   style={{ maxHeight: 320 }}
@@ -421,7 +422,7 @@ const MovieDetail = () => {
                         }}
                       >
                         <img
-                          src={`/api/tmdb/image/w45${provider.logo_path}`}
+                          src={apiUrl(`/api/tmdb/image/w45${provider.logo_path}`)}
                           alt={provider.provider_name}
                           className="w-10 h-10 rounded bg-white/10 border border-cyan-900 hover:scale-110 transition shadow"
                         />
@@ -539,7 +540,7 @@ const MovieDetail = () => {
                     className="min-w-[90px] max-w-[90px] flex-shrink-0 bg-[#232526]/80 rounded-xl overflow-hidden shadow-md hover:scale-105 hover:shadow-cyan-400 transition-transform duration-200 flex flex-col items-center border border-cyan-900/30"
                   >
                     <img
-                      src={actor.profile_path ? `/api/tmdb/image/w200${actor.profile_path}` : '/actor-placeholder.jpg'}
+                      src={actor.profile_path ? apiUrl(`/api/tmdb/image/w200${actor.profile_path}`) : '/actor-placeholder.jpg'}
                       alt={actor.name}
                       className="w-full h-24 object-cover rounded-t-xl bg-[#10111a]"
                     />
@@ -703,7 +704,7 @@ const MovieDetail = () => {
                       style={{ boxShadow: '0 6px 24px 0 rgba(0,0,0,0.25), 0 1.5px 6px 0 rgba(0,255,255,0.08)' }}
                     >
                       <img
-                        src={`/api/tmdb/image/w500${m.poster_path}`}
+                        src={apiUrl(`/api/tmdb/image/w500${m.poster_path}`)}
                         alt={m.title}
                         className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-200"
                         style={{ transform: 'translateZ(0)' }}
@@ -780,7 +781,7 @@ const MovieDetail = () => {
                       style={{ boxShadow: '0 6px 24px 0 rgba(0,0,0,0.25), 0 1.5px 6px 0 rgba(255,0,255,0.08)' }}
                     >
                       <img
-                        src={`/api/tmdb/image/w500${m.poster_path}`}
+                        src={apiUrl(`/api/tmdb/image/w500${m.poster_path}`)}
                         alt={m.title}
                         className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-200"
                         style={{ transform: 'translateZ(0)' }}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { apiUrl } from '../api/config';
 
 const AIMovieInput = ({ onResults }) => {
   const [prompt, setPrompt] = useState("");
@@ -35,7 +36,7 @@ User prompt: "${prompt}"
 `;
 
     try {
-      const res = await fetch("/api/gpt", {
+      const res = await fetch(apiUrl('/api/gpt'), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: apiPrompt }),

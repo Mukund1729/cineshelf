@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { API_BASE_URL, apiUrl } from '../api/config';
 
 const token = localStorage.getItem('token');
 const headers = { Authorization: `Bearer ${token}` };
@@ -27,7 +28,10 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose }) {
     }
 
     // WebSocket connection for real-time messages
-    const ws = new WebSocket(`ws://localhost:5000?token=${token}`);
+    const wsBaseUrl = API_BASE_URL
+      ? API_BASE_URL.replace(/^http/, 'ws')
+      : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`;
+    const ws = new WebSocket(`${wsBaseUrl}/?token=${encodeURIComponent(token || '')}`);
     
     ws.onopen = () => {
       console.log('WebSocket connected');
@@ -128,7 +132,7 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose }) {
         }}>
           {friendAvatar ? (
             <img 
-              src={friendAvatar.startsWith('/') ? `http://localhost:5000${friendAvatar}` : friendAvatar} 
+              src={friendAvatar.startsWith('/') ? apiUrl(friendAvatar) : friendAvatar}
               alt={friendName}
               style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }}
             />
