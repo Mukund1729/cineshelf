@@ -45,6 +45,7 @@ const app = express();
 const allowedOrigins = new Set([
   'http://localhost:5173',
   'http://localhost:5174',
+  'https://cineshelf-eight.vercel.app',
   ...(process.env.FRONTEND_ORIGINS || '')
     .split(',')
     .map(origin => origin.trim())
