@@ -205,7 +205,7 @@ function getBookMyShowUrl(city) {
     : 'https://in.bookmyshow.com/explore/movies';
 }
 
-async function fetchWithTimeout(url, options, timeoutMs = 9000) {
+async function fetchWithTimeout(url, options, timeoutMs = 6500) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const parentSignal = options.signal;
@@ -239,7 +239,7 @@ async function findMappedCinemas(city, signal) {
   const geocodeResponse = await fetchWithTimeout(geocodeUrl, {
     signal,
     headers: { 'Accept-Language': 'en' },
-  });
+  }, 4500);
   if (!geocodeResponse.ok) throw new Error(`Could not locate ${city}. Try another spelling or use the BookMyShow link.`);
   const places = await geocodeResponse.json();
   if (!places.length) throw new Error(`Could not find ${city} on the public map. Try another spelling or use BookMyShow.`);
@@ -253,17 +253,17 @@ async function findMappedCinemas(city, signal) {
   const endpoints = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
+    'https://overpass.private.coffee/api/interpreter',
   ];
   let lastError;
 
   for (const endpoint of endpoints) {
     try {
-      const response = await fetchWithTimeout(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-        body: new URLSearchParams({ data: query }),
+      const requestUrl = new URL(endpoint);
+      requestUrl.searchParams.set('data', query);
+      const response = await fetchWithTimeout(requestUrl, {
         signal,
-      }, 9000);
+      }, 5500);
       if (!response.ok) throw new Error(`The public theatre map returned ${response.status}.`);
       const data = await response.json();
       const found = new Map();
@@ -369,7 +369,17 @@ export default function TheatreBooking() {
   const [theatreLookupError, setTheatreLookupError] = useState('');
   const [theatreIdx, setTheatreIdx] = useState(0);
   const demoTheatres = THEATRES.filter(item => item.city.toLowerCase() === city.trim().toLowerCase());
-  const cityTheatres = mappedTheatres.length ? mappedTheatres : demoTheatres;
+  const sampleTheatre = {
+    name: `Sample cinema · ${city}`,
+    city,
+    dist: 0,
+    layout: { rowCount: 10, sections: [5, 8, 5], seatWidth: 0.56, rowSpacing: 0.9, ceilingHeight: 9.5 },
+  };
+  const cityTheatres = mappedTheatres.length
+    ? mappedTheatres
+    : demoTheatres.length
+      ? demoTheatres
+      : [sampleTheatre];
   const theatre = cityTheatres[theatreIdx] || cityTheatres[0] || THEATRES[0];
   const HALL = buildHall(theatre);
   const PRESETS = buildCameraPresets(HALL);
@@ -427,7 +437,7 @@ export default function TheatreBooking() {
     const timeoutId = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 18000);
+    }, 20000);
     setTheatreLookupLoading(true);
     setTheatreLookupError('');
     setMappedTheatres([]);
@@ -1172,7 +1182,7 @@ export default function TheatreBooking() {
     };
   // Re-run when loading changes so the 3D scene initializes after data loads
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [movieId, loading, theatreIdx]);
+  }, [movieId, loading, theatreIdx, city, mappedTheatres]);
 
   // Keep step ref in sync for the closure
   useEffect(() => { stepRef.current = step; }, [step]);
@@ -1433,7 +1443,7 @@ export default function TheatreBooking() {
             >
               {cityTheatres.map((t, i) => (
                 <option key={`${t.name}-${i}`} value={i} style={{ background: '#0a0f1a' }}>
-                  {t.name} · {t.dist} km{t.source ? '' : ' · demo'}
+                  {t.name}{t.source === 'OpenStreetMap' ? ` · ${t.dist} km` : ' · demo preview'}
                 </option>
               ))}
               {!cityTheatres.length && (
@@ -1443,7 +1453,7 @@ export default function TheatreBooking() {
               )}
             </select>
             <span role="status" style={{ fontFamily: 'Outfit, sans-serif', color: 'rgba(245,240,232,0.65)', fontSize: '0.72rem' }}>
-              {mappedTheatres.length ? `${mappedTheatres.length} mapped cinemas within 50 km` : `${cityTheatres.length} sample cinemas`}
+              {mappedTheatres.length ? `${mappedTheatres.length} mapped cinemas within 50 km` : 'Sample preview only'}
             </span>
             {mappedTheatres.length > 0 && (
               <a
@@ -1496,7 +1506,7 @@ export default function TheatreBooking() {
 
           {theatreLookupError && !mappedTheatres.length && (
             <p role="status" style={{ margin: '0.5rem 1.5rem', color: '#f0d060', fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem' }}>
-              {theatreLookupError}
+              Map lookup failed: {theatreLookupError} A clearly labeled sample seat preview is available; use BookMyShow for actual cinemas and shows.
             </p>
           )}
 
