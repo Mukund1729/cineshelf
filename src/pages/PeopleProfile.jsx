@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { apiUrl } from '../api/config';
 
 const posterUrl = poster => {
   if (!poster) return '';
