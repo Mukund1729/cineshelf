@@ -3,6 +3,15 @@ import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 
+const getCurrentUserId = () => {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+    return String(user?._id || user?.id || '');
+  } catch {
+    return '';
+  }
+};
+
 export default function ReviewDetail() {
   const { reviewId } = useParams();
   const [review, setReview] = useState(null);
@@ -11,6 +20,14 @@ export default function ReviewDetail() {
   const [relation, setRelation] = useState('');
   const [requesting, setRequesting] = useState(false);
   const [friendNotice, setFriendNotice] = useState('');
+  const [comments, setComments] = useState([]);
+  const [commentText, setCommentText] = useState('');
+  const [commentPosting, setCommentPosting] = useState(false);
+  const [commentError, setCommentError] = useState('');
+  const [likeCount, setLikeCount] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [likeError, setLikeError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -20,7 +37,16 @@ export default function ReviewDetail() {
 
     axios.get(`/api/review/${reviewId}`)
       .then(response => {
-        if (active) setReview(response.data?.data || null);
+        const loadedReview = response.data?.data || null;
+        if (active) {
+          setReview(loadedReview);
+          setComments(Array.isArray(loadedReview?.comments) ? loadedReview.comments : []);
+          setLikeCount(Array.isArray(loadedReview?.likes) ? loadedReview.likes.length : 0);
+          const currentUserId = getCurrentUserId();
+          setLiked(Boolean(currentUserId && loadedReview?.likes?.some(
+            userId => String(userId?._id || userId) === currentUserId
+          )));
+        }
       })
       .catch(err => {
         if (active) {
@@ -90,6 +116,63 @@ export default function ReviewDetail() {
       setFriendNotice(err.response?.data?.error || 'Could not send friend request.');
     } finally {
       setRequesting(false);
+    }
+  };
+
+  const toggleLike = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.dispatchEvent(new CustomEvent('open-auth-modal'));
+      return;
+    }
+
+    setLikeLoading(true);
+    setLikeError('');
+    try {
+      const response = await axios.post(`/api/review/${review._id}/like`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setLiked(Boolean(response.data?.data?.liked));
+      setLikeCount(Number(response.data?.data?.likes) || 0);
+    } catch (err) {
+      setLikeError(err.response?.data?.error || 'Could not update your like.');
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
+  const submitComment = async event => {
+    event.preventDefault();
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.dispatchEvent(new CustomEvent('open-auth-modal'));
+      return;
+    }
+
+    const text = commentText.trim();
+    if (!text) {
+      setCommentError('Write a comment before posting.');
+      return;
+    }
+
+    setCommentPosting(true);
+    setCommentError('');
+    try {
+      const response = await axios.post(`/api/review/${review._id}/comments`, { text }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const savedComment = response.data?.data;
+      if (!savedComment?._id) throw new Error('The server did not return the saved comment.');
+      setComments(current => [savedComment, ...current]);
+      setReview(current => current ? {
+        ...current,
+        commentCount: response.data.commentCount ?? (current.commentCount || 0) + 1,
+      } : current);
+      setCommentText('');
+    } catch (err) {
+      setCommentError(err.response?.data?.error || err.message || 'Could not post comment.');
+    } finally {
+      setCommentPosting(false);
     }
   };
 
@@ -231,6 +314,89 @@ export default function ReviewDetail() {
               }}>
                 {review.review || 'This member shared a rating without a written review.'}
               </div>
+              <section style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                <button
+                  type="button"
+                  className={liked ? 'vc-btn vc-btn-primary' : 'vc-btn vc-btn-outline'}
+                  aria-pressed={liked}
+                  disabled={likeLoading}
+                  onClick={toggleLike}
+                >
+                  {likeLoading ? 'Saving…' : `${liked ? '♥ Liked' : '♡ Like'} · ${likeCount}`}
+                </button>
+                {likeError && <p role="alert" style={{ color: '#fc8181', fontSize: '0.85rem' }}>{likeError}</p>}
+
+                <div style={{ marginTop: '2rem' }}>
+                  <h2 style={{ margin: '0 0 1rem', fontFamily: 'Playfair Display, serif', fontSize: '1.4rem' }}>
+                    Comments ({review.commentCount ?? comments.length})
+                  </h2>
+                  <form onSubmit={submitComment}>
+                    <textarea
+                      value={commentText}
+                      onChange={event => {
+                        setCommentText(event.target.value);
+                        setCommentError('');
+                      }}
+                      maxLength={1000}
+                      rows={3}
+                      placeholder="Share your thoughts about this review…"
+                      aria-label="Write a comment"
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        resize: 'vertical',
+                        padding: '0.8rem 1rem',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        borderRadius: 10,
+                        background: 'var(--vc-bg-deep)',
+                        color: 'var(--vc-cream)',
+                        font: 'inherit',
+                      }}
+                    />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginTop: '0.65rem' }}>
+                      <span style={{ color: 'var(--vc-slate-dark)', fontSize: '0.75rem' }}>{commentText.length}/1000</span>
+                      <button type="submit" className="vc-btn vc-btn-primary" disabled={commentPosting}>
+                        {commentPosting ? 'Posting…' : 'Post comment'}
+                      </button>
+                    </div>
+                    {commentError && <p role="alert" style={{ color: '#fc8181', fontSize: '0.85rem' }}>{commentError}</p>}
+                  </form>
+
+                  <div style={{ display: 'grid', gap: '0.75rem', marginTop: '1.25rem' }}>
+                    {comments.length === 0 ? (
+                      <p style={{ color: 'var(--vc-slate)', margin: 0 }}>No comments yet. Start the conversation.</p>
+                    ) : comments.map(comment => (
+                      <article
+                        key={comment._id}
+                        style={{
+                          padding: '0.9rem 1rem',
+                          borderRadius: 10,
+                          background: 'rgba(255,255,255,0.035)',
+                          border: '1px solid rgba(255,255,255,0.06)',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.25rem 1rem', marginBottom: '0.35rem' }}>
+                          {comment.user?._id ? (
+                            <Link to={`/people/${comment.user._id}`} style={{ color: 'var(--vc-gold)', fontWeight: 600, textDecoration: 'none' }}>
+                              {comment.user.name || `@${comment.user.username}`}
+                            </Link>
+                          ) : (
+                            <span style={{ color: 'var(--vc-slate)' }}>CineShelf member</span>
+                          )}
+                          {comment.createdAt && (
+                            <time style={{ color: 'var(--vc-slate-dark)', fontSize: '0.75rem' }}>
+                              {new Date(comment.createdAt).toLocaleString()}
+                            </time>
+                          )}
+                        </div>
+                        <p style={{ margin: 0, color: 'var(--vc-cream)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                          {comment.text}
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                </div>
+              </section>
               <Link
                 to={moviePath}
                 style={{ display: 'inline-block', marginTop: '2rem', color: 'var(--vc-gold)', textDecoration: 'none' }}

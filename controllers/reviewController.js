@@ -1,4 +1,5 @@
 import Review from '../models/Review.js';
+import ReviewComment from '../models/ReviewComment.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import DiaryEntry from '../models/DiaryEntry.js';
@@ -8,6 +9,7 @@ const parseWatchedAt = value => {
   const date = new Date(`${value}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date;
 };
+const isValidObjectId = value => /^[a-f\d]{24}$/i.test(value);
 
 // GET /api/review — Get current user's reviews
 export const getReviews = async (req, res) => {
@@ -52,7 +54,7 @@ export const getReviewsByMovie = async (req, res) => {
 // GET /api/review/:id — Get one public review
 export const getReviewById = async (req, res) => {
   try {
-    if (!/^[a-f\d]{24}$/i.test(req.params.id)) {
+    if (!isValidObjectId(req.params.id)) {
       return res.status(400).json({ success: false, error: 'Invalid review ID.' });
     }
 
@@ -60,9 +62,75 @@ export const getReviewById = async (req, res) => {
       .populate('user', 'username name avatar');
     if (!review) return res.status(404).json({ success: false, error: 'Review not found.' });
 
-    res.json({ success: true, data: review });
+    const [comments, commentCount] = await Promise.all([
+      ReviewComment.find({ review: review._id })
+        .populate('user', 'username name avatar')
+        .sort({ createdAt: -1 })
+        .limit(100)
+        .lean(),
+      ReviewComment.countDocuments({ review: review._id }),
+    ]);
+
+    res.json({
+      success: true,
+      data: { ...review.toObject(), comments, commentCount },
+    });
   } catch (err) {
+    console.error('Get review error:', err);
     res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
+// POST /api/review/:id/comments — Add a comment and notify the review owner
+export const addReviewComment = async (req, res) => {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Invalid review ID.' });
+    }
+
+    const text = typeof req.body.text === 'string' ? req.body.text.trim() : '';
+    if (!text) return res.status(400).json({ success: false, error: 'Comment cannot be empty.' });
+    if (text.length > 1000) {
+      return res.status(400).json({ success: false, error: 'Comment must be 1000 characters or fewer.' });
+    }
+
+    const review = await Review.findById(req.params.id).select('user title');
+    if (!review) return res.status(404).json({ success: false, error: 'Review not found.' });
+
+    const comment = await ReviewComment.create({
+      review: review._id,
+      user: req.user.id,
+      text,
+    });
+    await comment.populate('user', 'username name avatar');
+
+    if (review.user.toString() !== req.user.id) {
+      const actor = await User.findById(req.user.id).select('username').lean();
+      try {
+        await Notification.create({
+          user: review.user,
+          type: 'review_comment',
+          title: 'New comment on your review',
+          message: `${actor?.username || 'Someone'} commented on your review of ${review.title || 'a title'}.`,
+          data: { reviewId: review._id.toString(), commentId: comment._id.toString() },
+          relatedId: review._id,
+          fromUser: req.user.id,
+          link: `/review/${review._id}`,
+        });
+      } catch (notificationError) {
+        await comment.deleteOne();
+        throw notificationError;
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      data: comment,
+      commentCount: await ReviewComment.countDocuments({ review: review._id }),
+    });
+  } catch (err) {
+    console.error('Add review comment error:', err);
+    res.status(500).json({ success: false, error: 'Could not post comment.' });
   }
 };
 
@@ -160,6 +228,10 @@ export const deleteReview = async (req, res) => {
 // POST /api/review/:id/like — Like/unlike a review
 export const likeReview = async (req, res) => {
   try {
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Invalid review ID.' });
+    }
+
     const review = await Review.findById(req.params.id);
     if (!review) return res.status(404).json({ success: false, error: 'Review not found' });
 
@@ -172,8 +244,29 @@ export const likeReview = async (req, res) => {
       review.likes.push(userId);
     }
     await review.save();
+
+    if (!alreadyLiked && review.user.toString() !== userId) {
+      const actor = await User.findById(userId).select('username').lean();
+      try {
+        await Notification.create({
+          user: review.user,
+          type: 'review_like',
+          title: 'Someone liked your review',
+          message: `${actor?.username || 'Someone'} liked your review of ${review.title || 'a title'}.`,
+          data: { reviewId: review._id.toString() },
+          relatedId: review._id,
+          fromUser: userId,
+          link: `/review/${review._id}`,
+        });
+      } catch (notificationError) {
+        await Review.updateOne({ _id: review._id }, { $pull: { likes: userId } });
+        throw notificationError;
+      }
+    }
+
     res.json({ success: true, data: { likes: review.likes.length, liked: !alreadyLiked } });
   } catch (err) {
+    console.error('Toggle review like error:', err);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 };

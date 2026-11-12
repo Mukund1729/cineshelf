@@ -5,6 +5,7 @@ import {
   getReviewsByUser,
   getReviewsByMovie,
   getReviewById,
+  addReviewComment,
   addReview,
   updateReview,
   deleteReview,
@@ -24,6 +25,9 @@ router.get('/movie/:tmdbId', getReviewsByMovie);
 
 // Public: one full review
 router.get('/:id', getReviewById);
+
+// Add a comment to a review
+router.post('/:id/comments', auth, addReviewComment);
 
 // Create or update a review
 router.post('/', auth, addReview);
