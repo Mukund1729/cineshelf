@@ -130,13 +130,30 @@ const MovieDetail = () => {
     setReviewsError(null);
     axios.get(`/api/review/movie/${id}`)
       .then(response => {
-        if (active) setReviews(response.data?.data || []);
+        if (active) setReviews(Array.isArray(response.data?.data) ? response.data.data : []);
       })
       .catch(err => {
         if (active) setReviewsError(err.response?.data?.error || 'Could not load reviews.');
       });
     return () => { active = false; };
   }, [id]);
+
+  const ratingDistribution = Array.from({ length: 10 }, (_, index) => ({
+    rating: index + 1,
+    count: 0,
+  }));
+  let ratingTotal = 0;
+  let ratingCount = 0;
+  reviews.forEach(review => {
+    const rating = Number(review.rating);
+    if (!Number.isFinite(rating) || rating < 1 || rating > 10) return;
+    ratingTotal += rating;
+    ratingCount += 1;
+    const bucket = Math.min(10, Math.max(1, Math.round(rating)));
+    ratingDistribution[bucket - 1].count += 1;
+  });
+  const averageRating = ratingCount ? ratingTotal / ratingCount : 0;
+  const largestRatingBucket = Math.max(1, ...ratingDistribution.map(item => item.count));
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
@@ -722,6 +739,44 @@ const MovieDetail = () => {
             {/* Reviews List */}
             <div className="flex-1 flex flex-col gap-4 max-w-2xl mx-auto">
               <div className="text-cyan-200 text-lg font-bold mb-2 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 17.75l-6.172 3.245 1.179-6.873L2 9.505l6.908-1.004L12 2.75l3.092 5.751L22 9.505l-5.007 4.617 1.179 6.873z" /></svg> Recent Reviews</div>
+              <section
+                aria-label="Community rating summary"
+                className="rounded-xl border border-cyan-900/30 bg-[#10111a]/80 p-4"
+              >
+                <div className="mb-4 flex items-end justify-between gap-4">
+                  <div>
+                    <p className="text-sm text-gray-400">Community rating</p>
+                    <p className="text-3xl font-bold text-yellow-300">
+                      {ratingCount ? averageRating.toFixed(1) : '—'}
+                      <span className="ml-1 text-sm font-medium text-gray-400">/ 10</span>
+                    </p>
+                  </div>
+                  <p className="text-right text-xs text-gray-400">
+                    {ratingCount} rating{ratingCount === 1 ? '' : 's'}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {[...ratingDistribution].reverse().map(({ rating, count }) => (
+                    <div key={rating} className="flex items-center gap-2 text-xs">
+                      <span className="w-5 text-right text-gray-400">{rating}</span>
+                      <div
+                        role="progressbar"
+                        aria-label={`${rating} out of 10 ratings`}
+                        aria-valuemin={0}
+                        aria-valuemax={largestRatingBucket}
+                        aria-valuenow={count}
+                        className="h-2 flex-1 overflow-hidden rounded-full bg-gray-800"
+                      >
+                        <div
+                          className="h-full rounded-full bg-yellow-400 transition-all"
+                          style={{ width: `${(count / largestRatingBucket) * 100}%` }}
+                        />
+                      </div>
+                      <span className="w-5 text-gray-400">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
               {reviewsError ? (
                 <p className="text-base text-red-400">{reviewsError}</p>
               ) : (!Array.isArray(reviews) || reviews.length === 0) ? (
@@ -730,12 +785,14 @@ const MovieDetail = () => {
                 reviews.map((review, idx) => (
                   <div key={review._id || review.id || idx} className="flex items-start gap-3 bg-[#181c24]/80 rounded-lg shadow border border-cyan-900/20 p-4">
                     <div className="flex-shrink-0 w-10 h-10 rounded-full bg-cyan-900/40 flex items-center justify-center text-2xl font-bold text-cyan-300 shadow-inner">
-                      <span>{review.title ? review.title[0]?.toUpperCase() : 'U'}</span>
+                      <span>{(review.user?.name || review.user?.username || 'U')[0]?.toUpperCase()}</span>
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="text-yellow-300 font-bold text-lg">★ {review.rating}/10</span>
-                        <span className="text-cyan-200 text-base font-semibold">{review.title}</span>
+                        <span className="text-cyan-200 text-base font-semibold">
+                          {review.user?.name || (review.user?.username ? `@${review.user.username}` : 'CineShelf member')}
+                        </span>
                       </div>
                       <div className="text-base text-cyan-100 font-lato mb-1">{review.review || 'Rating only'}</div>
                       <div className="text-gray-500 text-xs font-lato">{review.createdAt ? new Date(review.createdAt).toLocaleString() : ''}</div>

@@ -35,7 +35,12 @@ export const getReviewsByUser = async (req, res) => {
 // GET /api/review/movie/:tmdbId — Get all reviews for a movie
 export const getReviewsByMovie = async (req, res) => {
   try {
-    const reviews = await Review.find({ tmdbId: parseInt(req.params.tmdbId) })
+    const tmdbId = Number(req.params.tmdbId);
+    if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
+      return res.status(400).json({ success: false, error: 'A valid movie ID is required.' });
+    }
+
+    const reviews = await Review.find({ tmdbId })
       .populate('user', 'username name avatar')
       .sort({ createdAt: -1 });
     res.json({ success: true, data: reviews, count: reviews.length });
@@ -81,6 +86,7 @@ export const addReview = async (req, res) => {
       },
       { new: true, upsert: true, runValidators: true }
     );
+    await savedReview.populate('user', 'username name avatar');
 
     try {
       const diaryUpdate = {
