@@ -228,7 +228,7 @@ const Profile = () => {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)' }}>
+    <div className="vc-profile-page" style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)' }}>
       <Navbar />
 
       <section className="vc-profile-hero" style={{

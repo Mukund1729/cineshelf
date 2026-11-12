@@ -468,6 +468,27 @@ body, html {
   max-width: 420px;
 }
 
+.vc-profile-page .text-cyan-200,
+.vc-profile-page .text-cyan-300,
+.vc-profile-page .text-cyan-400,
+.vc-profile-page .hover\:text-cyan-300:hover,
+.vc-profile-page .hover\:text-cyan-400:hover,
+.vc-profile-page .group:hover .group-hover\:text-cyan-300 {
+  color: var(--vc-gold) !important;
+}
+
+.vc-profile-page .bg-cyan-600,
+.vc-profile-page .hover\:bg-cyan-700:hover {
+  background-color: var(--vc-gold) !important;
+  color: var(--vc-bg-base) !important;
+}
+
+.vc-profile-page .border-cyan-500\/50,
+.vc-profile-page .border-cyan-700,
+.vc-profile-page .border-slate-700 {
+  border-color: rgba(212,175,55,0.22) !important;
+}
+
 .movie-detail-search {
   position: absolute;
   top: 4.5rem;
