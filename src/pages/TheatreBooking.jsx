@@ -31,11 +31,11 @@ function buildHall(theatre) {
   const seatW = seatWidth * 1.16;
   const aisleWidth = seatW * (theatre.layout.aisleMultiplier || 1.45);
   const seatD = 0.92;
-  const hallD = Math.max(20, (rowCount - 1) * rowSpacing + 14);
+  const hallD = Math.max(20, (rowCount - 1) * rowSpacing + 18);
   const screenZ = 2 - 6.2;
   const screenY = Math.min(4.5, ceilingHeight * 0.45);
   const hallW = (maxSeatsPerRow * seatW + (Math.max(...rowSections.map(sections => sections.length)) - 1) * aisleWidth) / 2 + 2.1;
-  const maxScreenH = Math.max(3, Math.min(screenY - 0.55, ceilingHeight - screenY - 0.6) * 1.65);
+  const maxScreenH = Math.max(3, Math.min(screenY - 0.55, ceilingHeight - screenY - 0.6) * 2);
   const screenW = Math.min(23.8, hallW * 2.08, maxScreenH * 2.12);
   const curveRadius = Math.max(14, hallW * 1.45);
   const rows = Array.from({ length: rowCount }, (_, index) => {
@@ -52,6 +52,11 @@ function buildHall(theatre) {
     };
   });
   const balconySections = rowSections[rowSections.length - 1] || defaultSections;
+  const balconySeatCount = balconySections.reduce((sum, count) => sum + count, 0);
+  const balconyWidth = balconySeatCount * seatW + (balconySections.length - 1) * aisleWidth;
+  const balconyAisleX = balconySections.length > 1
+    ? -balconyWidth / 2 + balconySections[0] * seatW + aisleWidth / 2
+    : -hallW + 1;
   const balconyRows = Array.from({ length: balconyRowCount }, (_, index) => ({
     id: `BA${index + 1}`,
     label: `BA${index + 1}`,
@@ -79,23 +84,23 @@ function buildHall(theatre) {
     balconyFloorY,
     balconyStartZ,
     balconyCenterZ,
-    balconyDepth: (balconyRowCount - 1) * rowSpacing + 2.2,
+    balconyAisleX,
   };
 }
 
 function buildCameraPresets(hall) {
   return {
     overview: {
-      pos: [0, Math.min(7.8, hall.hallH - 0.9), hall.hallD / 2 + 2.2],
-      look: [0, 3, 4.5],
+      pos: [0, Math.min(10, hall.hallH - 0.8), hall.hallD / 2 + 2.2],
+      look: [0, hall.screenY + 0.5, 4.5],
     },
     fromStage: {
       pos: [0, 1.8, hall.screenZ + 2.4],
       look: [0, hall.screenY, 2.4],
     },
     balcony: {
-      pos: [0, Math.min(hall.hallH - 1.3, hall.balconyFloorY + 2.8), hall.balconyCenterZ + 4.5],
-      look: [0, hall.balconyFloorY + 0.35, hall.balconyCenterZ],
+      pos: [hall.balconyAisleX, Math.min(hall.hallH - 1, hall.balconyFloorY + 2), hall.balconyCenterZ],
+      look: [0, hall.screenY, hall.screenZ],
     },
     birdsEye: {
       pos: [0, hall.hallH - 0.65, 1.5],
@@ -720,26 +725,6 @@ export default function TheatreBooking() {
     makeWall(0.4, HALL.hallH, HALL.hallD + 4,  HALL.hallW, HALL.hallH / 2, 3);
     makeWall(HALL.hallW * 2 + 2, HALL.hallH, 0.4, 0, HALL.hallH / 2, HALL.hallD / 2 + 3); // back
     makeWall(HALL.hallW * 2 + 2, HALL.hallH, 0.4, 0, HALL.hallH / 2, HALL.screenZ - 0.5); // front/screen wall
-
-    const balconyWidth = HALL.hallW * 1.75;
-    const balconyDeck = new THREE.Mesh(
-      new THREE.BoxGeometry(balconyWidth, 0.2, HALL.balconyDepth),
-      floorMat
-    );
-    balconyDeck.position.set(0, HALL.balconyFloorY - 0.1, HALL.balconyCenterZ);
-    scene.add(balconyDeck);
-    const balconyFascia = new THREE.Mesh(
-      new THREE.BoxGeometry(balconyWidth, 0.52, 0.2),
-      wallMat
-    );
-    balconyFascia.position.set(0, HALL.balconyFloorY - 0.36, HALL.balconyStartZ - 0.78);
-    scene.add(balconyFascia);
-    const balconyRail = new THREE.Mesh(
-      new THREE.BoxGeometry(balconyWidth, 0.08, 0.08),
-      trimMat
-    );
-    balconyRail.position.set(0, HALL.balconyFloorY + 0.08, HALL.balconyStartZ - 0.78);
-    scene.add(balconyRail);
 
     // Acoustic wall panels and restrained architectural lighting.
     const panelMat = new THREE.MeshStandardMaterial({
