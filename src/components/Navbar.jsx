@@ -377,6 +377,29 @@ export default function Navbar() {
           padding: '1rem 1.5rem',
         }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+            <Link
+              to="/panorama"
+              onClick={() => setMenuOpen(false)}
+              className="book-tickets-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                marginBottom: '0.5rem',
+                padding: '0.7rem 1rem',
+                background: 'linear-gradient(135deg, #d4af37 0%, #f5cc50 50%, #d4af37 100%)',
+                borderRadius: '999px',
+                color: '#0a0f1a',
+                fontFamily: 'Outfit, sans-serif',
+                fontSize: '0.9rem',
+                fontWeight: 700,
+                textDecoration: 'none',
+              }}
+            >
+              <TicketIcon />
+              Book Tickets
+            </Link>
             {NAV_LINKS.map(link => (
               <Link
                 key={link.to}

@@ -24,6 +24,10 @@ function buildHall(theatre) {
     () => defaultSections
   );
   const maxSeatsPerRow = Math.max(...rowSections.map(sections => sections.reduce((sum, count) => sum + count, 0)));
+  const balconyRowCount = 3;
+  const balconyFloorY = Math.min(ceilingHeight - 2.4, Math.max(3.2, ceilingHeight * 0.42));
+  const balconyStartZ = Math.max(3.5, (rowCount - balconyRowCount) * rowSpacing + 0.8);
+  const balconyCenterZ = balconyStartZ + ((balconyRowCount - 1) * rowSpacing) / 2;
   const seatW = seatWidth * 1.16;
   const aisleWidth = seatW * (theatre.layout.aisleMultiplier || 1.45);
   const seatD = 0.92;
@@ -34,20 +38,32 @@ function buildHall(theatre) {
   const maxScreenH = Math.max(3, Math.min(screenY - 0.55, ceilingHeight - screenY - 0.6) * 1.65);
   const screenW = Math.min(23.8, hallW * 2.08, maxScreenH * 2.12);
   const curveRadius = Math.max(14, hallW * 1.45);
+  const rows = Array.from({ length: rowCount }, (_, index) => {
+    const position = index / Math.max(1, rowCount - 1);
+    const cat = position > 0.78 ? 'recliner' : position > 0.5 ? 'premium' : 'standard';
+    return {
+      id: String.fromCharCode(65 + index),
+      label: String.fromCharCode(65 + index),
+      z: 0.8 + index * rowSpacing,
+      floorY: index * 0.18,
+      cat,
+      price: cat === 'recliner' ? 450 : cat === 'premium' ? 280 : 180,
+      sections: rowSections[index],
+    };
+  });
+  const balconySections = rowSections[rowSections.length - 1] || defaultSections;
+  const balconyRows = Array.from({ length: balconyRowCount }, (_, index) => ({
+    id: `BA${index + 1}`,
+    label: `BA${index + 1}`,
+    z: balconyStartZ + index * rowSpacing,
+    floorY: balconyFloorY + index * 0.12,
+    cat: 'balcony',
+    price: 320,
+    sections: balconySections,
+  }));
 
   return {
-    rows: Array.from({ length: rowCount }, (_, index) => {
-      const position = index / Math.max(1, rowCount - 1);
-      const cat = position > 0.78 ? 'recliner' : position > 0.5 ? 'premium' : 'standard';
-      return {
-        id: String.fromCharCode(65 + index),
-        label: String.fromCharCode(65 + index),
-        z: 0.8 + index * rowSpacing,
-        cat,
-        price: cat === 'recliner' ? 450 : cat === 'premium' ? 280 : 180,
-        sections: rowSections[index],
-      };
-    }),
+    rows: [...rows, ...balconyRows],
     seatsPerRow: maxSeatsPerRow,
     seatW,
     seatD,
@@ -60,6 +76,10 @@ function buildHall(theatre) {
     hallH: ceilingHeight,
     hallD,
     curveRadius,
+    balconyFloorY,
+    balconyStartZ,
+    balconyCenterZ,
+    balconyDepth: (balconyRowCount - 1) * rowSpacing + 2.2,
   };
 }
 
@@ -74,8 +94,8 @@ function buildCameraPresets(hall) {
       look: [0, hall.screenY, 2.4],
     },
     balcony: {
-      pos: [0, Math.min(hall.hallH - 1.3, 7.8), hall.hallD * 0.18],
-      look: [0, 1.2, hall.screenZ + 5],
+      pos: [0, Math.min(hall.hallH - 1.3, hall.balconyFloorY + 2.8), hall.balconyCenterZ + 4.5],
+      look: [0, hall.balconyFloorY + 0.35, hall.balconyCenterZ],
     },
     birdsEye: {
       pos: [0, hall.hallH - 0.65, 1.5],
@@ -348,6 +368,7 @@ const CAT_COLOURS = {
   standard: { base: 0x4a735e, selected: 0xffd35a, sold: 0x292a30, hover: 0x638d76 },
   premium:  { base: 0x696076, selected: 0xffd35a, sold: 0x292a30, hover: 0x837896 },
   recliner: { base: 0x806848, selected: 0xffd35a, sold: 0x292a30, hover: 0x9a805a },
+  balcony:  { base: 0x9a7048, selected: 0xffd35a, sold: 0x292a30, hover: 0xb4875b },
 };
 
 // ── Main component ──────────────────────────────────────────────────────────────
@@ -700,6 +721,26 @@ export default function TheatreBooking() {
     makeWall(HALL.hallW * 2 + 2, HALL.hallH, 0.4, 0, HALL.hallH / 2, HALL.hallD / 2 + 3); // back
     makeWall(HALL.hallW * 2 + 2, HALL.hallH, 0.4, 0, HALL.hallH / 2, HALL.screenZ - 0.5); // front/screen wall
 
+    const balconyWidth = HALL.hallW * 1.75;
+    const balconyDeck = new THREE.Mesh(
+      new THREE.BoxGeometry(balconyWidth, 0.2, HALL.balconyDepth),
+      floorMat
+    );
+    balconyDeck.position.set(0, HALL.balconyFloorY - 0.1, HALL.balconyCenterZ);
+    scene.add(balconyDeck);
+    const balconyFascia = new THREE.Mesh(
+      new THREE.BoxGeometry(balconyWidth, 0.52, 0.2),
+      wallMat
+    );
+    balconyFascia.position.set(0, HALL.balconyFloorY - 0.36, HALL.balconyStartZ - 0.78);
+    scene.add(balconyFascia);
+    const balconyRail = new THREE.Mesh(
+      new THREE.BoxGeometry(balconyWidth, 0.08, 0.08),
+      trimMat
+    );
+    balconyRail.position.set(0, HALL.balconyFloorY + 0.08, HALL.balconyStartZ - 0.78);
+    scene.add(balconyRail);
+
     // Acoustic wall panels and restrained architectural lighting.
     const panelMat = new THREE.MeshStandardMaterial({
       color: 0x381c25,
@@ -872,7 +913,7 @@ export default function TheatreBooking() {
     // Keep demo availability stable for a movie and theatre.
     HALL.rows.forEach((row, ri) => {
       const rng = seededRand(hashStr(`sold-${movieId}-${theatreIdx}-${ri}`));
-      const rowY = ri * 0.18;
+      const rowY = row.floorY;
 
       let seatNumber = 0;
       const rowSeatCount = row.sections.reduce((total, count) => total + count, 0);
@@ -1192,7 +1233,9 @@ export default function TheatreBooking() {
 
   // ── Totals ────────────────────────────────────────────────────────────────
   const seatTotal = selectedSeats.reduce((sum, id) => {
-    const row = HALL.rows.find(r => id.startsWith(r.id));
+    const row = HALL.rows
+      .filter(candidate => id.startsWith(candidate.id))
+      .sort((a, b) => b.id.length - a.id.length)[0];
     return sum + (row?.price || 0);
   }, 0);
 
@@ -1245,7 +1288,7 @@ export default function TheatreBooking() {
     return next;
   });
 
-  const CAT_LABEL = { standard: 'Standard', premium: 'Premium', recliner: 'Recliner' };
+  const CAT_LABEL = { standard: 'Standard', premium: 'Premium', recliner: 'Recliner', balcony: 'Balcony' };
   const STEP_LABELS = ['', 'Pick Seats (Demo)', 'Snacks', 'Review', 'Demo Checkout', 'Demo Ticket'];
   const show    = showtimes[showIdx];
 
@@ -1561,6 +1604,7 @@ export default function TheatreBooking() {
                 ['#31556a', 'Standard ₹180'],
                 ['#5c476c', 'Premium ₹280'],
                 ['#315d4d', 'Recliner ₹450'],
+                ['#9a7048', 'Balcony ₹320'],
                 ['#ffd35a', 'Selected'],
                 ['#292a30', 'Sold'],
               ].map(([col, label]) => (
