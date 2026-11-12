@@ -11,6 +11,25 @@ import './LoadFonts';
 // Configure axios base URL for API calls
 axios.defaults.baseURL = API_BASE_URL;
 
+axios.interceptors.response.use(undefined, async error => {
+  const config = error.config;
+  const requestUrl = config?.url || '';
+  const isBackendApi = /^\/?api\//.test(requestUrl)
+    || Boolean(API_BASE_URL && requestUrl.startsWith(`${API_BASE_URL}/api/`));
+  const isTransientFailure = !error.response
+    || [502, 503, 504].includes(error.response.status);
+
+  if (!config || !isBackendApi || config.method?.toLowerCase() !== 'get'
+    || !isTransientFailure || (config.cineshelfRetryCount || 0) >= 3) {
+    return Promise.reject(error);
+  }
+
+  const retryCount = config.cineshelfRetryCount || 0;
+  config.cineshelfRetryCount = retryCount + 1;
+  await new Promise(resolve => window.setTimeout(resolve, 1000 * (2 ** retryCount)));
+  return axios.request(config);
+});
+
 const queryClient = new QueryClient();
 const root = ReactDOM.createRoot(document.getElementById('root'));
 

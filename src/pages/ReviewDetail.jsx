@@ -8,6 +8,9 @@ export default function ReviewDetail() {
   const [review, setReview] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [relation, setRelation] = useState('');
+  const [requesting, setRequesting] = useState(false);
+  const [friendNotice, setFriendNotice] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -32,6 +35,63 @@ export default function ReviewDetail() {
 
     return () => { active = false; };
   }, [reviewId]);
+
+  useEffect(() => {
+    const userId = review?.user?._id;
+    if (!userId) return undefined;
+
+    setFriendNotice('');
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setRelation('signed-out');
+      return undefined;
+    }
+
+    let active = true;
+    setRelation('checking');
+    setFriendNotice('');
+    axios.get(`/api/people/profile/${userId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(response => {
+        if (active) setRelation(response.data?.data?.relation || 'none');
+      })
+      .catch(err => {
+        if (active) {
+          setRelation(err.response?.status === 401 ? 'signed-out' : 'unavailable');
+          if (err.response?.status !== 401) {
+            setFriendNotice(err.response?.data?.error || 'Could not check friend status.');
+          }
+        }
+      });
+
+    return () => { active = false; };
+  }, [review?.user?._id]);
+
+  const sendFriendRequest = async () => {
+    const userId = review?.user?._id;
+    const token = localStorage.getItem('token');
+    if (!userId) return;
+    if (!token) {
+      setRelation('signed-out');
+      window.dispatchEvent(new CustomEvent('open-auth-modal'));
+      return;
+    }
+
+    setRequesting(true);
+    setFriendNotice('');
+    try {
+      await axios.post('/api/people/request', { userId }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setRelation('outgoing');
+      setFriendNotice('Friend request sent.');
+    } catch (err) {
+      setFriendNotice(err.response?.data?.error || 'Could not send friend request.');
+    } finally {
+      setRequesting(false);
+    }
+  };
 
   const moviePath = review
     ? `/${review.mediaType === 'tv' ? 'tv' : 'movie'}/${review.tmdbId}`
@@ -95,7 +155,44 @@ export default function ReviewDetail() {
                 }}>
                   {review.title || 'Untitled movie'}
                 </h1>
-                <p style={{ margin: 0, color: 'var(--vc-slate)' }}>A review by {authorName}</p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
+                  {review.user?._id ? (
+                    <Link
+                      to={`/people/${review.user._id}`}
+                      style={{ color: 'var(--vc-gold)', textDecoration: 'none', fontWeight: 600 }}
+                    >
+                      {authorName}
+                    </Link>
+                  ) : (
+                    <span style={{ color: 'var(--vc-slate)' }}>{authorName}</span>
+                  )}
+                  {relation === 'none' || relation === 'signed-out' || relation === 'unavailable' ? (
+                    <button
+                      type="button"
+                      className="vc-btn vc-btn-primary"
+                      disabled={requesting}
+                      onClick={sendFriendRequest}
+                      style={{ fontSize: '0.78rem', padding: '0.35rem 0.8rem' }}
+                    >
+                      {requesting ? 'Sending…' : relation === 'signed-out' ? '+ Sign in to add friend' : '+ Add Friend'}
+                    </button>
+                  ) : relation === 'friend' ? (
+                    <span className="vc-badge vc-badge-slate">Friend</span>
+                  ) : relation === 'outgoing' ? (
+                    <span className="vc-badge vc-badge-slate">Request sent</span>
+                  ) : relation === 'incoming' ? (
+                    <Link to="/people" className="vc-btn vc-btn-outline" style={{ textDecoration: 'none', fontSize: '0.78rem', padding: '0.35rem 0.8rem' }}>
+                      View request
+                    </Link>
+                  ) : relation === 'self' ? (
+                    <span className="vc-badge vc-badge-slate">Your review</span>
+                  ) : null}
+                </div>
+                {friendNotice && (
+                  <p role="status" style={{ margin: '0.5rem 0 0', color: 'var(--vc-slate)', fontSize: '0.8rem' }}>
+                    {friendNotice}
+                  </p>
+                )}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.8rem', alignItems: 'center' }}>
                   <span style={{ color: 'var(--vc-gold)', fontWeight: 700 }}>★ {review.rating}/10</span>
                   {review.createdAt && (
