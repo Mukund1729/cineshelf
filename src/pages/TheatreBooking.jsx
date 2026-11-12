@@ -154,6 +154,63 @@ function getBookMyShowUrl(city) {
   return citySlug ? `https://in.bookmyshow.com/explore/movies-${citySlug}` : 'https://in.bookmyshow.com/explore/movies';
 }
 
+async function findMappedCinemas(city, signal) {
+  const geocodeUrl = new URL('https://nominatim.openstreetmap.org/search');
+  geocodeUrl.search = new URLSearchParams({
+    q: `${city}, India`,
+    format: 'jsonv2',
+    limit: '1',
+    countrycodes: 'in',
+  });
+  const geocodeResponse = await fetch(geocodeUrl, { signal, headers: { 'Accept-Language': 'en' } });
+  if (!geocodeResponse.ok) throw new Error('Could not locate that city.');
+  const places = await geocodeResponse.json();
+  if (!places.length) throw new Error('City not found. Try an Indian city name.');
+
+  const { lat, lon, display_name: displayName } = places[0];
+  const query = `[out:json][timeout:30];nwr(around:35000,${lat},${lon})["amenity"="cinema"];out center tags;`;
+  const endpoints = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter',
+  ];
+  let lastError;
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+        body: new URLSearchParams({ data: query }),
+        signal,
+      });
+      if (!response.ok) throw new Error(`The public theatre map returned ${response.status}.`);
+      const data = await response.json();
+      const found = new Map();
+      for (const item of data.elements || []) {
+        const name = item.tags?.name || item.tags?.['name:en'] || item.tags?.brand || item.tags?.operator;
+        const latitude = item.lat ?? item.center?.lat;
+        const longitude = item.lon ?? item.center?.lon;
+        if (!name || latitude == null || longitude == null) continue;
+        const key = name.trim().toLocaleLowerCase();
+        if (found.has(key)) continue;
+        found.set(key, {
+          name: name.trim(),
+          city: displayName.split(',')[0],
+          dist: Math.round(Math.hypot((latitude - Number(lat)) * 111, (longitude - Number(lon)) * 111 * Math.cos(Number(lat) * Math.PI / 180)) * 10) / 10,
+          layout: { rowCount: 10, sections: [5, 8, 5], seatWidth: 0.56, rowSpacing: 0.9, ceilingHeight: 9.5 },
+          source: 'OpenStreetMap',
+        });
+      }
+      return [...found.values()].sort((a, b) => a.dist - b.dist);
+    } catch (error) {
+      if (error.name === 'AbortError') throw error;
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Could not load mapped theatres right now.');
+}
+
 function generateShowtimes(movieId, theatreIdx) {
   const rng = seededRand(hashStr(`${movieId}-${theatreIdx}`));
   const fmtCount = Math.floor(rng() * 2) + 1;
@@ -224,12 +281,15 @@ export default function TheatreBooking() {
 
   // Theatre & showtime selection
   const [city, setCity] = useState(THEATRES[0].city);
+  const [cityInput, setCityInput] = useState(THEATRES[0].city);
+  const [mappedTheatres, setMappedTheatres] = useState([]);
+  const [theatreLookupLoading, setTheatreLookupLoading] = useState(false);
+  const [theatreLookupError, setTheatreLookupError] = useState('');
   const [theatreIdx, setTheatreIdx] = useState(0);
-  const theatre = THEATRES[theatreIdx] || THEATRES[0];
+  const demoTheatres = THEATRES.filter(item => item.city.toLowerCase() === city.trim().toLowerCase());
+  const cityTheatres = mappedTheatres.length ? mappedTheatres : demoTheatres;
+  const theatre = cityTheatres[theatreIdx] || cityTheatres[0] || THEATRES[0];
   const HALL = buildHall(theatre);
-  const cityTheatres = THEATRES
-    .map((item, index) => ({ ...item, index }))
-    .filter(item => item.city === city);
   const PRESETS = buildCameraPresets(HALL);
   const [showtimes, setShowtimes]   = useState([]);
   const [showIdx, setShowIdx]       = useState(0);
@@ -276,6 +336,33 @@ export default function TheatreBooking() {
     setShowtimes(st);
     setShowIdx(0);
   }, [movieId, theatreIdx]);
+
+  useEffect(() => {
+    if (!city.trim()) return undefined;
+    const controller = new AbortController();
+    setTheatreLookupLoading(true);
+    setTheatreLookupError('');
+    setMappedTheatres([]);
+    setTheatreIdx(0);
+    selectedSeatsRef.current = [];
+    setSelectedSeats([]);
+
+    findMappedCinemas(city.trim(), controller.signal)
+      .then(items => {
+        setMappedTheatres(items);
+        if (!items.length) setTheatreLookupError(`No named cinemas are mapped near ${city}.`);
+      })
+      .catch(error => {
+        if (error.name !== 'AbortError') {
+          setTheatreLookupError(error.message || 'Could not load cinemas from OpenStreetMap.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setTheatreLookupLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [city]);
 
   useEffect(() => {
     selectedSeatsRef.current = [];
@@ -1005,7 +1092,7 @@ export default function TheatreBooking() {
     setPayLoading(true);
     setTimeout(() => {
       const ticketId = `CS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-      const selectedTheatre  = THEATRES[theatreIdx];
+      const selectedTheatre = cityTheatres[theatreIdx] || theatre;
       const show     = showtimes[showIdx];
       const newTicket = {
         id: ticketId,
@@ -1199,43 +1286,64 @@ export default function TheatreBooking() {
             display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center',
           }}>
             <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem', color: 'rgba(245,240,232,0.6)' }}>
-              City
-              <select
-                value={city}
-                onChange={e => {
-                  const nextCity = e.target.value;
-                  setCity(nextCity);
-                  const firstTheatre = THEATRES.findIndex(item => item.city === nextCity);
-                  if (firstTheatre >= 0) setTheatreIdx(firstTheatre);
+              City in India
+              <input
+                value={cityInput}
+                onChange={e => setCityInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && cityInput.trim()) setCity(cityInput.trim());
                 }}
+                placeholder="Enter a city"
                 style={{
                   background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
                   borderRadius: 8, color: '#f5f0e8', fontFamily: 'Outfit, sans-serif',
-                  fontSize: '0.82rem', padding: '0.4rem 0.8rem', cursor: 'pointer',
+                  fontSize: '0.82rem', padding: '0.4rem 0.8rem',
                 }}
-              >
-                {[...new Set(THEATRES.map(item => item.city))].map(item => (
-                  <option key={item} value={item} style={{ background: '#0a0f1a' }}>{item}</option>
-                ))}
-              </select>
+              />
             </label>
+            <button
+              onClick={() => cityInput.trim() && setCity(cityInput.trim())}
+              disabled={theatreLookupLoading || !cityInput.trim()}
+              style={{ ...primaryBtnStyle, padding: '0.55rem 0.9rem', fontSize: '0.75rem', opacity: theatreLookupLoading ? 0.6 : 1 }}
+            >
+              {theatreLookupLoading ? 'Searching…' : 'Find theatres'}
+            </button>
 
             {/* Demo theatre selector */}
             <select
               value={theatreIdx}
               onChange={e => setTheatreIdx(Number(e.target.value))}
+              disabled={!cityTheatres.length}
               style={{
                 background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: 8, color: '#f5f0e8', fontFamily: 'Outfit, sans-serif',
                 fontSize: '0.82rem', padding: '0.4rem 0.8rem', cursor: 'pointer',
               }}
             >
-              {cityTheatres.map(t => (
-                <option key={t.index} value={t.index} style={{ background: '#0a0f1a' }}>
-                  {t.name} · demo layout · {t.dist} km (sample)
+              {cityTheatres.map((t, i) => (
+                <option key={`${t.name}-${i}`} value={i} style={{ background: '#0a0f1a' }}>
+                  {t.name} · {t.dist} km{t.source ? '' : ' · demo'}
                 </option>
               ))}
+              {!cityTheatres.length && (
+                <option value={0} style={{ background: '#0a0f1a' }}>
+                  {theatreLookupLoading ? 'Searching mapped cinemas…' : 'No theatres found'}
+                </option>
+              )}
             </select>
+            <span role="status" style={{ fontFamily: 'Outfit, sans-serif', color: 'rgba(245,240,232,0.65)', fontSize: '0.72rem' }}>
+              {mappedTheatres.length ? `${mappedTheatres.length} mapped cinemas within 35 km` : `${cityTheatres.length} sample cinemas`}
+            </span>
+            {mappedTheatres.length > 0 && (
+              <a
+                href="https://www.openstreetmap.org/copyright"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: 'rgba(245,240,232,0.55)', fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem' }}
+              >
+                © OpenStreetMap contributors
+              </a>
+            )}
 
             {/* Showtimes */}
             <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', flex: 1 }}>
@@ -1270,11 +1378,19 @@ export default function TheatreBooking() {
             fontFamily: 'Outfit, sans-serif',
             fontSize: '0.75rem',
           }}>
-            Demo only: theatre names, distances, layouts, showtimes, seat availability and prices below are sample data, not verified or live BookMyShow listings. Use the link above for current listings and real bookings.
+            {mappedTheatres.length
+              ? 'Theatre names and distances are public OpenStreetMap listings. Seat layout, showtimes, availability and prices are estimates for preview only—not live booking data.'
+              : `Seat layout, showtimes, availability and prices are sample data. ${theatreLookupError ? `${theatreLookupError} ` : ''}Use the links for live listings and real bookings.`}
           </div>
 
+          {theatreLookupError && !mappedTheatres.length && (
+            <p role="status" style={{ margin: '0.5rem 1.5rem', color: '#f0d060', fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem' }}>
+              {theatreLookupError}
+            </p>
+          )}
+
           {/* 3D canvas + controls */}
-          <div style={{ flex: 1, position: 'relative' }}>
+          <div style={{ flex: 1, position: 'relative', minHeight: 420 }}>
 
             {/* 3D canvas */}
             <div ref={mountRef} style={{ width: '100%', height: '100%', cursor: 'grab', touchAction: 'none' }} />

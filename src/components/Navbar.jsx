@@ -279,6 +279,7 @@ export default function Navbar() {
                       style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
                       onError={() => setAvatarFailed(true)}
                     />
+                  )}
                   </div>
                 <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.username || user.name}
