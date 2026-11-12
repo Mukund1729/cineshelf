@@ -9,7 +9,7 @@ const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: ['friend_request', 'watchlist_update', 'review_like', 'list_share', 'system']
+    enum: ['friend_request', 'friend_accepted', 'watchlist_update', 'review_like', 'list_share', 'system']
   },
   title: {
     type: String,
@@ -22,6 +22,15 @@ const notificationSchema = new mongoose.Schema({
   data: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  relatedId: {
+    type: mongoose.Schema.Types.ObjectId,
+    default: null
+  },
+  fromUser: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
   },
   isRead: {
     type: Boolean,

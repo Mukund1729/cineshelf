@@ -58,6 +58,7 @@ const Lists           = lazy(() => import('./pages/Lists'));
 const Watchlist       = lazy(() => import('./pages/Watchlist'));
 const Reviews         = lazy(() => import('./pages/Reviews'));
 const People          = lazy(() => import('./pages/People'));
+const PeopleProfile   = lazy(() => import('./pages/PeopleProfile'));
 const Profile         = lazy(() => import('./pages/Profile'));
 const ChangePassword  = lazy(() => import('./pages/ChangePassword'));
 const AdminDashboard  = lazy(() => import('./pages/AdminDashboard'));
@@ -119,6 +120,7 @@ function AppWrapper() {
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/lists" element={<Lists />} />
             <Route path="/people" element={<People />} />
+            <Route path="/people/:userId" element={<PeopleProfile />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/change-password" element={<ChangePassword />} />
 

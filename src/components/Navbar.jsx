@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { apiUrl } from '../api/config';
+import NotificationBell from './NotificationBell';
 
 const NAV_LINKS = [
   { to: '/',               label: 'Home' },
@@ -244,6 +245,8 @@ export default function Navbar() {
         {/* Right side: user or auth */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
           {user ? (
+            <>
+            <NotificationBell />
             <div ref={userMenuRef} style={{ position: 'relative' }}>
               <button
                 onClick={() => setUserMenuOpen(v => !v)}
@@ -332,6 +335,7 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+            </>
           ) : (
             <button
               onClick={() => {

@@ -6,6 +6,8 @@ import Chat from '../components/Chat';
 import { apiUrl } from '../api/config';
 
 function FriendCard({ person, onRemove, onRequest, isFriend, isPending, onChat }) {
+  const profilePath = `/people/${person._id}`;
+
   return (
     <div style={{
       background: 'var(--vc-bg-card)', border: '1px solid rgba(255,255,255,0.06)',
@@ -15,17 +17,19 @@ function FriendCard({ person, onRemove, onRequest, isFriend, isPending, onChat }
       onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'}
       onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'}
     >
-      {person.avatar ? (
-        <img src={person.avatar.startsWith('/') ? apiUrl(person.avatar) : person.avatar} alt={person.username} style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-      ) : (
-        <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, var(--vc-gold), #b8860b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: '#0a0f1a', flexShrink: 0 }}>
-          {(person.username || person.name || 'U')[0].toUpperCase()}
-        </div>
-      )}
+      <Link to={profilePath} aria-label={`View ${person.username || person.name}'s profile`} style={{ flexShrink: 0 }}>
+        {person.avatar ? (
+          <img src={person.avatar.startsWith('/') ? apiUrl(person.avatar) : person.avatar} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+        ) : (
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, var(--vc-gold), #b8860b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: '#0a0f1a' }}>
+            {(person.username || person.name || 'U')[0].toUpperCase()}
+          </div>
+        )}
+      </Link>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '0.95rem', color: 'var(--vc-cream)' }}>
+        <Link to={profilePath} style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '0.95rem', color: 'var(--vc-cream)', textDecoration: 'none' }}>
           {person.username || person.name}
-        </div>
+        </Link>
         {person.bio && (
           <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: 'var(--vc-slate)', lineHeight: 1.4, marginTop: '0.15rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {person.bio}
@@ -60,20 +64,24 @@ function FriendCard({ person, onRemove, onRequest, isFriend, isPending, onChat }
 
 function RequestCard({ request, onAccept, onReject }) {
   const person = request.from;
+  const profilePath = `/people/${person?._id || ''}`;
+
   return (
     <div style={{
       background: 'var(--vc-bg-card)', border: '1px solid rgba(212,175,55,0.2)',
       borderRadius: '12px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem',
     }}>
-      {person?.avatar ? (
-        <img src={person.avatar.startsWith('/') ? apiUrl(person.avatar) : person.avatar} alt={person.username} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
-      ) : (
-        <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--vc-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: '#0a0f1a', flexShrink: 0 }}>
-          {(person?.username || 'U')[0].toUpperCase()}
-        </div>
-      )}
+      <Link to={profilePath} aria-label={`View ${person?.username || 'user'}'s profile`} style={{ flexShrink: 0 }}>
+        {person?.avatar ? (
+          <img src={person.avatar.startsWith('/') ? apiUrl(person.avatar) : person.avatar} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+        ) : (
+          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--vc-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: '#0a0f1a' }}>
+            {(person?.username || 'U')[0].toUpperCase()}
+          </div>
+        )}
+      </Link>
       <div style={{ flex: 1 }}>
-        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem', color: 'var(--vc-cream)', fontWeight: 600 }}>{person?.username}</div>
+        <Link to={profilePath} style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem', color: 'var(--vc-cream)', fontWeight: 600, textDecoration: 'none' }}>{person?.username}</Link>
         <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'var(--vc-gold)' }}>Friend request</div>
       </div>
       <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -135,7 +143,9 @@ export default function People() {
     try {
       await axios.post('/api/people/request', { userId }, { headers });
       showToast('Friend request sent!');
-      setSearchResults(prev => prev.filter(p => p._id !== userId));
+      setSearchResults(prev => prev.map(person => (
+        person._id === userId ? { ...person, relation: 'outgoing' } : person
+      )));
     } catch (err) {
       showToast(err.response?.data?.error || 'Failed to send request.');
     }
@@ -282,8 +292,8 @@ export default function People() {
                       <FriendCard
                         key={person._id}
                         person={person}
-                        isFriend={friendIds.includes(person._id)}
-                        isPending={false}
+                        isFriend={person.relation === 'friend' || friendIds.includes(person._id)}
+                        isPending={person.relation === 'outgoing' || person.relation === 'incoming'}
                         onRequest={sendRequest}
                         onRemove={removeFriend}
                         onChat={handleChat}

@@ -8,6 +8,7 @@ import {
   rejectFriendRequest,
   removeSakha,
   searchPeople,
+  getPersonProfile,
 } from '../controllers/peopleController.js';
 
 const router = express.Router();
@@ -21,6 +22,9 @@ router.post('/request', auth, sendFriendRequest);
 router.get('/requests', auth, getFriendRequests);
 router.post('/request/:id/accept', auth, acceptFriendRequest);
 router.post('/request/:id/reject', auth, rejectFriendRequest);
+
+// Profiles and search
+router.get('/profile/:userId', auth, getPersonProfile);
 
 // Search users
 router.get('/search', auth, searchPeople);
