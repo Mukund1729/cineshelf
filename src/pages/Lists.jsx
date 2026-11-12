@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -45,7 +46,7 @@ function MoviePosterMini({ item, onRemove }) {
     <div style={{ position: 'relative', width: '90px' }}>
       <Link to={`/movie/${item.tmdbId}`} style={{ textDecoration: 'none', display: 'block' }}>
         {item.poster ? (
-          <img src={item.poster} alt={item.title} style={{ width: 90, height: 135, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
+          <img src={tmdbImageUrl(item.poster, 'w185')} alt={item.title} style={{ width: 90, height: 135, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
         ) : (
           <div style={{ width: 90, height: 135, borderRadius: 8, background: 'var(--vc-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>🎬</div>
         )}
@@ -147,7 +148,7 @@ export default function Lists() {
       const res = await axios.post(`/api/lists/${selectedList._id}/items`, {
         tmdbId: movie.id,
         title: movie.title || movie.name,
-        poster: movie.poster_path ? `https://image.tmdb.org/t/p/w342${movie.poster_path}` : '',
+        poster: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w342') : '',
         overview: movie.overview || '',
         releaseDate: movie.release_date || movie.first_air_date || '',
         voteAverage: movie.vote_average || 0,
@@ -287,7 +288,7 @@ export default function Lists() {
                             style={{ cursor: 'pointer', textAlign: 'center' }}
                           >
                             {movie.poster_path ? (
-                              <img src={`https://image.tmdb.org/t/p/w185${movie.poster_path}`} alt={movie.title} style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', borderRadius: 8, border: '2px solid transparent', transition: 'border-color 200ms' }}
+                              <img src={tmdbImageUrl(movie.poster_path, 'w185')} alt={movie.title} style={{ width: '100%', aspectRatio: '2/3', objectFit: 'cover', borderRadius: 8, border: '2px solid transparent', transition: 'border-color 200ms' }}
                                 onMouseEnter={e => e.target.style.borderColor = 'var(--vc-gold)'}
                                 onMouseLeave={e => e.target.style.borderColor = 'transparent'}
                               />

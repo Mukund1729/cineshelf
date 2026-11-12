@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
@@ -93,7 +94,7 @@ async function enrichWithTmdb(items) {
             id: best.id,
             title: best.title,
             year: best.release_date?.slice(0, 4) || yearHint || '',
-            posterUrl: best.poster_path ? `https://image.tmdb.org/t/p/w500${best.poster_path}` : null,
+            posterUrl: best.poster_path ? tmdbImageUrl(best.poster_path, 'w500') : null,
             rating: best.vote_average,
             reason: item.reason || '',
           };

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { tmdbGet } from '../api/tmdb';
 
 const FullFilmography = () => {
   const { id } = useParams();
@@ -9,13 +10,11 @@ const FullFilmography = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_TMDB_API_KEY;
     async function fetchFilmography() {
       setLoading(true);
       setError(null);
       try {
-        const personRes = await fetch(`https://api.themoviedb.org/3/person/${id}?api_key=${apiKey}&append_to_response=combined_credits`);
-        const personData = await personRes.json();
+        const personData = await tmdbGet(`/person/${id}`, { append_to_response: 'combined_credits' });
         setPerson(personData);
         // Combine cast and crew, remove duplicates by movie id
         let allMovies = [];

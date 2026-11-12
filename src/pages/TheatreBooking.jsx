@@ -8,12 +8,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as THREE from 'three';
 import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
 import Navbar from '../components/Navbar';
-import { apiUrl } from '../api/config';
-
-const TMDB_KEY =
-  import.meta.env.VITE_TMDB_KEY ||
-  import.meta.env.VITE_TMDB_API_KEY ||
-  '049f46f11e71c08eba866acaefc280df';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 // ── Hall geometry ──────────────────────────────────────────────────────────────
 function buildHall(theatre) {
@@ -438,8 +433,7 @@ export default function TheatreBooking() {
   useEffect(() => {
     if (!movieId) return;
     setLoading(true);
-    fetch(`https://api.themoviedb.org/3/movie/${movieId}?api_key=${TMDB_KEY}&append_to_response=videos`)
-      .then(r => r.json())
+    tmdbGet(`/movie/${movieId}`, { append_to_response: 'videos' })
       .then(data => {
         setMovie(data);
         setLoading(false);
@@ -568,7 +562,6 @@ export default function TheatreBooking() {
       pointerEvents: 'none',
     });
     container.appendChild(cssRenderer.domElement);
-
     // ── Scene ─────────────────────────────────────────────────────────────
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x100b10);
@@ -615,7 +608,7 @@ export default function TheatreBooking() {
         pointerEvents: 'auto',
       });
       const iframe = document.createElement('iframe');
-      iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(trailer.key)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${encodeURIComponent(trailer.key)}&playsinline=1&rel=0`;
+      iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(trailer.key)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${encodeURIComponent(trailer.key)}&playsinline=1&rel=0`;
       iframe.title = `${movie.title || 'Movie'} trailer`;
       iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
       iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
@@ -634,10 +627,11 @@ export default function TheatreBooking() {
       trailerScreen.scale.set(scrW / 1280, scrH / 600, 1);
       scene.add(trailerScreen);
       scrMat.color.setHex(0x05060a);
-    } else if (movie?.backdrop_path) {
+    } else if (movie?.backdrop_path || movie?.poster_path) {
+      const screenImagePath = movie.backdrop_path || movie.poster_path;
       const textureLoader = new THREE.TextureLoader();
       screenTexture = textureLoader.load(
-        apiUrl(`/api/tmdb/image/w1280${movie.backdrop_path}`),
+        tmdbImageUrl(screenImagePath, 'w1280'),
         (texture) => {
           if (disposed) {
             texture.dispose();
@@ -1242,7 +1236,7 @@ export default function TheatreBooking() {
         id: ticketId,
         movieId,
         movieTitle: movie?.title || 'Movie',
-        moviePoster: movie?.poster_path ? apiUrl(`/api/tmdb/image/w342${movie.poster_path}`) : null,
+        moviePoster: movie?.poster_path ? tmdbImageUrl(movie.poster_path, 'w342') : null,
         theatre: selectedTheatre.name,
         city: selectedTheatre.city,
         time: show?.time,
@@ -1626,7 +1620,7 @@ export default function TheatreBooking() {
                 padding: '1rem', zIndex: 10, minWidth: 180, maxWidth: 240,
               }} className="theatre-selection-card">
                 {movie?.poster_path && (
-                  <img className="theatre-selection-poster" src={apiUrl(`/api/tmdb/image/w185${movie.poster_path}`)} alt="" style={{
+                  <img className="theatre-selection-poster" src={tmdbImageUrl(movie.poster_path, 'w185')} alt="" style={{
                     width: '100%', borderRadius: 8, marginBottom: '0.75rem', aspectRatio: '2/3', objectFit: 'cover',
                   }} />
                 )}
@@ -1762,7 +1756,7 @@ export default function TheatreBooking() {
             display: 'flex', gap: '1rem',
           }}>
             {movie?.poster_path && (
-              <img src={apiUrl(`/api/tmdb/image/w92${movie.poster_path}`)} alt="" style={{ width: 56, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
+              <img src={tmdbImageUrl(movie.poster_path, 'w92')} alt="" style={{ width: 56, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
             )}
             <div>
               <div style={{ fontFamily: 'Playfair Display, serif', fontWeight: 700, fontSize: '1.05rem' }}>{movie?.title}</div>

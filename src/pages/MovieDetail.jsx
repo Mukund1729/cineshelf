@@ -9,8 +9,7 @@ import axios from 'axios';
 import TrailerEmbed from '../components/TrailerEmbed';
 import JustWatch from 'justwatch-api';
 import SearchBar from "../components/SearchBar";
-import { searchMovies, searchPeople } from '../api/tmdb';
-import { apiUrl } from '../api/config';
+import { searchMovies, searchPeople, tmdbGet, tmdbImageUrl } from '../api/tmdb';
 import Navbar from '../components/Navbar';
 
 // Remove StreamingPlatforms component, integrated its logic into MovieDetail
@@ -81,14 +80,11 @@ const MovieDetail = () => {
   // Fetch movie data from TMDb API
   const [movie, setMovie] = useState(null);
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_TMDB_API_KEY;
     if (!id) return;
-    fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}&append_to_response=credits,videos`)
-      .then(res => res.json())
+    tmdbGet(`/movie/${id}`, { append_to_response: 'credits,videos' })
       .then(async data => {
         // Fetch watch providers and merge into movie object
-        const providersRes = await fetch(`https://api.themoviedb.org/3/movie/${id}/watch/providers?api_key=${apiKey}`);
-        const providersData = await providersRes.json();
+        const providersData = await tmdbGet(`/movie/${id}/watch/providers`);
         setMovie({ ...data, 'watch/providers': providersData });
       });
   }, [id]);
@@ -105,8 +101,8 @@ const MovieDetail = () => {
       await axios.post('/api/watchlist', {
         tmdbId: movie.id,
         title: movie.title,
-        poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
-        posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+        poster: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
+        posterUrl: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
         overview: movie.overview,
         releaseDate: movie.release_date,
         voteAverage: movie.vote_average,
@@ -165,8 +161,8 @@ const MovieDetail = () => {
       const res = await axios.post('/api/review', {
         tmdbId: movie.id,
         title: movie.title,
-        poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
-        posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+        poster: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
+        posterUrl: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
         overview: movie.overview,
         mediaType: 'movie',
         rating: Number(reviewRating),
@@ -212,7 +208,7 @@ const MovieDetail = () => {
       await axios.post('/api/diary', {
         tmdbId: movie.id,
         title: movie.title,
-        poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+        poster: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
         mediaType: 'movie',
         watchedAt,
         ...(reviewRating !== '' ? { rating: Number(reviewRating) } : {}),
@@ -304,11 +300,9 @@ const MovieDetail = () => {
   useEffect(() => {
     const fetchRecsAndActorMovies = async () => {
       if (!movie) return;
-      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
       // Fetch recommendations
       try {
-        const recRes = await fetch(`https://api.themoviedb.org/3/movie/${movie.id}/recommendations?api_key=${apiKey}`);
-        const recData = await recRes.json();
+        const recData = await tmdbGet(`/movie/${movie.id}/recommendations`);
         const recs = (recData.results || []).filter(m => m.poster_path && m.id !== movie.id);
         setRecommendations(recs.slice(0, 20));
       } catch (e) {
@@ -319,8 +313,7 @@ const MovieDetail = () => {
       const actor = movie.credits.cast[0];
       if (!actor || !actor.id) return;
       try {
-        const res = await fetch(`https://api.themoviedb.org/3/person/${actor.id}/movie_credits?api_key=${apiKey}`);
-        const data = await res.json();
+        const data = await tmdbGet(`/person/${actor.id}/movie_credits`);
         // Filter out movies without poster and the current movie
         const filtered = (data.cast || []).filter(m => m.poster_path && m.id !== movie.id);
         // Sort by popularity or release date
@@ -338,7 +331,7 @@ const MovieDetail = () => {
       style={
         movie && movie.backdrop_path
           ? {
-              backgroundImage: `url(${apiUrl(`/api/tmdb/image/original${movie.backdrop_path}`)})`,
+              backgroundImage: `url(${tmdbImageUrl(movie.backdrop_path, 'original')})`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
@@ -399,7 +392,7 @@ const MovieDetail = () => {
                         onClick={() => { setIsSearching(false); setShowSearchBar(false); setSearchQuery(''); setSearchResults([]); }}
                       >
                         <img
-                          src={apiUrl(`/api/tmdb/image/w92${result.poster_path || result.profile_path}`)}
+                          src={tmdbImageUrl(result.poster_path || result.profile_path, 'w92')}
                           alt={result.title || result.name}
                           className="w-10 h-14 object-cover rounded"
                         />
@@ -427,7 +420,7 @@ const MovieDetail = () => {
             <div className="flex-shrink-0 mx-auto md:mx-0 mb-6 md:mb-0 flex flex-col items-center gap-4">
               <div className="relative group rounded-2xl bg-gradient-to-br from-[#181c24]/80 via-[#232526]/60 to-[#10111a]/80 border-2 border-cyan-900/40 shadow-xl transition-all duration-300 hover:shadow-cyan-400/40 hover:border-cyan-400/80 hover:scale-105" style={{padding:'0.5rem', boxShadow:'0 6px 32px 0 rgba(0,255,255,0.08)'}}>
                 <img
-                  src={movie.poster_path ? apiUrl(`/api/tmdb/image/w400${movie.poster_path}`) : '/placeholder.jpg'}
+                  src={movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w400') : '/placeholder.jpg'}
                   alt={movie.title}
                   className="rounded-xl shadow-lg w-44 h-auto object-cover bg-[#232526] border-2 border-cyan-900 group-hover:border-cyan-400 group-hover:shadow-cyan-400/40 transition-all duration-300"
                   style={{ maxHeight: 320 }}
@@ -487,7 +480,7 @@ const MovieDetail = () => {
                         }}
                       >
                         <img
-                          src={apiUrl(`/api/tmdb/image/w45${provider.logo_path}`)}
+                          src={tmdbImageUrl(provider.logo_path, 'w45')}
                           alt={provider.provider_name}
                           className="w-10 h-10 rounded bg-white/10 border border-cyan-900 hover:scale-110 transition shadow"
                         />
@@ -605,7 +598,7 @@ const MovieDetail = () => {
                     className="min-w-[90px] max-w-[90px] flex-shrink-0 bg-[#232526]/80 rounded-xl overflow-hidden shadow-md hover:scale-105 hover:shadow-cyan-400 transition-transform duration-200 flex flex-col items-center border border-cyan-900/30"
                   >
                     <img
-                      src={actor.profile_path ? apiUrl(`/api/tmdb/image/w200${actor.profile_path}`) : '/actor-placeholder.jpg'}
+                      src={actor.profile_path ? tmdbImageUrl(actor.profile_path, 'w200') : '/actor-placeholder.jpg'}
                       alt={actor.name}
                       className="w-full h-24 object-cover rounded-t-xl bg-[#10111a]"
                     />
@@ -788,7 +781,7 @@ const MovieDetail = () => {
                       style={{ boxShadow: '0 6px 24px 0 rgba(0,0,0,0.25), 0 1.5px 6px 0 rgba(0,255,255,0.08)' }}
                     >
                       <img
-                        src={apiUrl(`/api/tmdb/image/w500${m.poster_path}`)}
+                        src={tmdbImageUrl(m.poster_path, 'w500')}
                         alt={m.title}
                         className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-200"
                         style={{ transform: 'translateZ(0)' }}
@@ -865,7 +858,7 @@ const MovieDetail = () => {
                       style={{ boxShadow: '0 6px 24px 0 rgba(0,0,0,0.25), 0 1.5px 6px 0 rgba(255,0,255,0.08)' }}
                     >
                       <img
-                        src={apiUrl(`/api/tmdb/image/w500${m.poster_path}`)}
+                        src={tmdbImageUrl(m.poster_path, 'w500')}
                         alt={m.title}
                         className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-200"
                         style={{ transform: 'translateZ(0)' }}

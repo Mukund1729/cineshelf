@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { tmdbClient, tmdbImageUrl } from '../api/tmdb';
 import { Link } from 'react-router-dom';
 
 const GENRES = [
@@ -14,7 +14,7 @@ const GENRES = [
 ];
 
 const getPoster = (path) =>
-  path ? `https://image.tmdb.org/t/p/w500${path}` : "/placeholder.jpg";
+  path ? tmdbImageUrl(path, 'w500') : "/placeholder.jpg";
 
 const marqueeStyle = {
   display: 'flex',
@@ -60,11 +60,10 @@ export default function GenreHighlights() {
 
   // Fetch featured movie posters for each genre on mount
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_TMDB_API_KEY;
     GENRES.forEach(async (genre) => {
       if (genre.featuredMovieId) {
         try {
-          const res = await axios.get(`https://api.themoviedb.org/3/movie/${genre.featuredMovieId}?api_key=${apiKey}`);
+          const res = await tmdbClient.get(`/movie/${genre.featuredMovieId}`);
           setFeaturedPosters(prev => ({ ...prev, [genre.name]: res.data.poster_path }));
         } catch {}
       }
@@ -73,7 +72,6 @@ export default function GenreHighlights() {
 
   const fetchGenreData = async (genre) => {
     setLoading((prev) => ({ ...prev, [genre.name]: true }));
-    const apiKey = import.meta.env.VITE_TMDB_API_KEY;
     // Top Rated (curated)
     let topMovies = [];
     if (CURATED_TOP_RATED[genre.name]) {
@@ -81,7 +79,7 @@ export default function GenreHighlights() {
       topMovies = await Promise.all(
         CURATED_TOP_RATED[genre.name].map(async (id) => {
           try {
-            const res = await axios.get(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}`);
+            const res = await tmdbClient.get(`/movie/${id}`);
             return res.data;
           } catch {
             return null;
@@ -91,9 +89,9 @@ export default function GenreHighlights() {
       topMovies = topMovies.filter(Boolean);
     } else {
       // fallback to discover
-      const top = await axios.get(
-        `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&with_genres=${genre.id}&sort_by=vote_average.desc&vote_count.gte=100`
-      );
+      const top = await tmdbClient.get('/discover/movie', {
+        params: { with_genres: genre.id, sort_by: 'vote_average.desc', 'vote_count.gte': 100 },
+      });
       topMovies = top.data.results.slice(0, 10);
     }
     // Hidden Gems (curated for Comedy)
@@ -102,7 +100,7 @@ export default function GenreHighlights() {
       gems = await Promise.all(
         CURATED_HIDDEN_GEMS[genre.name].map(async (id) => {
           try {
-            const res = await axios.get(`https://api.themoviedb.org/3/movie/${id}?api_key=${apiKey}`);
+            const res = await tmdbClient.get(`/movie/${id}`);
             return res.data;
           } catch {
             return null;
@@ -112,27 +110,25 @@ export default function GenreHighlights() {
       gems = gems.filter(Boolean);
     } else {
       // fallback to discover
-      const gemsRes = await axios.get(
-        `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&with_genres=${genre.id}&vote_average.gte=6&vote_count.lte=300&sort_by=vote_average.desc`
-      );
+      const gemsRes = await tmdbClient.get('/discover/movie', {
+        params: { with_genres: genre.id, 'vote_average.gte': 6, 'vote_count.lte': 300, sort_by: 'vote_average.desc' },
+      });
       gems = gemsRes.data.results.slice(0, 10);
     }
     // New Arrivals (last 6 months, region IN, must be on OTT)
     const today = new Date();
     const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, today.getDate());
     const dateStr = sixMonthsAgo.toISOString().split('T')[0];
-    const arrivals = await axios.get(
-      `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&with_genres=${genre.id}&primary_release_date.gte=${dateStr}&region=IN&sort_by=release_date.desc`
-    );
+    const arrivals = await tmdbClient.get('/discover/movie', {
+      params: { with_genres: genre.id, 'primary_release_date.gte': dateStr, region: 'IN', sort_by: 'release_date.desc' },
+    });
     // Providers for new arrivals (filter only those with OTT in IN)
     const ottMovies = [];
     const provs = {};
     await Promise.all(
       arrivals.data.results.slice(0, 30).map(async (movie) => {
         try {
-          const provRes = await axios.get(
-            `https://api.themoviedb.org/3/movie/${movie.id}/watch/providers?api_key=${apiKey}`
-          );
+          const provRes = await tmdbClient.get(`/movie/${movie.id}/watch/providers`);
           const inProviders = provRes.data.results?.IN?.flatrate || [];
           if (inProviders.length > 0) {
             ottMovies.push({ ...movie, ott: inProviders.map((p) => p.provider_name) });

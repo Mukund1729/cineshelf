@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getPopularPeople } from '../api/tmdb';
+import { getPopularPeople, tmdbImageUrl } from '../api/tmdb';
 import LoadingSpinner from './LoadingSpinner';
 
 export default function PopularPeopleGrid() {
@@ -24,7 +24,7 @@ export default function PopularPeopleGrid() {
         {people.map(person => (
           <div key={person.id} className="flex flex-col items-center bg-gradient-to-br from-[#232526] via-[#414345] to-[#181818] rounded-xl shadow-lg p-4">
             <img
-              src={person.profile_path ? person.profile_path : '/placeholder-person.jpg'}
+              src={person.profile_path ? tmdbImageUrl(person.profile_path, 'w185') : '/placeholder-person.jpg'}
               alt={person.name}
               className="w-24 h-24 object-cover rounded-full mb-2 border-4 border-yellow-400 shadow-md bg-white"
               loading="lazy"

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { apiUrl } from '../api/config';
+import { tmdbImageUrl } from '../api/tmdb';
 
 const Profile = () => {
   const [profile, setProfile] = useState(null);
@@ -604,7 +605,7 @@ const Profile = () => {
               >
                 <div className="relative overflow-hidden rounded-xl">
                   <img
-                    src={movie.posterUrl || movie.poster || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgODAgMTIwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMTIwIiBmaWxsPSIjMzM0MTU1Ii8+Cjx0ZXh0IHg9IjQwIiB5PSI2MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjOWNhM2EzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPgo='}
+                    src={(movie.posterUrl || movie.poster) ? tmdbImageUrl(movie.posterUrl || movie.poster, 'w185') : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgODAgMTIwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMTIwIiBmaWxsPSIjMzM0MTU1Ii8+Cjx0ZXh0IHg9IjQwIiB5PSI2MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjOWNhM2EzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPgo='}
                     alt={movie.title}
                     className="w-full aspect-[2/3] object-cover group-hover:scale-110 transition-transform duration-300"
                   />
@@ -698,7 +699,7 @@ const Profile = () => {
           <div className="space-y-3">
             {diary.slice(0, 5).map(entry => (
               <div key={entry._id} className="flex items-center gap-4 rounded-xl bg-slate-700/30 p-4">
-                {entry.poster && <img src={entry.poster} alt="" className="h-16 w-11 rounded object-cover" />}
+                {entry.poster && <img src={tmdbImageUrl(entry.poster, 'w92')} alt="" className="h-16 w-11 rounded object-cover" />}
                 <div className="min-w-0 flex-1">
                   <Link to={`/${entry.mediaType === 'tv' ? 'tv' : 'movie'}/${entry.tmdbId}`} className="font-semibold text-white hover:text-cyan-300">
                     {entry.title}

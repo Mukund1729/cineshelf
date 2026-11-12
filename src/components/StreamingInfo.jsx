@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React from "react";
 
 const StreamingInfo = ({ streaming, link }) => (
@@ -7,7 +8,7 @@ const StreamingInfo = ({ streaming, link }) => (
       <div className="flex gap-3 items-center flex-wrap">
         {streaming.map(s => (
           <a key={s.provider_id} href={link} target="_blank" rel="noopener noreferrer" title={s.provider_name}>
-            <img src={`https://image.tmdb.org/t/p/w45${s.logo_path}`} alt={s.provider_name} className="w-10 h-10 rounded-full border-2 border-cyan-400 bg-white" />
+            <img src={tmdbImageUrl(s.logo_path, 'w45')} alt={s.provider_name} className="w-10 h-10 rounded-full border-2 border-cyan-400 bg-white" />
           </a>
         ))}
       </div>

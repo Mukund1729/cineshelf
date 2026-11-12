@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import axios from "axios";
+import { tmdbClient, tmdbImageUrl } from '../api/tmdb';
 
 const GENRES = [
   { name: "Drama", id: 18, color: "from-pink-900 via-pink-700 to-[#232526]" },
@@ -17,13 +17,11 @@ export default function GenreHighlights() {
 
   useEffect(() => {
     const fetchGenreMovies = async () => {
-      const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-
       try {
         for (const genre of GENRES) {
-          const res = await axios.get(
-            `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&with_genres=${genre.id}&sort_by=vote_average.desc&vote_count.gte=100`
-          );
+          const res = await tmdbClient.get('/discover/movie', {
+            params: { with_genres: genre.id, sort_by: 'vote_average.desc', 'vote_count.gte': 100 },
+          });
 
           setMoviesByGenre((prev) => ({
             ...prev,
@@ -39,7 +37,7 @@ export default function GenreHighlights() {
   }, []);
 
   const getPoster = (path) =>
-    path ? `https://image.tmdb.org/t/p/w500${path}` : "/placeholder.jpg";
+    path ? tmdbImageUrl(path, 'w500') : "/placeholder.jpg";
 
   return (
     <section className="container mx-auto px-4 my-20">

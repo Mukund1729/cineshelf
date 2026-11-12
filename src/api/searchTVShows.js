@@ -1,24 +1,18 @@
-// Search TV shows from TMDB
-import axios from 'axios';
-import { API_KEY } from './tmdb';
-
-const BASE_URL = 'https://api.themoviedb.org/3';
+// Search TV shows through the server-side TMDB proxy.
+import { tmdbGet } from './tmdb';
 
 export const searchTVShows = async (query, options) => {
   if (!query.trim()) return { results: [], totalPages: 0 };
   try {
-    const response = await axios.get(`${BASE_URL}/search/tv`, {
-      params: {
-        api_key: API_KEY,
+    const response = await tmdbGet('/search/tv', {
         language: 'en-US',
         region: 'US',
         query,
         page: options && options.page ? options.page : 1,
-      },
     });
     return {
-      results: response.data.results,
-      totalPages: response.data.total_pages,
+      results: response.results,
+      totalPages: response.total_pages,
     };
   } catch (error) {
     console.error('Search TV shows failed:', error);

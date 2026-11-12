@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -15,7 +16,7 @@ const SuggestionsCarousel = ({ title, items, type }) => {
           >
             <div className="rounded-lg overflow-hidden shadow-md border-2 border-transparent group-hover:border-cyan-400 bg-zinc-800">
               <img
-                src={item.poster_path ? `https://image.tmdb.org/t/p/w300${item.poster_path}` : "/placeholder.jpg"}
+                src={item.poster_path ? tmdbImageUrl(item.poster_path, 'w300') : "/placeholder.jpg"}
                 alt={item.title || item.name}
                 className="w-full h-52 object-cover"
               />

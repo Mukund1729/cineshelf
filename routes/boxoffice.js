@@ -1,5 +1,5 @@
 import express from 'express';
-import axios from 'axios';
+import { fetchTmdb } from '../services/tmdbService.js';
 import { getBoxOfficeByYear, getBoxOfficeByPerson, getBoxOfficeIndia, getIndianLiveBoxOffice, getIndianDaywiseBoxOffice, getMovieBoxOffice } from '../controllers/boxOfficeController.js';
 
 const router = express.Router();
@@ -26,14 +26,10 @@ router.get('/india', getBoxOfficeIndia);
 router.get('/trending', async (req, res) => {
   try {
     const { page = 1 } = req.query;
-    const apiKey = process.env.VITE_TMDB_KEY;
-    const response = await axios.get(`https://api.themoviedb.org/3/trending/movie/week`, {
-      params: { api_key: apiKey, page }
-    });
-    res.json(response.data);
+    res.json(await fetchTmdb('trending/movie/week', { page }));
   } catch (error) {
-    console.error('Box office trending error:', error);
-    res.status(500).json({ error: 'Failed to fetch trending box office data' });
+    console.error('Box office trending request failed:', error.message);
+    res.status(error.status || 502).json({ error: error.code || 'trending_unavailable' });
   }
 });
 
@@ -41,18 +37,12 @@ router.get('/trending', async (req, res) => {
 router.get('/top-grossing', async (req, res) => {
   try {
     const { year, page = 1 } = req.query;
-    const apiKey = process.env.VITE_TMDB_KEY;
-    let url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=revenue.desc&page=${page}`;
-    
-    if (year) {
-      url += `&primary_release_year=${year}`;
-    }
-    
-    const response = await axios.get(url);
-    res.json(response.data);
+    const params = { sort_by: 'revenue.desc', page };
+    if (year) params.primary_release_year = year;
+    res.json(await fetchTmdb('discover/movie', params));
   } catch (error) {
-    console.error('Top grossing error:', error);
-    res.status(500).json({ error: 'Failed to fetch top grossing movies' });
+    console.error('Top grossing request failed:', error.message);
+    res.status(error.status || 502).json({ error: error.code || 'top_grossing_unavailable' });
   }
 });
 

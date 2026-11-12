@@ -2,14 +2,14 @@ import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { apiUrl } from '../api/config';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 // Lazy-load Three.js canvas (not critical for FCP)
 const HeroCanvas = lazy(() => import('../components/HeroCanvas'));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const IMG = (path, size = 'w500') =>
-  path ? apiUrl(`/api/tmdb/image/${size}${path}`) : null;
+  path ? tmdbImageUrl(path, size) : null;
 
 const PLACEHOLDER = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSI0NTAiIGZpbGw9IiMxYTIyMzYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZmlsbD0iIzY0NzQ4YiIgZm9udC1mYW1pbHk9InNlcmlmIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
 
@@ -349,7 +349,7 @@ function HeroFeatured({ movie }) {
   if (!movie) return null;
   const title    = movie.title || 'Trending Now';
   const overview = movie.overview?.slice(0, 160);
-  const backdrop = movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : null;
+  const backdrop = movie.backdrop_path ? tmdbImageUrl(movie.backdrop_path, 'w1280') : null;
   const rating   = movie.vote_average?.toFixed(1);
   const year     = movie.release_date?.slice(0, 4);
 
@@ -390,18 +390,15 @@ export default function HomePage() {
   const [heroMovie,  setHeroMovie]  = useState(null);
   const debounce = useRef(null);
 
-  // Fetch all sections — direct TMDB API (no proxy timeout)
+  // Fetch all discovery sections through the backend proxy.
   useEffect(() => {
-    const KEY = import.meta.env.VITE_TMDB_KEY || import.meta.env.VITE_TMDB_API_KEY || '049f46f11e71c08eba866acaefc280df';
-    const BASE = 'https://api.themoviedb.org/3';
-
     const fetchAll = async () => {
       try {
         const [tRes, pRes, trRes, tvRes] = await Promise.all([
-          fetch(`${BASE}/trending/movie/week?api_key=${KEY}`).then(r => r.json()),
-          fetch(`${BASE}/movie/popular?api_key=${KEY}`).then(r => r.json()),
-          fetch(`${BASE}/movie/top_rated?api_key=${KEY}`).then(r => r.json()),
-          fetch(`${BASE}/tv/popular?api_key=${KEY}`).then(r => r.json()),
+          tmdbGet('/trending/movie/week'),
+          tmdbGet('/movie/popular'),
+          tmdbGet('/movie/top_rated'),
+          tmdbGet('/tv/popular'),
         ]);
         const tMovies = tRes.results || [];
         setTrending(tMovies);
@@ -422,11 +419,9 @@ export default function HomePage() {
     if (debounce.current) clearTimeout(debounce.current);
     if (!searchQ.trim()) { setSearchRes([]); setSearching(false); return; }
     setSearching(true);
-    const KEY = import.meta.env.VITE_TMDB_KEY || import.meta.env.VITE_TMDB_API_KEY || '049f46f11e71c08eba866acaefc280df';
     debounce.current = setTimeout(async () => {
       try {
-        const res = await fetch(`https://api.themoviedb.org/3/search/multi?api_key=${KEY}&query=${encodeURIComponent(searchQ)}&page=1`);
-        const data = await res.json();
+        const data = await tmdbGet('/search/multi', { query: searchQ, page: 1 });
         setSearchRes(data.results || []);
       } catch { setSearchRes([]); }
     }, 350);
@@ -452,7 +447,7 @@ export default function HomePage() {
         {heroMovie?.backdrop_path && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' }}>
             <img
-              src={`https://image.tmdb.org/t/p/original${heroMovie.backdrop_path}`}
+              src={tmdbImageUrl(heroMovie.backdrop_path, 'original')}
               alt=""
               style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.14, filter: 'grayscale(0.5) contrast(1.05)' }}
             />

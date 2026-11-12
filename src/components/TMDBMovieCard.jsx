@@ -1,5 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { tmdbImageUrl } from '../api/tmdb';
 
 export default function TMDBMovieCard({ movie }) {
   return (
@@ -9,7 +10,7 @@ export default function TMDBMovieCard({ movie }) {
       style={{ minHeight: 180 }}
     >
       <img
-        src={movie.poster}
+        src={tmdbImageUrl(movie.poster, 'w300')}
         alt={movie.title}
         className="w-32 h-48 object-cover bg-gray-800 group-hover:opacity-90 transition-opacity duration-150"
         loading="lazy"

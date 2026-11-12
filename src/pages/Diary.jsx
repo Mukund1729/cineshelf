@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
@@ -10,7 +11,7 @@ const getLocalDate = () => {
 };
 
 const getPoster = path => path
-  ? (/^https?:\/\//i.test(path) ? path : `https://image.tmdb.org/t/p/w185${path}`)
+  ? tmdbImageUrl(path, 'w185')
   : '';
 
 const formatDiaryDate = date => new Date(date).toLocaleDateString(undefined, {
@@ -119,7 +120,7 @@ export default function Diary() {
         tmdbId: selectedMovie.id,
         title: selectedMovie.title || selectedMovie.name,
         poster: selectedMovie.poster_path
-          ? `https://image.tmdb.org/t/p/w342${selectedMovie.poster_path}`
+          ? tmdbImageUrl(selectedMovie.poster_path, 'w342')
           : '',
         mediaType,
         watchedAt,

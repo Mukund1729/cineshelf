@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import cors from 'cors';
-import axios from 'axios';
 
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/user.js';
@@ -21,6 +20,7 @@ import notificationRoutes from './routes/notifications.js';
 import exportRoutes from './routes/export.js';
 import adminRoutes from './routes/admin.js';
 import blogRoutes from './routes/blog.js';
+import tmdbRoutes from './routes/tmdb.js';
 import gptRoute from './src/api/gpt.js';
 import connectDB from './db.js';
 import BoxOffice from './models/BoxOffice.js';
@@ -39,8 +39,6 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your_jwt_secret_here'
 }
 
 const PORT = process.env.PORT || 5000;
-// TMDB API key — use TMDB_API_KEY (backend), fall back to VITE_ key for compatibility
-const TMDB_API_KEY = process.env.TMDB_API_KEY || process.env.VITE_TMDB_KEY;
 
 const app = express();
 
@@ -48,7 +46,7 @@ const allowedOrigins = new Set([
   'http://localhost:5173',
   'http://localhost:5174',
   'https://cineshelf-eight.vercel.app',
-  ...(process.env.FRONTEND_ORIGINS || '')
+  ...(process.env.CORS_ORIGINS || process.env.FRONTEND_ORIGINS || '')
     .split(',')
     .map(origin => origin.trim())
     .filter(Boolean),
@@ -81,6 +79,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/blog', blogRoutes);
+app.use('/api/tmdb', tmdbRoutes);
 
 // Rate limiting for AI endpoint
 const gptLimiter = rateLimit({
@@ -90,90 +89,6 @@ const gptLimiter = rateLimit({
 });
 app.use('/api/gpt', gptLimiter);
 app.use('/api', gptRoute);
-
-// ─────────────────────────────────────────────────────────────
-// TMDB Proxy routes (server-side, key never exposed to client)
-// ─────────────────────────────────────────────────────────────
-
-const tmdbProxy = async (url, params, res) => {
-  try {
-    const response = await axios.get(url, {
-      params: { api_key: TMDB_API_KEY, ...params },
-      timeout: 20000,
-    });
-    res.json(response.data);
-  } catch (err) {
-    console.error('TMDB proxy error:', err.message);
-    if (err.response) {
-      res.status(err.response.status).json({ error: err.response.data });
-    } else if (err.code === 'ECONNABORTED') {
-      res.status(504).json({ error: 'TMDB request timed out' });
-    } else {
-      res.status(500).json({ error: 'Failed to fetch from TMDB', details: err.message });
-    }
-  }
-};
-
-app.get('/api/tmdb/popular', (req, res) =>
-  tmdbProxy('https://api.tmdb.org/3/movie/popular', { page: req.query.page || 1 }, res)
-);
-app.get('/api/tmdb/popular-tv', (req, res) =>
-  tmdbProxy('https://api.tmdb.org/3/tv/popular', { page: req.query.page || 1 }, res)
-);
-app.get('/api/tmdb/popular-people', (req, res) =>
-  tmdbProxy('https://api.tmdb.org/3/person/popular', { page: req.query.page || 1 }, res)
-);
-app.get('/api/tmdb/trending-movies', (req, res) =>
-  tmdbProxy('https://api.tmdb.org/3/trending/movie/week', { page: req.query.page || 1 }, res)
-);
-app.get('/api/tmdb/top-rated', (req, res) =>
-  tmdbProxy('https://api.tmdb.org/3/movie/top_rated', { page: req.query.page || 1 }, res)
-);
-app.get('/api/tmdb/top-rated-tv', (req, res) =>
-  tmdbProxy('https://api.tmdb.org/3/tv/top_rated', { page: req.query.page || 1 }, res)
-);
-app.get('/api/tmdb/movie/:id', (req, res) =>
-  tmdbProxy(`https://api.tmdb.org/3/movie/${req.params.id}`, {
-    append_to_response: 'credits,videos,similar,watch/providers,release_dates',
-  }, res)
-);
-app.get('/api/tmdb/tv/:id', (req, res) =>
-  tmdbProxy(`https://api.tmdb.org/3/tv/${req.params.id}`, {
-    append_to_response: 'credits,videos,similar,watch/providers',
-  }, res)
-);
-app.get('/api/tmdb/person/:id', (req, res) =>
-  tmdbProxy(`https://api.tmdb.org/3/person/${req.params.id}`, {
-    append_to_response: 'movie_credits,tv_credits',
-  }, res)
-);
-app.get('/api/tmdb/search', (req, res) => {
-  const { query, type = 'multi', page = 1 } = req.query;
-  tmdbProxy(`https://api.tmdb.org/3/search/${type}`, { query, page }, res);
-});
-app.get('/api/tmdb/discover', (req, res) => {
-  const { type = 'movie', ...rest } = req.query;
-  tmdbProxy(`https://api.tmdb.org/3/discover/${type}`, rest, res);
-});
-app.get('/api/tmdb/genre/:type/list', (req, res) =>
-  tmdbProxy(`https://api.tmdb.org/3/genre/${req.params.type}/list`, {}, res)
-);
-
-// TMDB Image Proxy to fix CORS
-app.get('/api/tmdb/image/:size/*path', async (req, res) => {
-  try {
-    const { size } = req.params;
-    const path = Array.isArray(req.params.path) ? req.params.path.join('/') : req.params.path;
-    const imageUrl = `https://image.tmdb.org/t/p/${size}/${path}`;
-    const response = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 20000 });
-    res.set('Content-Type', response.headers['content-type']);
-    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
-    res.send(response.data);
-  } catch (err) {
-    console.error('TMDB image proxy error:', err.message);
-    res.status(500).json({ error: 'Failed to fetch image' });
-  }
-});
 
 // Health check
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -186,16 +101,16 @@ app.use((req, res) => {
 
 // Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ success: false, message: 'Server error', error: err.message });
+  console.error('Request failed:', err.message);
+  res.status(500).json({ success: false, message: 'Server error' });
 });
 
 // Connect to MongoDB and start server
 connectDB()
   .then(() => {
     console.log('✅ MongoDB connected');
-    app.listen(PORT, () => {
-      console.log(`🚀 Visual.Cineaste API running on http://localhost:${PORT}`);
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Visual.Cineaste API listening on port ${PORT}`);
       startBackgroundBoxOfficeUpdates();
     });
   })

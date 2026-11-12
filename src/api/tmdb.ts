@@ -1,17 +1,31 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { apiUrl } from './config';
 
-export const API_KEY = (import.meta as any).env.VITE_TMDB_KEY || (import.meta as any).env.VITE_TMDB_API_KEY;
+const IMAGE_SIZES = new Set([
+  'w45', 'w92', 'w154', 'w185', 'w200', 'w300', 'w342', 'w400', 'w500',
+  'w780', 'w1280', 'original',
+]);
 
-// Extend ImportMetaEnv for Vite (do not redeclare ImportMeta!)
-interface ImportMetaEnv {
-  readonly VITE_TMDB_KEY?: string;
-  readonly VITE_TMDB_API_KEY?: string;
-  // add other env variables here if needed
+export function tmdbImageUrl(path: string | null | undefined, size = 'original'): string {
+  const placeholder = '/placeholder-movie.jpg';
+  if (!path) return placeholder;
+  if (/^\/api\/tmdb\/image\//.test(path) || /^\/uploads\//.test(path)) return apiUrl(path);
+  if (/^data:image\//i.test(path)) return path;
+  if (/^https?:\/\//i.test(path) && !/^https?:\/\/image\.tmdb\.org\//i.test(path)) return path;
+
+  let imagePath = path;
+  const tmdbUrl = path.match(/^https?:\/\/image\.tmdb\.org\/t\/p\/[^/]+\/(.+)$/i);
+  if (tmdbUrl) imagePath = tmdbUrl[1];
+  imagePath = imagePath.replace(/^\/+/, '');
+  if (!/^[A-Za-z0-9_-]+\.(?:jpg|jpeg|png|webp)$/i.test(imagePath)) return placeholder;
+  const imageSize = IMAGE_SIZES.has(size) ? size : 'original';
+  return apiUrl(`/api/tmdb/image/${imageSize}/${encodeURIComponent(imagePath)}`);
 }
 
-// Extend the ImportMeta interface to include 'env'
-interface ImportMeta {
-  readonly env: ImportMetaEnv;
+export async function tmdbGet<T = any>(endpoint: string, params: Record<string, unknown> = {}): Promise<T> {
+  const path = endpoint.replace(/^\/+/, '');
+  const response = await tmdbAPI.get<T>(path, { params });
+  return response.data;
 }
 
 // Type definitions (could also be in separate types.ts file)
@@ -129,18 +143,11 @@ interface MovieDetail {
   }>;
 }
 
-const BASE_URL = 'https://api.themoviedb.org/3';
-
-if (!API_KEY) {
-  throw new Error('TMDB API key missing. Set VITE_TMDB_KEY or VITE_TMDB_API_KEY in .env');
-}
-
 // Configure axios instance with better defaults
 const tmdbAPI = axios.create({
-  baseURL: BASE_URL,
+  baseURL: apiUrl('/api/tmdb'),
   timeout: 10000, // Increased timeout
   params: {
-    api_key: API_KEY,
     language: 'en-US',
     region: 'US' // Default region
   },
@@ -148,6 +155,7 @@ const tmdbAPI = axios.create({
     'Accept': 'application/json'
   }
 });
+export const tmdbClient = tmdbAPI;
 
 // Add request interceptor for logging
 tmdbAPI.interceptors.request.use((config) => {
@@ -211,13 +219,7 @@ return `$${amount.toLocaleString()}`;
 const getImagePath = memoize((path: string | null, size: string = 'original'): string => {
   const placeholder = '/placeholder-movie.jpg';
   if (!path) return placeholder;
-  
-  try {
-    new URL(path);
-    return path;
-  } catch {
-    return `https://image.tmdb.org/t/p/${size}${path}`;
-  }
+  return tmdbImageUrl(path, size);
 });
 
 const getDirector = memoize((crew?: CrewMember[]): string => {
@@ -317,8 +319,8 @@ const getFallbackMovieData = (id: string | number, error: AxiosError): MovieDeta
       ? 'You appear to be offline. Please check your internet connection.'
       : statusCode === 404
         ? 'Movie not found in our database.'
-        : statusCode === 401
-          ? 'Authentication failed. Please check your API key.'
+        : statusCode === 401 || statusCode === 502
+          ? 'TMDB access is temporarily unavailable.'
           : 'Failed to load movie details. Please try again later.', // Fixed: replaced semicolon with comma
     rating: 0,
     releaseDate: null,
@@ -390,7 +392,7 @@ export const fetchMovieDetails = async (
       }
     };
 
-const response = await tmdbAPI.get<TmdbMovieResponse>(`/movie/${id}`);
+const response = await tmdbAPI.get<TmdbMovieResponse>(`/movie/${id}`, config);
     const normalizedData = normalizeMovieData(response.data);
     
     addToCache(cacheKey, normalizedData);
@@ -401,7 +403,7 @@ const response = await tmdbAPI.get<TmdbMovieResponse>(`/movie/${id}`);
       if (error.response?.status === 404) {
 console.warn(`Movie ${id} not found`);
       } else if (error.response?.status === 401) {
-        console.error('Invalid TMDB API key');
+        console.error('TMDB authentication failed');
       } else if (error.code === 'ECONNABORTED') {
         console.warn('Request timeout');
       }
@@ -589,16 +591,19 @@ export const mockMovieData = (overrides: Partial<MovieDetail> = {}): MovieDetail
 // --- TMDB API: Popular, Trending, TV, People ---
 // Utility functions for simple fetches (no normalization)
 
-// Fallback: Return empty popular movies result to avoid import errors
 export const getPopularMovies = async (page = 1) => {
-  return { results: [], page: 1, total_pages: 1 };
+  try {
+    const response = await tmdbAPI.get('/movie/popular', { params: { page } });
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch popular movies:', error);
+    return { results: [], page, total_pages: 1 };
+  }
 };
 
 // Use backend proxy for popular TV shows (add this export)
 export const getPopularTVShows = async () => {
   try {
-    // If you add a backend proxy route, use it here (e.g., '/api/tmdb/popular-tv')
-    // For now, fetch directly from TMDB as fallback
     const res = await tmdbAPI.get('/tv/popular');
     return res.data.results;
   } catch (error) {

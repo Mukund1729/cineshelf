@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -12,7 +13,7 @@ const RecommendationsGrid = ({ shows }) => {
           className="bg-[#181c24] rounded-xl overflow-hidden shadow-lg hover:scale-105 hover:shadow-cyan-400 transition-transform duration-200 flex flex-col items-center cursor-pointer"
         >
           <img
-            src={show.poster_path ? `https://image.tmdb.org/t/p/w300${show.poster_path}` : "/placeholder.jpg"}
+            src={show.poster_path ? tmdbImageUrl(show.poster_path, 'w300') : "/placeholder.jpg"}
             alt={show.name || show.title}
             className="w-full h-48 object-cover rounded-t-xl"
           />

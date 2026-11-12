@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import axios from "axios";
+import { tmdbClient, tmdbImageUrl } from '../api/tmdb';
 
 const getPoster = (path) =>
-  path ? `https://image.tmdb.org/t/p/w500${path}` : "/placeholder.jpg";
+  path ? tmdbImageUrl(path, 'w500') : "/placeholder.jpg";
 
 export default function GenrePage() {
   const { genreId, genreName } = useParams();
@@ -13,31 +13,28 @@ export default function GenrePage() {
   const [providersByMovie, setProvidersByMovie] = useState({});
 
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_TMDB_API_KEY;
     async function fetchAll() {
       // Top Rated
-      const top = await axios.get(
-        `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=100`
-      );
+      const top = await tmdbClient.get('/discover/movie', {
+        params: { with_genres: genreId, sort_by: 'vote_average.desc', 'vote_count.gte': 100 },
+      });
       setTopRated(top.data.results.slice(0, 12));
       // Hidden Gems
-      const gems = await axios.get(
-        `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=10&vote_count.lte=100`
-      );
+      const gems = await tmdbClient.get('/discover/movie', {
+        params: { with_genres: genreId, sort_by: 'vote_average.desc', 'vote_count.gte': 10, 'vote_count.lte': 100 },
+      });
       setHiddenGems(gems.data.results.slice(0, 12));
       // New Arrivals
-      const arrivals = await axios.get(
-        `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&with_genres=${genreId}&primary_release_date.gte=2024-01-01&sort_by=release_date.desc`
-      );
+      const arrivals = await tmdbClient.get('/discover/movie', {
+        params: { with_genres: genreId, 'primary_release_date.gte': '2024-01-01', sort_by: 'release_date.desc' },
+      });
       setNewArrivals(arrivals.data.results.slice(0, 12));
       // Providers for new arrivals
       const provs = {};
       await Promise.all(
         arrivals.data.results.slice(0, 12).map(async (movie) => {
           try {
-            const provRes = await axios.get(
-              `https://api.themoviedb.org/3/movie/${movie.id}/watch/providers?api_key=${apiKey}`
-            );
+            const provRes = await tmdbClient.get(`/movie/${movie.id}/watch/providers`);
             const usProviders = provRes.data.results?.US?.flatrate || [];
             provs[movie.id] = usProviders.map((p) => p.provider_name);
           } catch {

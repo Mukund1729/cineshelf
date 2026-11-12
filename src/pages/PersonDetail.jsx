@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 export default function PersonDetail() {
   const { id } = useParams();
@@ -13,10 +14,7 @@ export default function PersonDetail() {
       setLoading(true);
       setError(null);
       try {
-        const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-        const res = await fetch(`https://api.themoviedb.org/3/person/${id}?api_key=${apiKey}&append_to_response=movie_credits,images`);
-        if (!res.ok) throw new Error('Failed to fetch person details');
-        const data = await res.json();
+        const data = await tmdbGet(`/person/${id}`, { append_to_response: 'movie_credits,images' });
         setPerson(data);
       } catch (err) {
         setError('Could not load person details.');
@@ -43,7 +41,7 @@ export default function PersonDetail() {
       <div className="pt-24 pb-16 container mx-auto px-4">
         <div className="flex flex-col md:flex-row gap-8 items-start">
           <img
-            src={person.profile_path ? `https://image.tmdb.org/t/p/w400${person.profile_path}` : '/actor-placeholder.jpg'}
+            src={person.profile_path ? tmdbImageUrl(person.profile_path, 'w400') : '/actor-placeholder.jpg'}
             alt={person.name}
             className="rounded-2xl shadow-2xl w-[120px] md:w-[180px] object-cover aspect-[2/3] border-2 border-[#232526] bg-[#181c24]"
           />
@@ -64,7 +62,7 @@ export default function PersonDetail() {
                 {person.movie_credits?.cast?.slice(0, 10).map(movie => (
                   <Link to={`/movie/${movie.id}`} key={movie.id} className="block min-w-[90px] max-w-[90px]">
                     <img
-                      src={movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : '/placeholder.jpg'}
+                      src={movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w200') : '/placeholder.jpg'}
                       alt={movie.title}
                       className="rounded-lg shadow w-full aspect-[2/3] object-cover border border-[#232526] bg-[#181c24]"
                     />

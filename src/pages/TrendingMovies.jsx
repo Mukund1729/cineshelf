@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -47,7 +48,7 @@ function TrendingMovies() {
               <div className="vc-poster-card" style={{ borderRadius: 8, overflow: 'hidden', background: 'var(--vc-bg-card)' }}>
                 <div style={{ aspectRatio: '2/3', position: 'relative' }}>
                   <img
-                    src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+                    src={tmdbImageUrl(movie.poster_path, 'w500')}
                     alt={movie.title}
                     loading="lazy"
                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 export default function BoxOfficeByPerson() {
   const [search, setSearch] = useState("");
@@ -11,9 +12,7 @@ export default function BoxOfficeByPerson() {
   const handleSearchChange = async (e) => {
     setSearch(e.target.value);
     if (e.target.value.length > 1) {
-      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-      const res = await fetch(`https://api.themoviedb.org/3/search/person?api_key=${apiKey}&query=${encodeURIComponent(e.target.value)}`);
-      const data = await res.json();
+      const data = await tmdbGet('/search/person', { query: e.target.value });
       setSuggestions(data.results || []);
       setShowSuggestions(true);
     } else {
@@ -51,7 +50,7 @@ export default function BoxOfficeByPerson() {
                   className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-[#d4af37]/15"
                   onMouseDown={() => handleSuggestionClick(s.id)}
                 >
-                  <img src={s.profile_path ? `https://image.tmdb.org/t/p/w45${s.profile_path}` : '/actor-placeholder.jpg'} alt={s.name} className="w-8 h-8 rounded-full object-cover bg-gray-700" />
+                  <img src={s.profile_path ? tmdbImageUrl(s.profile_path, 'w45') : '/actor-placeholder.jpg'} alt={s.name} className="w-8 h-8 rounded-full object-cover bg-gray-700" />
                   <span className="text-white text-sm">{s.name}</span>
                 </div>
               ))}

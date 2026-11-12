@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { tmdbImageUrl } from '../api/tmdb';
 
 const CATEGORIES = ['all', 'feature', 'review', 'editorial', 'list', 'interview', 'news'];
 
@@ -27,7 +28,7 @@ const EDITORIAL_POSTS = [
     title: 'The Art of Slow Cinema: Why Patience is the Point',
     excerpt: 'In an era of algorithmic content, filmmakers like Béla Tarr, Chantal Akerman, and Carlos Reygadas insist on a different relationship with time.',
     category: 'editorial',
-    coverImage: 'https://image.tmdb.org/t/p/original/1E5baAaEse26fej7uHcjOgEE2t2.jpg',
+    coverImage: tmdbImageUrl('/1E5baAaEse26fej7uHcjOgEE2t2.jpg', 'original'),
     author: { name: 'Visual.Cineaste', username: 'editorial' },
     publishedAt: '2024-12-01',
   },
@@ -37,7 +38,7 @@ const EDITORIAL_POSTS = [
     title: 'The Quiet Revolution: New Wave Indian Cinema 2010–2024',
     excerpt: 'From Masaan to Article 15, a generation of filmmakers is redefining what Indian cinema can say and how it can say it.',
     category: 'feature',
-    coverImage: 'https://image.tmdb.org/t/p/original/pXRlT7tPVFEGNBmpvSqpNxWdaek.jpg',
+    coverImage: tmdbImageUrl('/pXRlT7tPVFEGNBmpvSqpNxWdaek.jpg', 'original'),
     author: { name: 'Visual.Cineaste', username: 'editorial' },
     publishedAt: '2024-11-15',
   },
@@ -47,7 +48,7 @@ const EDITORIAL_POSTS = [
     title: 'Every Christopher Nolan Film, Ranked by Emotional Complexity',
     excerpt: 'Beyond the spectacle and the timeline tricks — which of Nolan\'s films actually earns its feeling?',
     category: 'list',
-    coverImage: 'https://image.tmdb.org/t/p/original/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg',
+    coverImage: tmdbImageUrl('/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg', 'original'),
     author: { name: 'Visual.Cineaste', username: 'editorial' },
     publishedAt: '2024-10-20',
   },
@@ -57,7 +58,7 @@ const EDITORIAL_POSTS = [
     title: 'Denis Villeneuve and the Cinema of Atmospheric Dread',
     excerpt: 'Why every Villeneuve film feels like it exists in the shadow of something enormous — and why that\'s exactly right.',
     category: 'review',
-    coverImage: 'https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg',
+    coverImage: tmdbImageUrl('/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg', 'original'),
     author: { name: 'Visual.Cineaste', username: 'editorial' },
     publishedAt: '2024-09-05',
   },
@@ -67,7 +68,7 @@ const EDITORIAL_POSTS = [
     title: 'Ten Debut Films That Announced a Major New Voice',
     excerpt: 'First films that didn\'t feel like first films. From Scorsese\'s Mean Streets to Céline Sciamma\'s Water Lilies.',
     category: 'list',
-    coverImage: 'https://image.tmdb.org/t/p/original/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg',
+    coverImage: tmdbImageUrl('/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg', 'original'),
     author: { name: 'Visual.Cineaste', username: 'editorial' },
     publishedAt: '2024-08-10',
   },
@@ -77,7 +78,7 @@ const EDITORIAL_POSTS = [
     title: 'The Streaming Dilemma: What We Lose When We Lose the Theatre',
     excerpt: 'Is the theatrical experience a luxury or a necessity? The case for preserving shared darkness.',
     category: 'editorial',
-    coverImage: 'https://image.tmdb.org/t/p/original/gj282Pniaa78ZBfEfHVlRWXxaGq.jpg',
+    coverImage: tmdbImageUrl('/gj282Pniaa78ZBfEfHVlRWXxaGq.jpg', 'original'),
     author: { name: 'Visual.Cineaste', username: 'editorial' },
     publishedAt: '2024-07-22',
   },
@@ -210,7 +211,7 @@ export default function Blog() {
                     minHeight: '320px',
                   }}>
                     <div style={{
-                      backgroundImage: `url(${displayPosts[0].coverImage || 'https://image.tmdb.org/t/p/w780/1E5baAaEse26fej7uHcjOgEE2t2.jpg'})`,
+                      backgroundImage: `url(${displayPosts[0].coverImage || tmdbImageUrl('/1E5baAaEse26fej7uHcjOgEE2t2.jpg', 'w780')})`,
                       backgroundSize: 'cover',
                       backgroundPosition: 'center',
                       minHeight: '280px',

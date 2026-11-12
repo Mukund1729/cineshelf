@@ -6,7 +6,5 @@ interface ImportMeta {
 }
 
 interface ImportMetaEnv {
-  readonly VITE_TMDB_KEY: string;
-  readonly VITE_TMDB_API_KEY: string;
-  // add other environment variables here as needed
+  readonly VITE_API_BASE_URL?: string;
 }

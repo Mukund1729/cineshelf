@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React from "react";
 
 const EpisodeList = ({ seasons, episodesBySeason }) => {
@@ -14,7 +15,7 @@ const EpisodeList = ({ seasons, episodesBySeason }) => {
               episodesBySeason[season.season_number].map((ep) => (
                 <div key={ep.id} className="flex gap-4 items-center bg-zinc-800 rounded p-2">
                   <img
-                    src={ep.still_path ? `https://image.tmdb.org/t/p/w185${ep.still_path}` : "/placeholder.jpg"}
+                    src={ep.still_path ? tmdbImageUrl(ep.still_path, 'w185') : "/placeholder.jpg"}
                     alt={ep.name}
                     className="w-20 h-14 object-cover rounded"
                   />

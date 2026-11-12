@@ -35,7 +35,7 @@ A modern, cinematic movie discovery platform built with React, Node.js, and Mong
 ### Prerequisites
 - Node.js (v16 or higher)
 - MongoDB (local or cloud)
-- TMDB API key
+- TMDB API read access token
 
 ### Installation
 
@@ -59,8 +59,14 @@ A modern, cinematic movie discovery platform built with React, Node.js, and Mong
    # JWT Secret
    JWT_SECRET=your-super-secret-jwt-key
    
-   # TMDB API
-   VITE_TMDB_KEY=your-tmdb-api-key
+   # TMDB read access token (server only; never use a VITE_ prefix)
+   TMDB_READ_ACCESS_TOKEN=your-tmdb-read-access-token
+
+   # Allowed frontend origins
+   CORS_ORIGINS=http://localhost:5173,http://localhost:5174
+
+   # Leave blank for local Vite proxy; use the Render API origin in production
+   VITE_API_BASE_URL=
    
    # OpenRouter API (for AI features)
    OPENROUTER_API_KEY=your-openrouter-api-key
@@ -95,10 +101,11 @@ A modern, cinematic movie discovery platform built with React, Node.js, and Mong
 The frontend is a Vite SPA deployed to Vercel; the Express API and MongoDB remain separate services. `vercel.json` configures the Vite build and client-side routes, while `render.yaml` describes the Node API service.
 
 1. Create a MongoDB Atlas database and allow connections from your API host.
-2. Import this repository into Render and create the service from `render.yaml`. Set `MONGO_URI`, a strong random `JWT_SECRET`, and `TMDB_API_KEY` in the Render dashboard. `OPENROUTER_API_KEY` is needed for AI features.
-3. Import the same repository into Vercel. Set `VITE_API_BASE_URL` to the Render service URL (for example `https://cineshelf-api.onrender.com`, without a trailing slash), and set `VITE_TMDB_KEY` to your TMDB key. Add the variable to Production and Preview environments as needed, then redeploy.
-4. Copy the exact Vercel origin (for example `https://your-project.vercel.app`, without a trailing slash) into Render's `FRONTEND_ORIGINS`, then redeploy the API. Add additional comma-separated origins if Preview deployments need API access.
-5. Verify `/health` on the Render URL, then test login/API requests and image loading on Vercel.
+2. Import this repository into Render and create the service from `render.yaml`. Set `MONGO_URI`, a strong random `JWT_SECRET`, and `TMDB_READ_ACCESS_TOKEN` in the Render dashboard. Set `CORS_ORIGINS` to the exact comma-separated frontend origins. `OPENROUTER_API_KEY` remains a server-side setting for AI features.
+3. Import the same repository into Vercel. Set `VITE_API_BASE_URL` to the Render service origin (for example `https://cineshelf-api.onrender.com`, without a trailing slash). Do not set or expose a TMDB credential in Vercel. Add the API URL to Production and Preview environments as needed, then redeploy.
+4. Verify `/health`, `/api/tmdb/movie/popular`, and a `/api/tmdb/image/w500/<poster-filename>` URL on Render, then test data and image loading from Vercel.
+
+All browser TMDB requests use the Express proxy. The server sends `TMDB_READ_ACCESS_TOKEN` as a Bearer token to fixed TMDB API/image origins, validates endpoint/query parameters, and applies request limits. API responses use a bounded in-memory cache and in-flight request deduplication (per server process); image responses use long-lived cache headers. For multi-instance scale, put a CDN in front of the image route or add a shared cache rather than relying on per-process memory.
 
 Vercel Hobby is limited by Vercel's terms to personal or non-commercial use. Its `*.vercel.app` address is included; a `.in` or `.com` custom domain can be connected, but the domain registration itself is paid separately. Add the domain under Vercel Project Settings → Domains and follow the DNS records shown there.
 

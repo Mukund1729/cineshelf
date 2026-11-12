@@ -11,11 +11,11 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: TMDB_API_KEY
+      - key: TMDB_READ_ACCESS_TOKEN
         sync: false
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_MODEL
         value: mistralai/mistral-7b-instruct
-      - key: FRONTEND_ORIGINS
+      - key: CORS_ORIGINS
         sync: false

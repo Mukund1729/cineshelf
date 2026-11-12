@@ -6,7 +6,7 @@ import boxofficeIndia from '../boxoffice_india.json';
 import boxofficeDaywise from '../boxoffice_daywise.json';
 import BoxOfficeDaywiseChart from '../components/BoxOfficeDaywiseChart';
 import Navbar from '../components/Navbar';
-import { apiUrl } from '../api/config';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 const LANGUAGES = [
   { code: 'all', label: 'All' },
@@ -21,7 +21,6 @@ const LANGUAGE_MAP = {
   hi: 'Hindi', ta: 'Tamil', te: 'Telugu', ml: 'Malayalam', kn: 'Kannada', en: 'English',
 };
 const FALLBACK_POSTER = null;
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY || import.meta.env.VITE_TMDB_KEY;
 
 function parseRevenue(revStr) {
   if (!revStr) return null;
@@ -103,16 +102,14 @@ export default function BoxOfficeIndia() {
           };
         });
 
-        if (TMDB_API_KEY) {
+        {
           await Promise.all(
             rows.map(async (row, idx) => {
               try {
-                const url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(row.title)}&year=${row.year}`;
-                const res = await fetch(url);
-                const j = await res.json();
+                const j = await tmdbGet('/search/movie', { query: row.title, year: row.year });
                 const hit = j.results?.[0];
                 if (hit?.poster_path) {
-                  rows[idx].poster = apiUrl(`/api/tmdb/image/w500${hit.poster_path}`);
+                  rows[idx].poster = tmdbImageUrl(hit.poster_path, 'w500');
                   rows[idx].tmdbId = hit.id;
                 }
               } catch { /* ignore */ }

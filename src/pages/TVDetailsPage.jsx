@@ -6,8 +6,7 @@ import MetaInfoPanel from "../components/MetaInfoPanel";
 import ReviewBox from "../components/ReviewBox";
 import SuggestionsCarousel from "../components/SuggestionsCarousel";
 import Spinner from "../components/Spinner";
-import axios from "axios";
-import { API_KEY } from "../api/tmdb";
+import { tmdbClient } from "../api/tmdb";
 
 const TVDetailsPage = () => {
   const { id } = useParams();
@@ -27,18 +26,17 @@ const TVDetailsPage = () => {
       setError(null);
       try {
         const [detailRes, reviewsRes, recsRes] = await Promise.all([
-          axios.get(`https://api.themoviedb.org/3/tv/${id}`, {
+          tmdbClient.get(`/tv/${id}`, {
             params: {
-              api_key: API_KEY,
               language: 'en-US',
               append_to_response: 'credits,release_dates,videos,images,external_ids,content_ratings,watch/providers'
             }
           }),
-          axios.get(`https://api.themoviedb.org/3/tv/${id}/reviews`, {
-            params: { api_key: API_KEY, language: 'en-US' }
+          tmdbClient.get(`/tv/${id}/reviews`, {
+            params: { language: 'en-US' }
           }),
-          axios.get(`https://api.themoviedb.org/3/tv/${id}/recommendations`, {
-            params: { api_key: API_KEY, language: 'en-US' }
+          tmdbClient.get(`/tv/${id}/recommendations`, {
+            params: { language: 'en-US' }
           })
         ]);
         const showData = detailRes.data;

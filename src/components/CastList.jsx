@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React from "react";
 import { Link } from "react-router-dom";
 
@@ -8,7 +9,7 @@ const CastList = ({ cast }) => {
       {cast.slice(0, 12).map((actor) => (
         <Link to={`/person/${actor.id}`} key={actor.id} className="flex flex-col items-center group w-20">
           <img
-            src={actor.profile_path ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` : "/actor-placeholder.jpg"}
+            src={actor.profile_path ? tmdbImageUrl(actor.profile_path, 'w185') : "/actor-placeholder.jpg"}
             alt={actor.name}
             className="w-16 h-16 rounded-full object-cover border-2 border-cyan-400 group-hover:border-pink-400 transition duration-200 bg-zinc-800"
           />

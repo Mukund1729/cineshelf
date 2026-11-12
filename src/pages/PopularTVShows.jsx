@@ -1,10 +1,11 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 
 function TVCard({ show }) {
-  const img = show.poster_path ? `https://image.tmdb.org/t/p/w342${show.poster_path}` : null;
+  const img = show.poster_path ? tmdbImageUrl(show.poster_path, 'w342') : null;
   const year = show.first_air_date ? show.first_air_date.slice(0, 4) : '';
   return (
     <Link to={`/tv/${show.id}`} style={{ textDecoration: 'none' }}>

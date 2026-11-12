@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { fetchWatchProviders } from '../api/tmdb';
@@ -52,7 +53,7 @@ function MovieCard({ id, title, rating, image, releaseDate, genres = [] }) {
               image && image !== 'null' && image !== 'undefined'
                 ? image.startsWith('http')
                   ? image
-                  : `https://image.tmdb.org/t/p/w500${image}`
+                  : tmdbImageUrl(image, 'w500')
                 : 'https://via.placeholder.com/300x450?text=No+Image'
             }
             alt={title}
@@ -115,7 +116,7 @@ function MovieCard({ id, title, rating, image, releaseDate, genres = [] }) {
                   onClick={e => e.stopPropagation()}
                 >
                   {p.logo_path && (
-                    <img src={`https://image.tmdb.org/t/p/w45${p.logo_path}`} alt={p.provider_name} className="w-5 h-5 rounded-full bg-white mr-1" />
+                    <img src={tmdbImageUrl(p.logo_path, 'w45')} alt={p.provider_name} className="w-5 h-5 rounded-full bg-white mr-1" />
                   )}
                   {p.provider_name}
                 </a>

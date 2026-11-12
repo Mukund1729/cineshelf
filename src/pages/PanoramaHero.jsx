@@ -6,27 +6,21 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import * as THREE from 'three';
 import Navbar from '../components/Navbar';
-import { apiUrl } from '../api/config';
-
-const TMDB_KEY =
-  import.meta.env.VITE_TMDB_KEY ||
-  import.meta.env.VITE_TMDB_API_KEY ||
-  '049f46f11e71c08eba866acaefc280df';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 // ── Data fetching ─────────────────────────────────────────────────────────────
 async function fetchFeaturedMovies() {
   try {
-    const [nowRes, popRes] = await Promise.all([
-      fetch(`https://api.themoviedb.org/3/movie/now_playing?api_key=${TMDB_KEY}&language=en-US&page=1&region=IN`),
-      fetch(`https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_KEY}&language=en-US&page=1`),
+    const [nowData, popData] = await Promise.all([
+      tmdbGet('/movie/now_playing', { language: 'en-US', page: 1, region: 'IN' }),
+      tmdbGet('/movie/popular', { language: 'en-US', page: 1 }),
     ]);
-    const [nowData, popData] = await Promise.all([nowRes.json(), popRes.json()]);
     const seen = new Set();
     const mapMovie = m => ({
       id: m.id,
       title: m.title,
-      poster: apiUrl(`/api/tmdb/image/w342${m.poster_path}`),
-      backdrop: apiUrl(`/api/tmdb/image/w780${m.backdrop_path}`),
+      poster: tmdbImageUrl(m.poster_path, 'w342'),
+      backdrop: tmdbImageUrl(m.backdrop_path, 'w780'),
       rating: m.vote_average?.toFixed(1),
       year: (m.release_date || '').slice(0, 4),
       genre: m.genre_ids?.[0] || 0,

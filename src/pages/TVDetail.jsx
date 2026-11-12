@@ -2,9 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { FiClock, FiCalendar, FiStar } from "react-icons/fi";
 import { motion } from "framer-motion";
-import { searchMovies, searchPeople } from "../api/tmdb";
-import { API_KEY } from "../api/tmdb";
-import axios from "axios";
+import { searchMovies, searchPeople, tmdbClient, tmdbImageUrl } from "../api/tmdb";
 import SearchBar from "../components/SearchBar";
 import CastList from "../components/CastList";
 import EpisodeList from "../components/EpisodeList";
@@ -39,18 +37,17 @@ const TVDetail = () => {
       try {
         // Fetch TV show details, credits, reviews, recommendations, and streaming
         const [detailRes, reviewsRes, recsRes] = await Promise.all([
-          axios.get(`https://api.themoviedb.org/3/tv/${id}`, {
+          tmdbClient.get(`/tv/${id}`, {
             params: {
-              api_key: API_KEY,
               language: 'en-US',
               append_to_response: 'credits,release_dates,videos,images,external_ids,content_ratings,watch/providers'
             }
           }),
-          axios.get(`https://api.themoviedb.org/3/tv/${id}/reviews`, {
-            params: { api_key: API_KEY, language: 'en-US' }
+          tmdbClient.get(`/tv/${id}/reviews`, {
+            params: { language: 'en-US' }
           }),
-          axios.get(`https://api.themoviedb.org/3/tv/${id}/recommendations`, {
-            params: { api_key: API_KEY, language: 'en-US' }
+          tmdbClient.get(`/tv/${id}/recommendations`, {
+            params: { language: 'en-US' }
           })
         ]);
         const showData = detailRes.data;
@@ -80,8 +77,8 @@ const TVDetail = () => {
           const episodesFetches = showData.seasons.map(async (season) => {
             if (season.season_number === 0) return null; // skip specials
             try {
-              const res = await axios.get(`https://api.themoviedb.org/3/tv/${id}/season/${season.season_number}`, {
-                params: { api_key: API_KEY, language: 'en-US' }
+              const res = await tmdbClient.get(`/tv/${id}/season/${season.season_number}`, {
+                params: { language: 'en-US' }
               });
               return { season_number: season.season_number, episodes: res.data.episodes };
             } catch {
@@ -210,7 +207,7 @@ const TVDetail = () => {
                             onClick={() => { setIsSearching(false); setShowSearchBar(false); setSearchQuery(''); setSearchResults([]); }}
                           >
                             <img
-                              src={`https://image.tmdb.org/t/p/w92${result.poster_path || result.profile_path}`}
+                              src={tmdbImageUrl(result.poster_path || result.profile_path, 'w92')}
                               alt={result.title || result.name}
                               className="w-10 h-14 object-cover rounded"
                             />
@@ -233,7 +230,7 @@ const TVDetail = () => {
           {/* TV Show Header and Details (unchanged) */}
           <div className="flex flex-col md:flex-row gap-10 md:items-start mb-8">
             <img
-              src={show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : "/placeholder.jpg"}
+              src={show.poster_path ? tmdbImageUrl(show.poster_path, 'w500') : "/placeholder.jpg"}
               alt={show.title}
               className="rounded-xl shadow-lg w-64 object-cover aspect-[2/3] border-4 border-[#232526] bg-[#181c24]"
             />
@@ -320,7 +317,7 @@ const TVDetail = () => {
                   <div className="flex gap-3 items-center flex-wrap mb-4">
                     {streaming.map(s => (
                       <a key={s.provider_id} href={show.streamingLink} target="_blank" rel="noopener noreferrer" title={s.provider_name}>
-                        <img src={`https://image.tmdb.org/t/p/w45${s.logo_path}`} alt={s.provider_name} className="w-10 h-10 rounded-full border-2 border-cyan-400 bg-white" />
+                        <img src={tmdbImageUrl(s.logo_path, 'w45')} alt={s.provider_name} className="w-10 h-10 rounded-full border-2 border-cyan-400 bg-white" />
                       </a>
                     ))}
                   </div>
@@ -394,7 +391,7 @@ const TVDetail = () => {
                     >
                       <div className="rounded-lg overflow-hidden shadow-md border-2 border-transparent group-hover:border-cyan-400 transition-all duration-200 bg-[#232526]">
                         <img
-                          src={rec.poster_path ? `https://image.tmdb.org/t/p/w500${rec.poster_path}` : '/placeholder.jpg'}
+                          src={rec.poster_path ? tmdbImageUrl(rec.poster_path, 'w500') : '/placeholder.jpg'}
                           alt={rec.name}
                           className="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-200"
                         />

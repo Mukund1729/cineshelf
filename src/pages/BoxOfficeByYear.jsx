@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import fallbackData from '../boxoffice_fallback.json';
 import Navbar from '../components/Navbar';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 const START_YEAR = 1980;
 const END_YEAR = new Date().getFullYear();
@@ -38,13 +39,10 @@ export default function BoxOfficeByYear() {
       setError(null);
       setMovies([]);
       try {
-        const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-        let url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=${sort}&primary_release_year=${year}&page=1`;
-        if (region) url += `&with_original_language=${region}`;
-        if (search) url += `&query=${encodeURIComponent(search)}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error('Failed to fetch movies');
-        const data = await res.json();
+        const params = { sort_by: sort, primary_release_year: year, page: 1 };
+        if (region) params.with_original_language = region;
+        if (search) params.query = search;
+        const data = await tmdbGet('/discover/movie', params);
         let movies = data.results || [];
         // Fallback for Indian languages if revenue is missing
         if (region && ['hi','ta','te','ml','kn'].includes(region)) {
@@ -150,7 +148,7 @@ export default function BoxOfficeByYear() {
                     <td style={{ padding: '0.65rem' }}>
                       <Link to={`/movie/${movie.id}`} style={{ color: 'var(--vc-cream)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {movie.poster_path && (
-                          <img src={`https://image.tmdb.org/t/p/w92${movie.poster_path}`} alt="" style={{ width: 32, height: 48, objectFit: 'cover', borderRadius: 4 }} />
+                          <img src={tmdbImageUrl(movie.poster_path, 'w92')} alt="" style={{ width: 32, height: 48, objectFit: 'cover', borderRadius: 4 }} />
                         )}
                         <span style={{ fontWeight: 600 }}>{movie.title}</span>
                       </Link>

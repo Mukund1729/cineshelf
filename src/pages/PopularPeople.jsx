@@ -1,10 +1,11 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 
 function PersonCard({ person }) {
-  const img = person.profile_path ? `https://image.tmdb.org/t/p/w185${person.profile_path}` : null;
+  const img = person.profile_path ? tmdbImageUrl(person.profile_path, 'w185') : null;
   const knownFor = person.known_for_department || 'Acting';
   const topFilm = person.known_for?.[0]?.title || person.known_for?.[0]?.name || '';
   return (

@@ -1,14 +1,12 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import { apiUrl } from '../api/config';
 
 const posterUrl = poster => {
   if (!poster) return '';
-  if (/^https?:\/\//i.test(poster)) return poster;
-  if (poster.startsWith('/uploads/')) return apiUrl(poster);
-  return `https://image.tmdb.org/t/p/w342${poster}`;
+  return tmdbImageUrl(poster, 'w342');
 };
 
 function MediaCard({ item, review }) {

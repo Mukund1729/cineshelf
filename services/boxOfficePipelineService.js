@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import BoxOffice from '../models/BoxOffice.js';
+import { fetchTmdb } from './tmdbService.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -87,10 +88,7 @@ function loadStaticFallbackCatalog() {
 // Fetch from TMDb API
 async function fetchFromTMDb(tmdbId) {
   try {
-    const apiKey = process.env.TMDB_API_KEY || process.env.VITE_TMDB_KEY;
-    const url = `https://api.tmdb.org/3/movie/${tmdbId}?api_key=${apiKey}`;
-    const res = await axios.get(url, { timeout: 10000 });
-    const data = res.data;
+    const data = await fetchTmdb(`movie/${tmdbId}`);
     return {
       title: data.title,
       budget: data.budget && data.budget > 0 ? { value: data.budget, currency: 'USD' } : null,
@@ -106,10 +104,8 @@ async function fetchFromTMDb(tmdbId) {
 // Fetch external IDs and Wikidata claims
 async function fetchFromWikidata(tmdbId) {
   try {
-    const apiKey = process.env.TMDB_API_KEY || process.env.VITE_TMDB_KEY;
-    const extUrl = `https://api.tmdb.org/3/movie/${tmdbId}/external_ids?api_key=${apiKey}`;
-    const extRes = await axios.get(extUrl, { timeout: 10000 });
-    const wikidataId = extRes.data?.wikidata_id;
+    const extData = await fetchTmdb(`movie/${tmdbId}/external_ids`);
+    const wikidataId = extData?.wikidata_id;
     if (!wikidataId) return null;
 
     const wikiUrl = `https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${wikidataId}&props=claims|sitelinks&format=json`;

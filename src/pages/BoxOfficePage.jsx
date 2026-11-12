@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { apiUrl } from '../api/config';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 const START_YEAR = 1980;
 const END_YEAR = new Date().getFullYear();
@@ -45,13 +45,10 @@ export default function BoxOfficePage() {
       setProgress({ current: 0, total: 0 });
 
       try {
-        const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-
         // Fetch page 1 first to get total_pages
-        const firstUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=primary_release_date.desc&primary_release_year=${year}&page=1&vote_count.gte=10`;
-        const firstRes = await fetch(firstUrl);
-        if (!firstRes.ok) throw new Error('Failed to fetch movies');
-        const firstData = await firstRes.json();
+        const firstData = await tmdbGet('/discover/movie', {
+          sort_by: 'primary_release_date.desc', primary_release_year: year, page: 1, 'vote_count.gte': 10,
+        });
 
         const totalPages = Math.min(firstData.total_pages || 1, 20); // max 20 pages = 400 movies
         setProgress({ current: 1, total: totalPages });
@@ -66,10 +63,9 @@ export default function BoxOfficePage() {
           const batch = remainingPages.slice(i, i + batchSize);
           const batchResults = await Promise.all(
             batch.map(async (page) => {
-              const url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=primary_release_date.desc&primary_release_year=${year}&page=${page}&vote_count.gte=10`;
-              const res = await fetch(url);
-              if (!res.ok) return [];
-              const data = await res.json();
+              const data = await tmdbGet('/discover/movie', {
+                sort_by: 'primary_release_date.desc', primary_release_year: year, page, 'vote_count.gte': 10,
+              });
               return data.results || [];
             })
           );
@@ -182,7 +178,7 @@ export default function BoxOfficePage() {
                         <img
                           src={
                             movie.poster_path
-                              ? apiUrl(`/api/tmdb/image/w300${movie.poster_path}`)
+                              ? tmdbImageUrl(movie.poster_path, 'w300')
                               : 'https://via.placeholder.com/300x450?text=No+Image'
                           }
                           alt={movie.title}

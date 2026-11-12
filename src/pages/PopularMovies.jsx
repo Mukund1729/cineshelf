@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
@@ -5,7 +6,7 @@ import Navbar from '../components/Navbar';
 
 function PosterCard({ movie }) {
   const img = movie.poster_path
-    ? `https://image.tmdb.org/t/p/w342${movie.poster_path}`
+    ? tmdbImageUrl(movie.poster_path, 'w342')
     : null;
   const year = movie.release_date ? movie.release_date.slice(0, 4) : '';
   return (

@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React from "react";
 import CrewList from "./CrewList";
 import CastList from "./CastList";
@@ -8,7 +9,7 @@ const ShowHeader = ({ show }) => {
     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start bg-zinc-900 rounded-xl p-6 shadow-lg">
       <div className="md:col-span-1 flex justify-center">
         <img
-          src={show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : "/placeholder.jpg"}
+          src={show.poster_path ? tmdbImageUrl(show.poster_path, 'w500') : "/placeholder.jpg"}
           alt={show.name}
           className="rounded-xl shadow-lg w-64 object-cover aspect-[2/3] border-4 border-zinc-800 bg-zinc-800"
         />

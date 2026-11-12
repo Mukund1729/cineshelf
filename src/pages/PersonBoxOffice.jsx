@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 
 const navLinks = [
@@ -26,9 +27,7 @@ const PersonBoxOffice = () => {
   const handleSearchChange = async (e) => {
     setSearch(e.target.value);
     if (e.target.value.length > 1) {
-      const apiKey = import.meta.env.VITE_TMDB_API_KEY;
-      const res = await fetch(`https://api.themoviedb.org/3/search/person?api_key=${apiKey}&query=${encodeURIComponent(e.target.value)}`);
-      const data = await res.json();
+      const data = await tmdbGet('/search/person', { query: e.target.value });
       setSuggestions(data.results || []);
       setShowSuggestions(true);
     } else {
@@ -43,17 +42,14 @@ const PersonBoxOffice = () => {
   };
 
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_TMDB_API_KEY;
     const fetchFilmography = async () => {
       try {
         // Fetch person details
-        const personRes = await fetch(`https://api.themoviedb.org/3/person/${id}?api_key=${apiKey}`);
-        const personData = await personRes.json();
+        const personData = await tmdbGet(`/person/${id}`);
         setPerson(personData);
 
         // Fetch combined credits (acting + crew)
-        const creditsRes = await fetch(`https://api.themoviedb.org/3/person/${id}/combined_credits?api_key=${apiKey}`);
-        const creditsData = await creditsRes.json();
+        const creditsData = await tmdbGet(`/person/${id}/combined_credits`);
         let allMovies = creditsData.cast.concat(creditsData.crew)
           .filter(m => m.media_type === 'movie' && m.release_date && m.id)
           .reduce((acc, curr) => {
@@ -69,8 +65,7 @@ const PersonBoxOffice = () => {
 
         // Fetch box office for each movie (in parallel, but limit concurrency)
         const fetchBoxOffice = async (movie) => {
-          const res = await fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${apiKey}`);
-          const data = await res.json();
+          const data = await tmdbGet(`/movie/${movie.id}`);
           return { ...movie, revenue: data.revenue };
         };
         // Use Promise.allSettled for smoother experience and show partial data as it loads
@@ -123,7 +118,7 @@ const PersonBoxOffice = () => {
                   className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-cyan-900/40"
                   onMouseDown={() => handleSuggestionClick(s.id)}
                 >
-                  <img src={s.profile_path ? `https://image.tmdb.org/t/p/w45${s.profile_path}` : '/actor-placeholder.jpg'} alt={s.name} className="w-8 h-8 rounded-full object-cover bg-gray-700" />
+                  <img src={s.profile_path ? tmdbImageUrl(s.profile_path, 'w45') : '/actor-placeholder.jpg'} alt={s.name} className="w-8 h-8 rounded-full object-cover bg-gray-700" />
                   <span className="text-white text-sm">{s.name}</span>
                 </div>
               ))}
@@ -149,7 +144,7 @@ const PersonBoxOffice = () => {
               {movies.concat(movies).map((movie, idx) => (
                 <Link to={`/movie/${movie.id}`} key={movie.id + '-' + idx} className="bg-[#181c24] rounded-lg shadow-md overflow-hidden hover:scale-105 hover:shadow-cyan-400 transition-transform duration-200 group cursor-pointer min-w-[120px] max-w-[120px] flex-shrink-0 relative">
                   <img
-                    src={movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : '/placeholder.jpg'}
+                    src={movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w200') : '/placeholder.jpg'}
                     alt={movie.title}
                     className="w-full h-40 object-cover rounded-t-lg group-hover:opacity-90 transition"
                   />

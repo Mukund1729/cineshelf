@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
-const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const FALLBACK_POSTER = '/actor-placeholder.jpg';
 
 const LANGUAGES = [
@@ -61,9 +61,9 @@ export default function ComparePage() {
   // Fetch a set of popular movies for the train on mount or language change
   useEffect(() => {
     async function fetchTrain() {
-      const url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_original_language=${language}&region=IN&sort_by=popularity.desc&page=1`;
-      const res = await fetch(url);
-      const data = await res.json();
+      const data = await tmdbGet('/discover/movie', {
+        with_original_language: language, region: 'IN', sort_by: 'popularity.desc', page: 1,
+      });
       setTrainMovies(data.results || []);
     }
     fetchTrain();
@@ -72,9 +72,7 @@ export default function ComparePage() {
   async function handleSearch(e) {
     e.preventDefault();
     setLoading(true);
-    const url = `https://api.themoviedb.org/3/search/multi?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`;
-    const res = await fetch(url);
-    const data = await res.json();
+    const data = await tmdbGet('/search/multi', { query });
     setResults(data.results || []);
     setLoading(false);
   }
@@ -83,11 +81,9 @@ export default function ComparePage() {
     // Fetch details for selected movie/TV
     let details = null;
     if (item.media_type === 'movie') {
-      const res = await fetch(`https://api.themoviedb.org/3/movie/${item.id}?api_key=${TMDB_API_KEY}&append_to_response=credits`);
-      details = await res.json();
+      details = await tmdbGet(`/movie/${item.id}`, { append_to_response: 'credits' });
     } else if (item.media_type === 'tv') {
-      const res = await fetch(`https://api.themoviedb.org/3/tv/${item.id}?api_key=${TMDB_API_KEY}&append_to_response=credits`);
-      details = await res.json();
+      details = await tmdbGet(`/tv/${item.id}`, { append_to_response: 'credits' });
     }
     setSelected(sel => [
       ...sel,
@@ -95,7 +91,7 @@ export default function ComparePage() {
         title: details.title || details.name,
         year: (details.release_date || details.first_air_date || '').slice(0, 4),
         language: details.original_language,
-        poster: details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : FALLBACK_POSTER,
+        poster: details.poster_path ? tmdbImageUrl(details.poster_path, 'w500') : FALLBACK_POSTER,
         revenue: details.revenue ? `₹${details.revenue.toLocaleString('en-IN')}` : 'N/A',
         rating: details.vote_average,
         vote_count: details.vote_count,
@@ -119,15 +115,14 @@ export default function ComparePage() {
   // Add from train
   async function handleTrainSelect(movie) {
     // Fetch details for selected movie
-    const res = await fetch(`https://api.themoviedb.org/3/movie/${movie.id}?api_key=${TMDB_API_KEY}&append_to_response=credits`);
-    const details = await res.json();
+    const details = await tmdbGet(`/movie/${movie.id}`, { append_to_response: 'credits' });
     setSelected(sel => [
       ...sel,
       {
         title: details.title || details.name,
         year: (details.release_date || details.first_air_date || '').slice(0, 4),
         language: details.original_language,
-        poster: details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : FALLBACK_POSTER,
+        poster: details.poster_path ? tmdbImageUrl(details.poster_path, 'w500') : FALLBACK_POSTER,
         revenue: details.revenue ? `₹${details.revenue.toLocaleString('en-IN')}` : 'N/A',
         rating: details.vote_average,
         vote_count: details.vote_count,
@@ -199,7 +194,7 @@ export default function ComparePage() {
               onClick={() => handleTrainSelect(movie)}
             >
               <img
-                src={movie.poster_path ? `https://image.tmdb.org/t/p/w200${movie.poster_path}` : FALLBACK_POSTER}
+                src={movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w200') : FALLBACK_POSTER}
                 alt={movie.title}
                 className="w-full h-40 object-cover rounded-t-lg group-hover:opacity-90 transition"
               />
@@ -227,7 +222,7 @@ export default function ComparePage() {
         <div className="flex flex-wrap justify-center gap-3 mb-6">
           {results.map(r => (
             <div key={r.id + r.media_type} className="bg-[#232526] rounded p-2 flex flex-col items-center w-40 cursor-pointer hover:bg-cyan-900/40" onClick={() => handleSelect(r)}>
-              <img src={r.poster_path ? `https://image.tmdb.org/t/p/w185${r.poster_path}` : FALLBACK_POSTER} alt={r.title || r.name} className="w-20 h-32 object-cover rounded mb-1" />
+              <img src={r.poster_path ? tmdbImageUrl(r.poster_path, 'w185') : FALLBACK_POSTER} alt={r.title || r.name} className="w-20 h-32 object-cover rounded mb-1" />
               <div className="text-xs text-cyan-100 text-center">{r.title || r.name}</div>
               <div className="text-xs text-cyan-200">{r.media_type === 'movie' ? 'Movie' : 'TV'}</div>
             </div>

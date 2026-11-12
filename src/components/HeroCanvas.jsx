@@ -11,20 +11,15 @@
 
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
-
-// TMDB API key from env (direct fetch, no proxy timeout)
-const TMDB_KEY = import.meta.env.VITE_TMDB_KEY || import.meta.env.VITE_TMDB_API_KEY || '049f46f11e71c08eba866acaefc280df';
+import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 async function fetchPosterPaths() {
   try {
-    const res = await fetch(
-      `https://api.themoviedb.org/3/movie/popular?api_key=${TMDB_KEY}&page=1`
-    );
-    const data = await res.json();
+    const data = await tmdbGet('/movie/popular', { page: 1 });
     return (data.results || [])
       .filter(m => m.poster_path)
       .slice(0, 20)
-      .map(m => `https://image.tmdb.org/t/p/w342${m.poster_path}`);
+      .map(m => tmdbImageUrl(m.poster_path, 'w342'));
   } catch {
     return [];
   }

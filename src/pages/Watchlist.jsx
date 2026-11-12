@@ -1,3 +1,4 @@
+import { tmdbImageUrl } from '../api/tmdb';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -54,7 +55,7 @@ export default function Watchlist() {
       await axios.post('/api/watchlist', {
         tmdbId: selectedMovie.id,
         title: selectedMovie.title || selectedMovie.name,
-        poster: selectedMovie.poster_path ? `https://image.tmdb.org/t/p/w500${selectedMovie.poster_path}` : '',
+        poster: selectedMovie.poster_path ? tmdbImageUrl(selectedMovie.poster_path, 'w500') : '',
         overview: selectedMovie.overview || '',
         releaseDate: selectedMovie.release_date || selectedMovie.first_air_date || '',
         voteAverage: selectedMovie.vote_average || 0,
@@ -148,7 +149,7 @@ export default function Watchlist() {
                       onMouseLeave={e => e.currentTarget.style.background = ''}
                     >
                       {m.poster_path ? (
-                        <img src={`https://image.tmdb.org/t/p/w92${m.poster_path}`} alt={m.title || m.name}
+                        <img src={tmdbImageUrl(m.poster_path, 'w92')} alt={m.title || m.name}
                           style={{ width: 36, height: 54, objectFit: 'cover', borderRadius: 4, flexShrink: 0 }} />
                       ) : (
                         <div style={{ width: 36, height: 54, background: 'var(--vc-bg-card)', borderRadius: 4, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>🎬</div>
@@ -172,7 +173,7 @@ export default function Watchlist() {
             {selectedMovie && (
               <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--vc-bg-card)', borderRadius: '10px', padding: '0.75rem', border: '1px solid rgba(212,175,55,0.2)' }}>
                 {selectedMovie.poster_path && (
-                  <img src={`https://image.tmdb.org/t/p/w92${selectedMovie.poster_path}`} alt={selectedMovie.title || selectedMovie.name}
+                  <img src={tmdbImageUrl(selectedMovie.poster_path, 'w92')} alt={selectedMovie.title || selectedMovie.name}
                     style={{ width: 50, height: 75, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                 )}
                 <div style={{ flex: 1 }}>
@@ -236,7 +237,7 @@ export default function Watchlist() {
                   <Link to={`/movie/${id}`} style={{ textDecoration: 'none', display: 'block' }}>
                     <div className="vc-poster-card" style={{ aspectRatio: '2/3' }}>
                       {poster ? (
-                        <img src={poster} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <img src={tmdbImageUrl(poster, 'w300')} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
                         <div style={{ width: '100%', height: '100%', background: 'var(--vc-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vc-slate)', fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', textAlign: 'center', padding: '0.75rem' }}>
                           {title}
