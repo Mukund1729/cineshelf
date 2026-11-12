@@ -26,7 +26,7 @@ function buildHall(theatre) {
   const maxSeatsPerRow = Math.max(...rowSections.map(sections => sections.reduce((sum, count) => sum + count, 0)));
   const balconyRowCount = 3;
   const balconyFloorY = Math.min(ceilingHeight - 2.4, Math.max(3.2, ceilingHeight * 0.42));
-  const balconyStartZ = Math.max(3.5, (rowCount - balconyRowCount) * rowSpacing + 0.8);
+  const balconyStartZ = 0.8 + (rowCount - 1) * rowSpacing + 2;
   const balconyCenterZ = balconyStartZ + ((balconyRowCount - 1) * rowSpacing) / 2;
   const seatW = seatWidth * 1.16;
   const aisleWidth = seatW * (theatre.layout.aisleMultiplier || 1.45);
@@ -91,8 +91,8 @@ function buildHall(theatre) {
 function buildCameraPresets(hall) {
   return {
     overview: {
-      pos: [0, Math.min(10, hall.hallH - 0.8), hall.hallD / 2 + 2.2],
-      look: [0, hall.screenY + 0.5, 4.5],
+      pos: [0, Math.min(10, hall.hallH - 0.8), hall.balconyStartZ - 1.5],
+      look: [0, hall.screenY + 0.1, 4.5],
     },
     fromStage: {
       pos: [0, 1.8, hall.screenZ + 2.4],
@@ -576,7 +576,7 @@ export default function TheatreBooking() {
 
     // ── Camera ────────────────────────────────────────────────────────────
     const camera = new THREE.PerspectiveCamera(
-      60, container.clientWidth / container.clientHeight, 0.1, 80
+      75, container.clientWidth / container.clientHeight, 0.1, 80
     );
     camera.position.set(...PRESETS.overview.pos);
     camera.lookAt(...PRESETS.overview.look);
