@@ -787,7 +787,13 @@ const MovieDetail = () => {
                 <p className="text-base text-gray-400 italic">No reviews found.</p>
               ) : (
                 reviews.map((review, idx) => (
-                  <div key={review._id || review.id || idx} className="flex items-start gap-3 bg-[#181c24]/80 rounded-lg shadow border border-cyan-900/20 p-4">
+                  <Link
+                    key={review._id || review.id || idx}
+                    to={`/review/${review._id}`}
+                    className="flex items-start gap-3 bg-[#181c24]/80 rounded-lg shadow border border-cyan-900/20 p-4 hover:border-cyan-700 transition-colors"
+                    style={{ color: 'inherit', textDecoration: 'none' }}
+                    aria-label={`Read ${review.user?.name || review.user?.username || 'member'}'s full review`}
+                  >
                     <div className="flex-shrink-0 w-10 h-10 rounded-full bg-cyan-900/40 flex items-center justify-center text-2xl font-bold text-cyan-300 shadow-inner">
                       <span>{(review.user?.name || review.user?.username || 'U')[0]?.toUpperCase()}</span>
                     </div>
@@ -798,10 +804,21 @@ const MovieDetail = () => {
                           {review.user?.name || (review.user?.username ? `@${review.user.username}` : 'CineShelf member')}
                         </span>
                       </div>
-                      <div className="text-base text-cyan-100 font-lato mb-1">{review.review || 'Rating only'}</div>
+                      <div
+                        className="text-base text-cyan-100 font-lato mb-1"
+                        style={{
+                          display: '-webkit-box',
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {review.review || 'Rating only'}
+                      </div>
                       <div className="text-gray-500 text-xs font-lato">{review.createdAt ? new Date(review.createdAt).toLocaleString() : ''}</div>
+                      {review.review && <span className="mt-2 inline-block text-sm font-semibold text-cyan-300">Read full review →</span>}
                     </div>
-                  </div>
+                  </Link>
                 ))
               )}
             </div>

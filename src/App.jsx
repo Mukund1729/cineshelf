@@ -57,6 +57,7 @@ const CinematicPicks  = lazy(() => import('./pages/CinematicPicks'));
 const Lists           = lazy(() => import('./pages/Lists'));
 const Watchlist       = lazy(() => import('./pages/Watchlist'));
 const Reviews         = lazy(() => import('./pages/Reviews'));
+const ReviewDetail    = lazy(() => import('./pages/ReviewDetail'));
 const People          = lazy(() => import('./pages/People'));
 const Diary           = lazy(() => import('./pages/Diary'));
 const PeopleProfile   = lazy(() => import('./pages/PeopleProfile'));
@@ -119,6 +120,7 @@ function AppWrapper() {
             {/* User Features */}
             <Route path="/watchlist" element={<Watchlist />} />
             <Route path="/reviews" element={<Reviews />} />
+            <Route path="/review/:reviewId" element={<ReviewDetail />} />
             <Route path="/lists" element={<Lists />} />
             <Route path="/diary" element={<Diary />} />
             <Route path="/people" element={<People />} />

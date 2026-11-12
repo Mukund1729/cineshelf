@@ -49,6 +49,23 @@ export const getReviewsByMovie = async (req, res) => {
   }
 };
 
+// GET /api/review/:id — Get one public review
+export const getReviewById = async (req, res) => {
+  try {
+    if (!/^[a-f\d]{24}$/i.test(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Invalid review ID.' });
+    }
+
+    const review = await Review.findById(req.params.id)
+      .populate('user', 'username name avatar');
+    if (!review) return res.status(404).json({ success: false, error: 'Review not found.' });
+
+    res.json({ success: true, data: review });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
 // POST /api/review — Add or update a review
 export const addReview = async (req, res) => {
   try {
