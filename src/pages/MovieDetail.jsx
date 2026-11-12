@@ -15,6 +15,12 @@ import Navbar from '../components/Navbar';
 
 // Remove StreamingPlatforms component, integrated its logic into MovieDetail
 
+const getTodayDate = () => {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 10);
+};
+
 const MovieDetail = () => {
   // Always get id and navigate from params/hooks first so they're available for all hooks
   const { id } = useParams();
@@ -23,9 +29,13 @@ const MovieDetail = () => {
   const [watchlistToast, setWatchlistToast] = useState('');
   // Review form state
   const [reviewText, setReviewText] = useState('');
-  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewRating, setReviewRating] = useState('');
+  const [watchedAt, setWatchedAt] = useState(getTodayDate);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState('');
+  const [diaryLoading, setDiaryLoading] = useState(false);
+  const [diaryError, setDiaryError] = useState('');
+  const [diaryNotice, setDiaryNotice] = useState('');
   // Search bar state
   const [searchQuery, setSearchQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -118,11 +128,31 @@ const MovieDetail = () => {
   // Submit review handler
   const [reviews, setReviews] = useState([]);
   const [reviewsError, setReviewsError] = useState(null);
+  useEffect(() => {
+    let active = true;
+    setReviews([]);
+    setReviewsError(null);
+    axios.get(`/api/review/movie/${id}`)
+      .then(response => {
+        if (active) setReviews(response.data?.data || []);
+      })
+      .catch(err => {
+        if (active) setReviewsError(err.response?.data?.error || 'Could not load reviews.');
+      });
+    return () => { active = false; };
+  }, [id]);
+
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
     setReviewError('');
-    if (!reviewText.trim() || reviewRating < 1 || reviewRating > 10) {
-      setReviewError('Please provide a rating (1-10) and a review.');
+    setDiaryError('');
+    setDiaryNotice('');
+    if (Number(reviewRating) < 1 || Number(reviewRating) > 10) {
+      setReviewError('Please choose a rating from 1 to 10. A written review is optional.');
+      return;
+    }
+    if (!watchedAt) {
+      setReviewError('Please choose the date you watched this movie.');
       return;
     }
     const token = localStorage.getItem('token');
@@ -138,22 +168,64 @@ const MovieDetail = () => {
         poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
         posterUrl: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
         overview: movie.overview,
-        releaseDate: movie.release_date,
-        voteAverage: movie.vote_average,
-        genreIds: movie.genre_ids,
-        rating: reviewRating,
-        review: reviewText,
+        mediaType: 'movie',
+        rating: Number(reviewRating),
+        review: reviewText.trim(),
+        watchedAt,
       }, {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true
       });
-      setReviews([res.data, ...reviews]);
+      const savedReview = res.data?.data;
+      if (!savedReview) throw new Error('Review was not returned by the server.');
+      setReviews(current => [savedReview, ...current.filter(review => review._id !== savedReview._id)]);
       setReviewText('');
-      setReviewRating(0);
+      setReviewRating('');
+      setDiaryNotice('Rating/review saved to your profile and Movie Diary.');
+      setDiaryError('');
     } catch (err) {
-      setReviewError('Failed to submit review.');
+      setReviewError(err.response?.data?.error || err.message || 'Failed to submit review.');
     } finally {
       setReviewLoading(false);
+    }
+  };
+
+  const handleDiaryLog = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setDiaryError('Please sign in to log this movie.');
+      return;
+    }
+    if (!movie || !watchedAt) {
+      setDiaryError('Choose a watched date before logging this movie.');
+      return;
+    }
+    if (reviewRating !== '' && (Number(reviewRating) < 1 || Number(reviewRating) > 10)) {
+      setDiaryError('Rating must be between 1 and 10.');
+      return;
+    }
+
+    setDiaryLoading(true);
+    setDiaryError('');
+    setDiaryNotice('');
+    try {
+      await axios.post('/api/diary', {
+        tmdbId: movie.id,
+        title: movie.title,
+        poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : '',
+        mediaType: 'movie',
+        watchedAt,
+        ...(reviewRating !== '' ? { rating: Number(reviewRating) } : {}),
+        note: reviewText.trim(),
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
+      });
+      setDiaryNotice(`${movie.title} was logged in your Movie Diary.`);
+    } catch (err) {
+      setDiaryError(err.response?.data?.error || 'Could not log this movie.');
+    } finally {
+      setDiaryLoading(false);
     }
   };
 
@@ -609,7 +681,7 @@ const MovieDetail = () => {
             <form onSubmit={handleReviewSubmit} className="flex-1 max-w-lg bg-[#10111a]/80 rounded-xl shadow-md border border-cyan-900/20 p-6 flex flex-col gap-3 mx-auto">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-cyan-300 text-xl font-bold">Your Review</span>
-                <span className="text-gray-400 text-xs font-lato">(out of 10)</span>
+                <span className="text-gray-400 text-xs font-lato">(review text optional)</span>
               </div>
               <div className="flex items-center gap-3 mb-2">
                 <input
@@ -617,23 +689,42 @@ const MovieDetail = () => {
                   min="1"
                   max="10"
                   value={reviewRating}
-                  onChange={e => setReviewRating(Number(e.target.value))}
+                  onChange={e => setReviewRating(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-16 p-2 rounded bg-gray-800 text-cyan-200 text-lg font-bold border-2 border-cyan-700 focus:ring-2 focus:ring-cyan-400 outline-none transition"
                   placeholder="8"
-                  required
+                  aria-label="Rating out of 10"
                 />
                 <span className="text-yellow-300 text-lg font-bold">★</span>
+                <span className="text-gray-400 text-xs">/10 · optional for diary log</span>
               </div>
+              <label htmlFor="movie-watched-date" className="text-gray-300 text-sm font-semibold">Watched on</label>
+              <input
+                id="movie-watched-date"
+                type="date"
+                value={watchedAt}
+                max={getTodayDate()}
+                onChange={e => setWatchedAt(e.target.value)}
+                className="w-full p-2 rounded bg-gray-800 text-white border border-cyan-700 focus:ring-2 focus:ring-cyan-400 outline-none"
+                required
+              />
               <textarea
                 className="w-full p-3 rounded bg-gray-800 text-white text-base font-lato border border-cyan-700 focus:ring-2 focus:ring-cyan-400 outline-none transition mb-2"
                 rows={3}
-                placeholder="What did you think? Share your thoughts..."
+                placeholder="What did you think? Share your thoughts... (optional)"
                 value={reviewText}
                 onChange={e => setReviewText(e.target.value)}
-                required
               />
-              <button type="submit" className="bg-cyan-500 hover:bg-cyan-400 text-white px-6 py-2 rounded-full font-bold text-base shadow transition mt-2" disabled={reviewLoading}>{reviewLoading ? 'Submitting...' : 'Submit Review'}</button>
+              <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                <button type="submit" className="bg-cyan-500 hover:bg-cyan-400 text-white px-6 py-2 rounded-full font-bold text-base shadow transition" disabled={reviewLoading || diaryLoading}>
+                  {reviewLoading ? 'Saving…' : 'Save Rating / Review'}
+                </button>
+                <button type="button" onClick={handleDiaryLog} className="border border-cyan-600 text-cyan-200 hover:bg-cyan-900/30 px-6 py-2 rounded-full font-bold text-base transition" disabled={diaryLoading || reviewLoading}>
+                  {diaryLoading ? 'Logging…' : 'Log only to Diary'}
+                </button>
+              </div>
               {reviewError && <div className="text-red-400 text-base mt-1">{reviewError}</div>}
+              {diaryError && <div role="alert" className="text-red-400 text-sm mt-1">{diaryError}</div>}
+              {diaryNotice && <div role="status" className="text-emerald-300 text-sm mt-1">{diaryNotice}</div>}
             </form>
             {/* Reviews List */}
             <div className="flex-1 flex flex-col gap-4 max-w-2xl mx-auto">
@@ -653,7 +744,7 @@ const MovieDetail = () => {
                         <span className="text-yellow-300 font-bold text-lg">★ {review.rating}/10</span>
                         <span className="text-cyan-200 text-base font-semibold">{review.title}</span>
                       </div>
-                      <div className="text-base text-cyan-100 font-lato mb-1">{review.review}</div>
+                      <div className="text-base text-cyan-100 font-lato mb-1">{review.review || 'Rating only'}</div>
                       <div className="text-gray-500 text-xs font-lato">{review.createdAt ? new Date(review.createdAt).toLocaleString() : ''}</div>
                     </div>
                   </div>

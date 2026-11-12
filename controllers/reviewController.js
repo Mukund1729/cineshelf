@@ -1,6 +1,13 @@
 import Review from '../models/Review.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
+import DiaryEntry from '../models/DiaryEntry.js';
+
+const parseWatchedAt = value => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date;
+};
 
 // GET /api/review — Get current user's reviews
 export const getReviews = async (req, res) => {
@@ -40,27 +47,60 @@ export const getReviewsByMovie = async (req, res) => {
 // POST /api/review — Add or update a review
 export const addReview = async (req, res) => {
   try {
-    const { tmdbId, title, poster, overview, rating, review, spoiler, mediaType } = req.body;
-    if (!tmdbId) return res.status(400).json({ success: false, error: 'tmdbId is required' });
+    const { tmdbId, title, poster = '', overview, rating, review = '', spoiler, mediaType = 'movie' } = req.body;
+    const watchedAt = parseWatchedAt(req.body.watchedAt || new Date().toISOString().slice(0, 10));
+    const parsedRating = Number(rating);
+    const reviewText = typeof review === 'string' ? review.trim() : '';
+    if (!tmdbId || !Number.isInteger(Number(tmdbId)) || Number(tmdbId) <= 0) {
+      return res.status(400).json({ success: false, error: 'A valid movie ID is required.' });
+    }
+    if (!watchedAt) return res.status(400).json({ success: false, error: 'Enter a valid watched date.' });
+    if (!Number.isFinite(parsedRating) || parsedRating < 1 || parsedRating > 10) {
+      return res.status(400).json({ success: false, error: 'Rating must be between 1 and 10.' });
+    }
+    if (reviewText.length > 2000) {
+      return res.status(400).json({ success: false, error: 'Review must be 2000 characters or fewer.' });
+    }
+    if (mediaType !== 'movie' && mediaType !== 'tv') {
+      return res.status(400).json({ success: false, error: 'Media type must be movie or tv.' });
+    }
 
     // Upsert: create or update existing review for this user+movie
     const savedReview = await Review.findOneAndUpdate(
       { user: req.user.id, tmdbId: Number(tmdbId) },
       {
         $set: {
-          title,
-          poster,
-          overview,
-          rating: rating !== undefined ? Number(rating) : undefined,
-          review: review || '',
-          spoiler: spoiler || false,
-          mediaType: mediaType || 'movie',
+          title: typeof title === 'string' ? title.trim() : '',
+          poster: typeof poster === 'string' ? poster.slice(0, 500) : '',
+          overview: typeof overview === 'string' ? overview : '',
+          rating: parsedRating,
+          review: reviewText,
+          spoiler: Boolean(spoiler),
+          mediaType,
         },
       },
       { new: true, upsert: true, runValidators: true }
     );
 
-    res.json({ success: true, data: savedReview, message: 'Review saved' });
+    try {
+      const diaryUpdate = {
+        title: typeof title === 'string' ? title.trim() : '',
+        poster: typeof poster === 'string' ? poster.slice(0, 500) : '',
+        mediaType,
+        watchedAt,
+        rating: parsedRating,
+      };
+      if (reviewText) diaryUpdate.note = reviewText;
+      const diaryEntry = await DiaryEntry.findOneAndUpdate(
+        { user: req.user.id, tmdbId: Number(tmdbId), watchedAt },
+        { $set: diaryUpdate, $setOnInsert: { user: req.user.id, tmdbId: Number(tmdbId) } },
+        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+      );
+      res.json({ success: true, data: savedReview, diaryEntry, message: 'Review saved to your profile and diary.' });
+    } catch (diaryError) {
+      console.error('Diary sync after review failed:', diaryError);
+      res.status(500).json({ success: false, error: 'Review was saved, but the diary entry could not be saved.', data: savedReview });
+    }
   } catch (err) {
     console.error('Review add error:', err);
     res.status(500).json({ success: false, error: 'Server error' });

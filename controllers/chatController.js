@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import ChatMessage from '../models/ChatMessage.js';
+import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 
 const getFriendId = (req, res) => {
@@ -65,6 +66,7 @@ export const getConversation = async (req, res) => {
 };
 
 export const sendMessage = async (req, res) => {
+  let message;
   try {
     const friendId = getFriendId(req, res);
     if (!friendId || !(await ensureFriends(req.user.id, friendId, res))) return;
@@ -73,11 +75,31 @@ export const sendMessage = async (req, res) => {
     if (!text) return res.status(400).json({ success: false, error: 'Message cannot be empty.' });
     if (text.length > 2000) return res.status(400).json({ success: false, error: 'Message must be 2000 characters or fewer.' });
 
-    const message = await ChatMessage.create({
+    const sender = await User.findById(req.user.id).select('username');
+    if (!sender) return res.status(401).json({ success: false, error: 'Please sign in again.' });
+
+    message = await ChatMessage.create({
       sender: req.user.id,
       recipient: friendId,
       text,
     });
+
+    try {
+      await Notification.create({
+        user: friendId,
+        type: 'new_message',
+        title: 'New message',
+        message: `${sender.username} sent you a message`,
+        fromUser: req.user.id,
+        relatedId: message._id,
+        data: { senderId: req.user.id },
+        link: `/people?chat=${req.user.id}`,
+      });
+    } catch (notificationError) {
+      await message.deleteOne();
+      throw notificationError;
+    }
+
     res.status(201).json({ success: true, message: serializeMessage(message) });
   } catch (err) {
     console.error('Send chat message error:', err);

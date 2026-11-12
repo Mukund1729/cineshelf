@@ -57,17 +57,21 @@ export const createDiaryEntry = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Note must be 2000 characters or fewer.' });
     }
 
-    const entry = await DiaryEntry.create({
-      user: req.user.id,
-      tmdbId: parsedTmdbId,
+    const update = {
       title: title.trim(),
       poster: typeof poster === 'string' ? poster.slice(0, 500) : '',
       mediaType,
       watchedAt: parsedDate,
-      ...(parsedRating !== undefined ? { rating: parsedRating } : {}),
-      note: note.trim(),
-    });
-    res.status(201).json({ success: true, data: entry });
+    };
+    if (parsedRating !== undefined) update.rating = parsedRating;
+    if (note.trim()) update.note = note.trim();
+
+    const entry = await DiaryEntry.findOneAndUpdate(
+      { user: req.user.id, tmdbId: parsedTmdbId, watchedAt: parsedDate },
+      { $set: update, $setOnInsert: { user: req.user.id, tmdbId: parsedTmdbId } },
+      { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+    );
+    res.json({ success: true, data: entry });
   } catch (err) {
     console.error('Create diary entry error:', err);
     res.status(500).json({ success: false, error: 'Could not save diary entry.' });

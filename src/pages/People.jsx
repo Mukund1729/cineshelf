@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Chat from '../components/Chat';
@@ -93,6 +93,8 @@ function RequestCard({ request, onAccept, onReject }) {
 }
 
 export default function People() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
@@ -125,6 +127,13 @@ export default function People() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    const requestedChatId = new URLSearchParams(location.search).get('chat');
+    if (!requestedChatId || loading) return;
+    const friend = friends.find(person => person._id === requestedChatId);
+    if (friend) setChatFriend(friend);
+  }, [location.search, friends, loading]);
 
   useEffect(() => {
     if (searchQuery.trim().length < 2) { setSearchResults([]); return; }
@@ -184,6 +193,7 @@ export default function People() {
 
   const closeChat = () => {
     setChatFriend(null);
+    if (location.search) navigate('/people', { replace: true });
   };
 
   const friendIds = friends.map(f => f._id);
