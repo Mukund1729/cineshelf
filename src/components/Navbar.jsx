@@ -156,7 +156,7 @@ export default function Navbar() {
           }}
         >
           <span className="logo-full">visual<span style={{ color: 'var(--vc-gold)', margin: '0 1px' }}>.</span>cineaste</span>
-          <span className="logo-short" style={{ display: 'none' }}>VC</span>
+          <span className="logo-short" style={{ display: 'none' }}>V<span style={{ color: 'var(--vc-gold)' }}>.</span>C</span>
         </Link>
 
         {/* Desktop nav */}

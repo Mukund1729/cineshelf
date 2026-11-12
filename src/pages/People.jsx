@@ -27,7 +27,7 @@ function FriendCard({ person, onRemove, onRequest, isFriend, isPending, onChat }
         )}
       </Link>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <Link to={profilePath} style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '0.95rem', color: 'var(--vc-cream)', textDecoration: 'none' }}>
+        <Link to={profilePath} style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '0.95rem', color: 'var(--vc-cream)', textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {person.username || person.name}
         </Link>
         {person.bio && (
@@ -231,7 +231,7 @@ export default function People() {
             <button className="vc-btn vc-btn-primary" onClick={() => window.dispatchEvent(new CustomEvent('open-auth-modal'))}>Sign In</button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem', alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem', alignItems: 'start' }} className="people-layout">
             {/* Left: Friends + Requests */}
             <div>
               {/* Pending requests */}
@@ -336,6 +336,14 @@ export default function People() {
           onClose={closeChat}
         />
       )}
+      
+      <style>{`
+        @media (max-width: 768px) {
+          .people-layout {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
