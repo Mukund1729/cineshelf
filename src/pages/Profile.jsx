@@ -41,15 +41,17 @@ const Profile = () => {
 
       // Fetch user profile
       const profileRes = await axios.get('/api/user/profile', { headers, withCredentials: true });
-      setProfile(profileRes.data?.user || profileRes.data);
+      const profileData = profileRes.data?.data || profileRes.data;
+      const currentProfile = profileData?.user || profileData;
+      setProfile(currentProfile);
 
       // Initialize edit form
       setEditForm({
-        name: profileRes.data?.user?.name || profileRes.data?.name || '',
-        username: profileRes.data?.user?.username || profileRes.data?.username || '',
-        bio: profileRes.data?.user?.bio || profileRes.data?.bio || '',
-        avatar: profileRes.data?.user?.avatar || profileRes.data?.avatar || '',
-        socials: profileRes.data?.user?.socials || profileRes.data?.socials || { instagram: '', twitter: '', website: '' }
+        name: currentProfile?.name || '',
+        username: currentProfile?.username || '',
+        bio: currentProfile?.bio || '',
+        avatar: currentProfile?.avatar || '',
+        socials: currentProfile?.socials || { instagram: '', twitter: '', website: '' }
       });
 
       // Fetch user's watchlist, reviews, and lists
@@ -89,7 +91,7 @@ const Profile = () => {
   };
 
   const handleAvatarUpload = async (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
@@ -107,6 +109,7 @@ const Profile = () => {
       setAvatarPreview(URL.createObjectURL(file));
       setError('');
     }
+    e.target.value = '';
   };
 
   const getAvatarUrl = (avatar) => {
@@ -150,7 +153,8 @@ const Profile = () => {
             withCredentials: true,
             timeout: 10000
           });
-          avatarUrl = uploadRes.data?.avatarUrl || uploadRes.data?.user?.avatar || editForm.avatar;
+          const uploadData = uploadRes.data?.data || uploadRes.data;
+          avatarUrl = uploadData?.avatarUrl || uploadData?.user?.avatar || editForm.avatar;
         } catch (uploadErr) {
           console.error('Avatar upload failed:', uploadErr);
           let errorMessage = 'Avatar upload failed';
@@ -172,13 +176,12 @@ const Profile = () => {
 
       const profileRes = await axios.put('/api/user/profile', updateData, { headers, withCredentials: true });
 
+      const profileData = profileRes.data?.data || profileRes.data;
+      setProfile(profileData?.user || profileData);
       setMessage('Profile updated successfully!');
       setEditing(false);
       setAvatarFile(null);
       setAvatarPreview('');
-
-      // Refresh profile data
-      fetchProfileData();
 
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
@@ -228,25 +231,35 @@ const Profile = () => {
     <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)' }}>
       <Navbar />
 
-      <section style={{
+      <section className="vc-profile-hero" style={{
         paddingTop: '6rem',
         paddingBottom: '3rem',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         background: 'linear-gradient(135deg, #060912 0%, #0a0f1a 50%, #0d1420 100%)',
       }}>
         <div className="vc-container">
-          <span className="vc-section-label">ðŸ‘¤ Profile</span>
-          <h1 style={{
-            fontFamily: 'Playfair Display, serif',
-            fontSize: 'clamp(2rem, 4vw, 3rem)',
-            fontWeight: 800,
-            marginBottom: '0.75rem',
-          }}>
-            {profile.name || profile.username}
-          </h1>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
-            {profile.bio || 'Cinematic journey and preferences'}
-          </p>
+          <div className="vc-profile-heading">
+            <img
+              className="vc-profile-avatar"
+              src={getAvatarUrl(profile.avatar) || getDefaultAvatar(profile.name || profile.username)}
+              alt={`${profile.name || profile.username}'s profile`}
+              onError={e => { e.currentTarget.src = getDefaultAvatar(profile.name || profile.username); }}
+            />
+            <div>
+              <span className="vc-section-label">Your Profile</span>
+              <h1 style={{
+                fontFamily: 'Playfair Display, serif',
+                fontSize: 'clamp(2rem, 4vw, 3rem)',
+                fontWeight: 800,
+                marginBottom: '0.75rem',
+              }}>
+                {profile.name || profile.username}
+              </h1>
+              <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
+                {profile.bio || 'Cinematic journey and preferences'}
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -307,7 +320,7 @@ const Profile = () => {
         {/* Edit Button */}
         <button
           onClick={() => setEditing(!editing)}
-          className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-cyan-600 to-cyan-700 hover:from-cyan-700 hover:to-cyan-800 text-white font-semibold rounded-full shadow-lg transition-all duration-300 hover:scale-105"
+          className="vc-btn vc-btn-primary"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"} />
@@ -340,79 +353,104 @@ const Profile = () => {
 {/* Edit Form */ }
 {
   editing && (
-    <div className="max-w-2xl mx-auto px-6 mb-8">
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl p-6 border border-slate-700">
-        <h3 className="text-xl font-bold text-white mb-6">Edit Profile</h3>
+    <div className="vc-container mb-8">
+      <div className="vc-profile-form vc-card">
+        <h3 className="vc-section-heading" style={{ marginBottom: '1.5rem' }}>Edit Profile</h3>
         <div className="space-y-4">
+          <div className="vc-avatar-picker">
+            <img
+              src={avatarPreview || getAvatarUrl(editForm.avatar) || getDefaultAvatar(editForm.name)}
+              alt="Profile preview"
+              className="vc-profile-avatar"
+              onError={e => { e.currentTarget.src = getDefaultAvatar(editForm.name); }}
+            />
+            <div>
+              <label className="vc-profile-label" htmlFor="profile-avatar">Profile photo</label>
+              <input
+                id="profile-avatar"
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+                className="vc-input vc-avatar-input"
+              />
+              <p className="vc-profile-hint">Choose an image up to 5 MB.</p>
+            </div>
+          </div>
           <div>
-            <label className="block text-cyan-200 mb-2 font-medium">Full Name</label>
+            <label className="vc-profile-label" htmlFor="profile-name">Full Name</label>
             <input
+              id="profile-name"
               type="text"
               name="name"
               value={editForm.name}
               onChange={handleEditChange}
-              className="w-full px-4 py-3 rounded-lg bg-slate-700/50 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-slate-600 transition-colors"
+              className="vc-input"
               placeholder="Your full name"
             />
           </div>
 
           <div>
-            <label className="block text-cyan-200 mb-2 font-medium">Username</label>
+            <label className="vc-profile-label" htmlFor="profile-username">Username</label>
             <input
+              id="profile-username"
               type="text"
               name="username"
               value={editForm.username}
               onChange={handleEditChange}
-              className="w-full px-4 py-3 rounded-lg bg-slate-700/50 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-slate-600 transition-colors"
+              className="vc-input"
               placeholder="Username"
             />
           </div>
 
           <div>
-            <label className="block text-cyan-200 mb-2 font-medium">Bio</label>
+            <label className="vc-profile-label" htmlFor="profile-bio">Bio</label>
             <textarea
+              id="profile-bio"
               name="bio"
               value={editForm.bio}
               onChange={handleEditChange}
               rows={3}
-              className="w-full px-4 py-3 rounded-lg bg-slate-700/50 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-slate-600 transition-colors resize-none"
+              className="vc-input vc-textarea"
               placeholder="Tell us about yourself..."
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-cyan-200 mb-2 font-medium">Instagram</label>
+              <label className="vc-profile-label" htmlFor="profile-instagram">Instagram</label>
               <input
+                id="profile-instagram"
                 type="url"
                 name="socials.instagram"
                 value={editForm.socials.instagram}
                 onChange={handleEditChange}
-                className="w-full px-4 py-3 rounded-lg bg-slate-700/50 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-slate-600 transition-colors"
+                className="vc-input"
                 placeholder="Instagram URL"
               />
             </div>
 
             <div>
-              <label className="block text-cyan-200 mb-2 font-medium">Twitter</label>
+              <label className="vc-profile-label" htmlFor="profile-twitter">Twitter</label>
               <input
+                id="profile-twitter"
                 type="url"
                 name="socials.twitter"
                 value={editForm.socials.twitter}
                 onChange={handleEditChange}
-                className="w-full px-4 py-3 rounded-lg bg-slate-700/50 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-slate-600 transition-colors"
+                className="vc-input"
                 placeholder="Twitter URL"
               />
             </div>
 
             <div>
-              <label className="block text-cyan-200 mb-2 font-medium">Website</label>
+              <label className="vc-profile-label" htmlFor="profile-website">Website</label>
               <input
+                id="profile-website"
                 type="url"
                 name="socials.website"
                 value={editForm.socials.website}
                 onChange={handleEditChange}
-                className="w-full px-4 py-3 rounded-lg bg-slate-700/50 text-white focus:outline-none focus:ring-2 focus:ring-cyan-400 border border-slate-600 transition-colors"
+                className="vc-input"
                 placeholder="Website URL"
               />
             </div>
@@ -422,7 +460,7 @@ const Profile = () => {
             <button
               type="button"
               onClick={handleSaveProfile}
-              className="px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white font-semibold rounded-lg transition-all duration-200 hover:shadow-cyan-500/25"
+              className="vc-btn vc-btn-primary"
             >
               Save Changes
             </button>
@@ -440,7 +478,7 @@ const Profile = () => {
                   socials: profile.socials || { instagram: '', twitter: '', website: '' }
                 });
               }}
-              className="px-6 py-3 bg-slate-600 hover:bg-slate-700 text-white font-semibold rounded-lg transition-all duration-200"
+              className="vc-btn vc-btn-ghost"
             >
               Cancel
             </button>

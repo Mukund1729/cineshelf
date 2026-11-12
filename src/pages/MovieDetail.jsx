@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { FiClock, FiCalendar, FiDollarSign, FiStar } from 'react-icons/fi';
 import { motion } from 'framer-motion';
 import BoxOfficeChart from "../components/BoxOfficeChart";
@@ -11,13 +11,13 @@ import JustWatch from 'justwatch-api';
 import SearchBar from "../components/SearchBar";
 import { searchMovies, searchPeople } from '../api/tmdb';
 import { apiUrl } from '../api/config';
+import Navbar from '../components/Navbar';
 
 // Remove StreamingPlatforms component, integrated its logic into MovieDetail
 
 const MovieDetail = () => {
   // Always get id and navigate from params/hooks first so they're available for all hooks
   const { id } = useParams();
-  const navigate = useNavigate();
   // Add to Watchlist state
   const [addingToWatchlist, setAddingToWatchlist] = useState(false);
   const [watchlistToast, setWatchlistToast] = useState('');
@@ -262,7 +262,7 @@ const MovieDetail = () => {
   }, [movie]);
   return (
     <div
-      className="relative min-h-screen w-full"
+      className="movie-detail-page relative min-h-screen w-full"
       style={
         movie && movie.backdrop_path
           ? {
@@ -276,23 +276,16 @@ const MovieDetail = () => {
     >
       {/* Overlay for readability */}
       <div className="absolute inset-0 bg-black/80 z-0" />
-      {/* Sticky Site Name Bar (modern header, TVDetail style) */}
-      <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between w-full px-4 py-2 bg-gradient-to-b from-black/90 via-[#181c24]/60 to-transparent backdrop-blur-md shadow-sm">
-        <div className="flex items-center cursor-pointer" onClick={() => navigate('/') }>
-          <span className="text-xl font-extrabold tracking-tight font-playfair text-white hover:text-cyan-400 transition-colors select-none">visual.cineaste</span>
-        </div>
-        <div className="fixed top-3 right-4 z-40">
-          <button
-            className="bg-[#181c24] p-1.5 rounded-full shadow-lg hover:bg-cyan-700 transition-colors focus:outline-none"
-            onClick={() => setShowSearchBar(true)}
-            aria-label="Open search"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
-            </svg>
-          </button>
-        </div>
-      </div>
+      <Navbar />
+      <button
+        className="movie-detail-search vc-btn vc-btn-ghost"
+        onClick={() => setShowSearchBar(true)}
+        aria-label="Open search"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
+        </svg>
+      </button>
       {/* Overlay Search Bar (TVDetail style) */}
       {showSearchBar && (
         <div className="fixed top-0 left-0 w-full h-full z-50 flex items-start justify-end bg-black/40" onClick={() => setShowSearchBar(false)}>
@@ -354,7 +347,7 @@ const MovieDetail = () => {
         </div>
       )}
       {/* Main Content Container */}
-      <div className="relative z-10 pt-28 pb-4 px-1 md:px-0 max-w-5xl mx-auto">
+      <div className="vc-container movie-detail-content relative z-10 pt-10 pb-16">
         {/* Main Movie Content with Poster and Info */}
         {movie && (
           <div className="flex flex-col md:flex-row gap-10 items-start p-0 mb-10 mt-2 md:mt-4 bg-gradient-to-br from-[#10111a]/80 via-[#181c24]/70 to-[#10111a]/80 rounded-3xl shadow-2xl border border-cyan-900/50 backdrop-blur-xl mx-auto px-6 py-8" style={{maxWidth:'100%', boxShadow:'0 12px 36px 0 rgba(0,0,0,0.30)'}}>
