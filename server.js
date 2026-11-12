@@ -11,6 +11,8 @@ import userRoutes from './routes/user.js';
 import listRoutes from './routes/list.js';
 import watchlistRoutes from './routes/watchlist.js';
 import reviewRoutes from './routes/review.js';
+import diaryRoutes from './routes/diary.js';
+import chatRoutes from './routes/chat.js';
 import peopleRoutes from './routes/people.js';
 import streamingRoutes from './routes/streaming.js';
 import boxOfficeRoutes from './routes/boxoffice.js';
@@ -69,6 +71,8 @@ app.use('/api/user', userRoutes);
 app.use('/api/lists', listRoutes);       // multi-list routes
 app.use('/api/watchlist', watchlistRoutes);
 app.use('/api/review', reviewRoutes);
+app.use('/api/diary', diaryRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api/people', peopleRoutes);
 app.use('/api/streaming', streamingRoutes);
 app.use('/api/boxoffice', boxOfficeRoutes);

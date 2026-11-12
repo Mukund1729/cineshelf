@@ -10,6 +10,8 @@ const Profile = () => {
   const [watchlist, setWatchlist] = useState([]);
   const [reviews, setReviews] = useState([]);
   const [lists, setLists] = useState([]);
+  const [diary, setDiary] = useState([]);
+  const [activityError, setActivityError] = useState('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -54,19 +56,32 @@ const Profile = () => {
         socials: currentProfile?.socials || { instagram: '', twitter: '', website: '' }
       });
 
-      // Fetch user's watchlist, reviews, and lists
-      try {
-        const [watchlistRes, reviewsRes, listsRes] = await Promise.all([
-          axios.get('/api/watchlist', { headers, withCredentials: true }),
-          axios.get('/api/review', { headers, withCredentials: true }),
-          axios.get('/api/list', { headers, withCredentials: true })
-        ]);
+      const results = await Promise.allSettled([
+        axios.get('/api/watchlist', { headers, withCredentials: true }),
+        axios.get('/api/review', { headers, withCredentials: true }),
+        axios.get('/api/lists', { headers, withCredentials: true }),
+        axios.get('/api/diary', { headers, withCredentials: true }),
+        axios.get('/api/people/sakha', { headers, withCredentials: true }),
+      ]);
 
-        setWatchlist(watchlistRes.data?.movies || []);
-        setReviews(reviewsRes.data?.reviews || []);
-        setLists(listsRes.data?.movies || []);
-      } catch (err) {
-        console.log('Some data could not be loaded:', err.message);
+      const [watchlistResult, reviewsResult, listsResult, diaryResult, friendsResult] = results;
+      if (watchlistResult.status === 'fulfilled') {
+        setWatchlist(watchlistResult.value.data?.movies || []);
+      }
+      if (reviewsResult.status === 'fulfilled') {
+        setReviews(reviewsResult.value.data?.data || reviewsResult.value.data?.reviews || []);
+      }
+      if (listsResult.status === 'fulfilled') {
+        setLists(listsResult.value.data?.data || []);
+      }
+      if (diaryResult.status === 'fulfilled') {
+        setDiary(diaryResult.value.data?.data || []);
+      }
+      if (friendsResult.status === 'fulfilled') {
+        setSakha(friendsResult.value.data?.data || []);
+      }
+      if (results.some(result => result.status === 'rejected')) {
+        setActivityError('Some profile activity could not be loaded. Please refresh to try again.');
       }
 
       setLoading(false);
@@ -280,14 +295,19 @@ const Profile = () => {
             <div className="text-gray-400 text-sm uppercase tracking-wider">Reviews</div>
           </div>
           <div className="text-center">
+            <div className="text-2xl font-bold text-white">{diary.length}</div>
+            <div className="text-gray-400 text-sm uppercase tracking-wider">Diary logs</div>
+          </div>
+          <div className="text-center">
             <div className="text-2xl font-bold text-white">{lists.length}</div>
-            <div className="text-gray-400 text-sm uppercase tracking-wider">Watched</div>
+            <div className="text-gray-400 text-sm uppercase tracking-wider">Lists</div>
           </div>
           <div className="text-center">
             <div className="text-2xl font-bold text-white">{sakha.length}</div>
             <div className="text-gray-400 text-sm uppercase tracking-wider">Friends</div>
           </div>
         </div>
+        {activityError && <p role="status" className="mb-6 text-sm text-yellow-300">{activityError}</p>}
 
         {/* Social Links */}
         {(profile.socials?.instagram || profile.socials?.twitter || profile.socials?.website) && (
@@ -579,7 +599,7 @@ const Profile = () => {
             {watchlist.slice(0, 10).map(movie => (
               <Link
                 key={movie.tmdbId || movie.id}
-                to={`/movie/${movie.tmdbId || movie.id}`}
+                to={`/${movie.mediaType === 'tv' ? 'tv' : 'movie'}/${movie.tmdbId || movie.id}`}
                 className="group"
               >
                 <div className="relative overflow-hidden rounded-xl">
@@ -636,19 +656,25 @@ const Profile = () => {
         ) : (
           <div className="space-y-6">
             {reviews.slice(0, 3).map(review => (
-              <div key={review.id} className="bg-slate-700/30 rounded-xl p-6 hover:bg-slate-700/50 transition-colors">
+              <div key={review._id} className="bg-slate-700/30 rounded-xl p-6 hover:bg-slate-700/50 transition-colors">
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <h4 className="text-white font-bold text-lg">{review.movieTitle}</h4>
-                      {review.rating && (
+                      <Link to={`/${review.mediaType === 'tv' ? 'tv' : 'movie'}/${review.tmdbId}`} className="text-white font-bold text-lg hover:text-cyan-300">
+                        {review.title || 'Untitled'}
+                      </Link>
+                      {review.rating !== undefined && review.rating !== null && (
                         <div className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full">
-                          <span className="text-sm">â˜…</span>
-                          <span className="text-sm font-bold">{review.rating}</span>
+                          <span className="text-sm">★</span>
+                          <span className="text-sm font-bold">{review.rating}/10</span>
                         </div>
                       )}
                     </div>
-                    <p className="text-gray-300 text-sm leading-relaxed line-clamp-3">{review.content}</p>
+                    {review.review ? (
+                      <p className="text-gray-300 text-sm leading-relaxed line-clamp-3">{review.review}</p>
+                    ) : (
+                      <p className="text-gray-400 text-sm">Rating only</p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -657,64 +683,56 @@ const Profile = () => {
         )}
       </div>
 
-      {/* Watched Movies */}
+      {/* Movie Diary */}
       <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-slate-700/50">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="text-2xl font-bold text-white flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M5 13l4 4L19 7"} />
-              </svg>
-            </div>
-            Watched Movies
-          </h3>
-          <Link to="/lists" className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors flex items-center gap-1 group">
-            View All
-            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M9 5l7 7-7 7"} />
-            </svg>
-          </Link>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-bold text-white">Movie Diary</h3>
+          <Link to="/diary" className="text-cyan-400 hover:text-cyan-300 text-sm font-medium">Log a movie · View all</Link>
         </div>
-        {lists.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M5 13l4 4L19 7"} />
-              </svg>
-            </div>
-            <p className="text-gray-400 text-lg mb-2">No watched movies yet</p>
-            <p className="text-gray-500 text-sm">Start watching and rating movies</p>
+        {diary.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-gray-400 text-lg mb-2">Your diary is empty</p>
+            <p className="text-gray-500 text-sm">Log a movie by date, with an optional rating or note.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {lists.slice(0, 10).map(movie => (
-              <Link
-                key={movie.tmdbId || movie.id}
-                to={`/movie/${movie.tmdbId || movie.id}`}
-                className="group"
-              >
-                <div className="relative overflow-hidden rounded-xl">
-                  <img
-                    src={movie.posterUrl || movie.poster || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgODAgMTIwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMTIwIiBmaWxsPSIjMzM0MTU1Ii8+Cjx0ZXh0IHg9IjQwIiB5PSI2MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjOWNhM2EzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPgo='}
-                    alt={movie.title}
-                    className="w-full aspect-[2/3] object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  {movie.rating && (
-                    <div className="absolute top-3 right-3 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full shadow-lg">
-                      â˜… {movie.rating}
-                    </div>
-                  )}
-                  <div className="absolute bottom-0 left-0 right-0 p-3 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <p className="text-white text-sm font-semibold line-clamp-2">{movie.title}</p>
-                  </div>
+          <div className="space-y-3">
+            {diary.slice(0, 5).map(entry => (
+              <div key={entry._id} className="flex items-center gap-4 rounded-xl bg-slate-700/30 p-4">
+                {entry.poster && <img src={entry.poster} alt="" className="h-16 w-11 rounded object-cover" />}
+                <div className="min-w-0 flex-1">
+                  <Link to={`/${entry.mediaType === 'tv' ? 'tv' : 'movie'}/${entry.tmdbId}`} className="font-semibold text-white hover:text-cyan-300">
+                    {entry.title}
+                  </Link>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Watched {new Date(entry.watchedAt).toLocaleDateString(undefined, { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
+                    {entry.rating != null && ` · ★ ${entry.rating}/10`}
+                  </p>
+                  {entry.note && <p className="mt-1 truncate text-sm text-gray-300">{entry.note}</p>}
                 </div>
-                <div className="mt-3">
-                  <p className="text-white text-sm font-semibold truncate group-hover:text-cyan-300 transition-colors">{movie.title}</p>
-                  {movie.releaseDate && (
-                    <p className="text-gray-400 text-xs">({movie.releaseDate.slice(0, 4)})</p>
-                  )}
-                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Custom Lists */}
+      <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-slate-700/50">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-bold text-white">My Lists</h3>
+          <Link to="/lists" className="text-cyan-400 hover:text-cyan-300 text-sm font-medium">View all lists</Link>
+        </div>
+        {lists.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-gray-400 text-lg mb-2">No lists yet</p>
+            <p className="text-gray-500 text-sm">Create a list to collect movies and shows.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {lists.slice(0, 6).map(list => (
+              <Link key={list._id} to="/lists" className="rounded-xl border border-slate-700/60 bg-slate-700/30 p-4 transition-colors hover:border-cyan-400/40">
+                <div className="font-semibold text-white">{list.name}</div>
+                {list.description && <p className="mt-1 line-clamp-2 text-sm text-gray-400">{list.description}</p>}
+                <div className="mt-2 text-xs text-gray-400">{list.items?.length || 0} titles · {list.isPublic ? 'Public' : 'Private'}</div>
               </Link>
             ))}
           </div>

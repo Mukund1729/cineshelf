@@ -13,6 +13,7 @@ const NAV_LINKS = [
   { to: '/popular-tv',     label: 'TV' },
   { to: '/boxoffice',      label: 'Box Office' },
   { to: '/blog',           label: 'Journal' },
+  { to: '/people',         label: 'People' },
   { to: '/about',          label: 'About' },
 ];
 
@@ -28,7 +29,7 @@ const USER_LINKS = [
   { to: '/watchlist',  label: 'Watchlist' },
   { to: '/lists',      label: 'Lists' },
   { to: '/reviews',    label: 'Reviews' },
-  { to: '/people',     label: 'People' },
+  { to: '/diary',      label: 'Movie Diary' },
   { to: '/profile',    label: 'Profile' },
 ];
 
