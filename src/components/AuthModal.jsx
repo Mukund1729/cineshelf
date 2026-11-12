@@ -106,7 +106,7 @@ const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
   if (showForgotPassword) {
     return (
       <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-        <div className="bg-gray-900 p-8 rounded-lg shadow-lg w-full max-w-sm relative">
+        <div className="bg-gray-900 p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto relative">
           <button onClick={resetForgotPassword} className="absolute top-2 right-2 text-gray-400 hover:text-white text-xl" aria-label="Close">×</button>
           <h2 className="text-2xl font-bold mb-4 text-center text-cyan-400">Reset Password</h2>
           {error && <div className="mb-4 p-3 bg-red-600 text-white rounded text-sm">{error}</div>}
@@ -135,7 +135,7 @@ const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-      <div className="bg-gray-900 p-8 rounded-lg shadow-lg w-full max-w-sm relative">
+      <div className="bg-gray-900 p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto relative">
         <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white text-xl" aria-label="Close">×</button>
         <h2 className="text-2xl font-bold mb-4 text-center text-cyan-400">{isSignup ? 'Sign Up' : 'Login'} to visual.cineaste</h2>
         {error && <div className="mb-4 p-3 bg-red-600 text-white rounded text-sm">{error}</div>}
@@ -158,7 +158,7 @@ const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
           {!isSignup && (
             <button onClick={() => setShowForgotPassword(true)} className="text-cyan-400 hover:underline text-sm block">Forgot Password?</button>
           )}
-          <button onClick={onSwitch} className="text-cyan-400 hover:underline text-sm block">{isSignup ? 'Already have an account? Login' : "Don't have an account? Sign Up"}</button>
+          <button onClick={() => onSwitch(isSignup ? 'login' : 'signup')} className="text-cyan-400 hover:underline text-sm block">{isSignup ? 'Already have an account? Login' : "Don't have an account? Sign Up"}</button>
         </div>
       </div>
     </div>

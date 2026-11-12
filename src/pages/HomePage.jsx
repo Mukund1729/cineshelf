@@ -121,7 +121,7 @@ function Strip({ title, label, items = [], linkTo, size = 'normal' }) {
 function EditorialGrid({ items = [] }) {
   if (items.length === 0) {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+      <div className="vc-film-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
         {Array.from({ length: 8 }, (_, i) => (
           <div key={i} className="vc-skeleton" style={{ width: '100%', aspectRatio: '2/3', borderRadius: 6 }} />
         ))}
@@ -129,7 +129,7 @@ function EditorialGrid({ items = [] }) {
     );
   }
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+    <div className="vc-film-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
       {items.slice(0, 12).map((m, idx) => {
         const title  = m.title || m.name || 'Untitled';
         const year   = (m.release_date || '').slice(0, 4);
@@ -228,7 +228,7 @@ function AIDiscoverBlock() {
         </p>
 
         {/* Search bar */}
-        <div style={{ display: 'flex', gap: '0.5rem', maxWidth: 640, marginBottom: '1rem' }}>
+        <div className="vc-ai-search-form" style={{ display: 'flex', gap: '0.5rem', maxWidth: 640, marginBottom: '1rem' }}>
           <input
             className="vc-input"
             placeholder="e.g. slow burn psychological thrillers with unreliable narrators…"
@@ -289,7 +289,7 @@ function AIDiscoverBlock() {
                 {source === 'openai' ? 'Powered by GPT-4o-mini' : 'Powered by Mistral (fallback)'}
               </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '0.75rem' }}>
+            <div className="vc-ai-results-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '0.75rem' }}>
               {results.map((film, i) => (
                 <AIFilmCard key={i} film={film} />
               ))}
@@ -439,7 +439,7 @@ export default function HomePage() {
       <Navbar />
 
       {/* ── HERO ─────────────────────────────────────────────────── */}
-      <section style={{
+      <section className="vc-home-hero" style={{
         position: 'relative', minHeight: '95vh', display: 'flex', alignItems: 'center',
         overflow: 'hidden', background: 'linear-gradient(135deg, #060912 0%, #0a0f1a 50%, #0d1420 100%)',
       }}>
@@ -462,7 +462,7 @@ export default function HomePage() {
         )}
 
         {/* Hero content */}
-        <div className="vc-container" style={{ position: 'relative', zIndex: 10, paddingTop: '6rem', paddingBottom: '4rem' }}>
+        <div className="vc-container vc-home-hero-content" style={{ position: 'relative', zIndex: 10, paddingTop: '6rem', paddingBottom: '4rem' }}>
           {/* Label */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
             <div style={{ width: 32, height: 2, background: 'linear-gradient(90deg, var(--vc-gold), transparent)' }} />
@@ -472,7 +472,7 @@ export default function HomePage() {
           </div>
 
           {/* Headline */}
-          <h1 style={{
+          <h1 className="vc-home-hero-title" style={{
             fontFamily: 'Playfair Display, serif',
             fontSize: 'clamp(3rem, 7vw, 6rem)',
             fontWeight: 900, lineHeight: 1.05, marginBottom: '1.5rem',
@@ -484,7 +484,7 @@ export default function HomePage() {
             <em style={{ fontStyle: 'italic', color: 'var(--vc-gold)' }}>rediscovered.</em>
           </h1>
 
-          <p style={{
+          <p className="vc-home-hero-description" style={{
             fontFamily: 'Outfit, sans-serif', fontSize: 'clamp(1.1rem, 1.8vw, 1.25rem)',
             color: 'var(--vc-slate)', maxWidth: 520, lineHeight: 1.8, marginBottom: '3rem',
             fontWeight: 400,
@@ -501,10 +501,8 @@ export default function HomePage() {
               <input
                 className="vc-input"
                 style={{ 
-                  paddingLeft: '3rem', 
-                  paddingRight: '6.5rem', 
+                  padding: '1rem 3.5rem 1rem 3rem',
                   fontSize: '1rem', 
-                  padding: '1rem 1.25rem',
                   background: 'rgba(255,255,255,0.08)', 
                   backdropFilter: 'blur(16px)', 
                   border: '1px solid rgba(255,255,255,0.15)',
@@ -573,7 +571,7 @@ export default function HomePage() {
           </div>
 
           {/* CTA row */}
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="vc-home-hero-actions" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <Link 
               to="/discover" 
               className="vc-btn vc-btn-primary"

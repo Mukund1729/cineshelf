@@ -411,9 +411,73 @@ body, html {
   padding: 0 1.5rem;
 }
 
+.vc-film-grid > a {
+  min-width: 0;
+}
+
 .vc-page {
   min-height: 100vh;
   background: var(--vc-bg-base);
+}
+
+@media (max-width: 640px) {
+  .vc-container {
+    padding-right: 1rem;
+    padding-left: 1rem;
+  }
+
+  .vc-home-hero {
+    min-height: auto !important;
+  }
+
+  .vc-home-hero-content {
+    padding-top: 3.5rem !important;
+    padding-bottom: 2.5rem !important;
+  }
+
+  .vc-home-hero-title {
+    font-size: clamp(2.75rem, 12vw, 4rem) !important;
+  }
+
+  .vc-home-hero-description {
+    font-size: 1rem !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .vc-home-hero-description br {
+    display: none;
+  }
+
+  .vc-home-hero-actions {
+    gap: 0.65rem !important;
+  }
+
+  .vc-home-hero-actions .vc-btn {
+    padding: 0.75rem 1.1rem !important;
+    font-size: 0.875rem !important;
+  }
+
+  .vc-ai-search-form {
+    flex-direction: column;
+  }
+
+  .vc-ai-search-form .vc-btn {
+    justify-content: center;
+  }
+
+  .vc-ai-results-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .vc-film-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.75rem !important;
+  }
+
+  .vc-film-grid .vc-overlay {
+    opacity: 1;
+    padding: 0.65rem;
+  }
 }
 
 /* ── LEGACY COMPAT ────────────────────────── */

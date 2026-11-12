@@ -204,7 +204,7 @@ export default function Navbar() {
             transition: 'all 220ms ease',
             animation: 'bookBtnPulse 3s ease-in-out infinite',
           }}
-          className="book-tickets-btn"
+          className="book-tickets-btn navbar-book-tickets"
         >
           <TicketIcon />
           Book Now
@@ -309,6 +309,7 @@ export default function Navbar() {
                 window.dispatchEvent(new CustomEvent('open-auth-modal'));
               }}
               className="vc-btn vc-btn-primary"
+              data-navbar-signin
               style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}
             >
               Sign in
@@ -328,7 +329,8 @@ export default function Navbar() {
               color: '#f5f0e8',
             }}
             className="navbar-hamburger"
-            aria-label="Open menu"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
           >
             <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
               <path d="M0 1h18M0 6h18M0 11h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -417,6 +419,8 @@ export default function Navbar() {
         }
         @media (max-width: 640px) {
           .nav-item-desktop { display: none !important; }
+          .navbar-book-tickets { display: none !important; }
+          [data-navbar-signin] { display: none !important; }
         }
         @keyframes bookBtnPulse {
           0%, 100% { box-shadow: 0 0 14px rgba(212,175,55,0.35), 0 2px 8px rgba(0,0,0,0.3); }

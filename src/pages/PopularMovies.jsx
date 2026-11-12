@@ -69,7 +69,7 @@ export default function PopularMovies() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)' }}>
       <Navbar />
-      <section style={{ padding: '4rem 0 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <section style={{ padding: '4rem 0 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'linear-gradient(135deg, #060912 0%, #0a0f1a 50%, #0d1420 100%)' }}>
         <div className="vc-container">
           <span className="vc-section-label">TMDB Charts</span>
           <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900, marginBottom: '0.5rem' }}>
@@ -92,7 +92,7 @@ export default function PopularMovies() {
             </div>
           ) : (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
+              <div className="vc-film-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem', marginBottom: '2.5rem' }}>
                 {movies.map(movie => <PosterCard key={movie.id} movie={movie} />)}
               </div>
               {/* Pagination */}
