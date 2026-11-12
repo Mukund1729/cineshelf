@@ -531,6 +531,15 @@ body, html {
     padding-left: 1rem;
   }
 
+  .notification-panel {
+    position: fixed !important;
+    top: 68px !important;
+    right: 12px !important;
+    left: 12px;
+    width: auto !important;
+    max-height: calc(100dvh - 84px) !important;
+  }
+
   .vc-home-hero {
     min-height: auto !important;
   }

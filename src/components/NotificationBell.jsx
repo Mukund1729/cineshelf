@@ -121,6 +121,7 @@ export default function NotificationBell() {
 
       {open && (
         <section
+          className="notification-panel"
           aria-label="Notifications"
           style={{
             position: 'absolute',

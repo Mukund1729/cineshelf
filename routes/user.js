@@ -8,6 +8,7 @@ import {
   getPreferences,
   updatePreferences,
   uploadAvatar,
+  getAvatar,
   getFriends,
   searchUsers,
   getPublicProfile,
@@ -21,8 +22,9 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) cb(null, true);
-    else cb(new Error('Only image files are allowed'), false);
+    const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+    if (allowedTypes.has(file.mimetype)) cb(null, true);
+    else cb(new Error('Only JPEG, PNG, WebP, or GIF images are allowed'), false);
   },
 });
 
@@ -44,6 +46,7 @@ router.put('/profile', auth, updateProfile);
 router.put('/password', auth, changePassword);
 router.get('/preferences', auth, getPreferences);
 router.put('/preferences', auth, updatePreferences);
+router.get('/avatar/:userId', getAvatar);
 router.post('/avatar', auth, upload.single('avatar'), handleMulterError, uploadAvatar);
 
 // Friends / Sakha routes

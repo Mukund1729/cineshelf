@@ -1,11 +1,6 @@
 import User from '../models/User.js';
+import UserAvatar from '../models/UserAvatar.js';
 import bcrypt from 'bcryptjs';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Get current user profile — returns consistent { success, data: user } format
 export const getProfile = async (req, res) => {
@@ -101,15 +96,17 @@ export const uploadAvatar = async (req, res) => {
     let avatarUrl = req.body.avatarUrl;
 
     if (req.file) {
-      const uploadsDir = path.join(__dirname, '..', 'uploads', 'avatars');
-      if (!fs.existsSync(uploadsDir)) {
-        fs.mkdirSync(uploadsDir, { recursive: true });
-      }
-      const fileExtension = path.extname(req.file.originalname);
-      const fileName = `avatar_${req.user.id}_${Date.now()}${fileExtension}`;
-      const filePath = path.join(uploadsDir, fileName);
-      fs.writeFileSync(filePath, req.file.buffer);
-      avatarUrl = `/uploads/avatars/${fileName}`;
+      const storedAvatar = await UserAvatar.findOneAndUpdate(
+        { userId: req.user.id },
+        {
+          $set: {
+            data: req.file.buffer,
+            contentType: req.file.mimetype,
+          },
+        },
+        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+      );
+      avatarUrl = `/api/user/avatar/${req.user.id}?v=${storedAvatar.updatedAt.getTime()}`;
     }
 
     if (!avatarUrl) {
@@ -126,7 +123,30 @@ export const uploadAvatar = async (req, res) => {
     res.json({ success: true, data: { user, avatarUrl } });
   } catch (err) {
     console.error('Avatar upload error:', err);
-    res.status(500).json({ success: false, error: 'Failed to upload avatar', details: err.message });
+    res.status(500).json({ success: false, error: 'Failed to upload avatar' });
+  }
+};
+
+export const getAvatar = async (req, res) => {
+  try {
+    if (!/^[a-f\d]{24}$/i.test(req.params.userId)) {
+      return res.status(400).json({ success: false, error: 'Invalid user ID' });
+    }
+
+    const avatar = await UserAvatar.findOne({ userId: req.params.userId })
+      .select('data contentType updatedAt');
+    if (!avatar) return res.status(404).json({ success: false, error: 'Avatar not found' });
+
+    res.set({
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Last-Modified': avatar.updatedAt.toUTCString(),
+      'X-Content-Type-Options': 'nosniff',
+    });
+    res.type(avatar.contentType);
+    res.send(avatar.data);
+  } catch (err) {
+    console.error('Avatar retrieval error:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve avatar' });
   }
 };
 
