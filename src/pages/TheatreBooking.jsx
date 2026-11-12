@@ -141,17 +141,90 @@ const THEATRES = [
 
 const FORMATS = ['2D', 'IMAX', '4DX', 'Dolby Atmos'];
 const SLOT_TIMES = ['10:00 AM', '1:15 PM', '4:30 PM', '7:45 PM', '10:30 PM'];
+const INDIAN_CITIES = [
+  'Agartala', 'Agra', 'Ahmedabad', 'Ajmer', 'Aligarh', 'Allahabad', 'Amritsar',
+  'Aurangabad', 'Bengaluru', 'Bhopal', 'Bhubaneswar', 'Chandigarh', 'Chennai',
+  'Coimbatore', 'Cuttack', 'Dehradun', 'Delhi', 'Dhanbad', 'Durgapur',
+  'Faridabad', 'Ghaziabad', 'Goa', 'Gorakhpur', 'Gurugram', 'Guwahati',
+  'Gwalior', 'Hisar', 'Howrah', 'Hyderabad', 'Indore', 'Jabalpur', 'Jaipur',
+  'Jalandhar', 'Jammu', 'Jamshedpur', 'Jhansi', 'Jodhpur', 'Kanpur',
+  'Kochi', 'Kolhapur', 'Kolkata', 'Kota', 'Kozhikode', 'Lucknow', 'Ludhiana',
+  'Madurai', 'Mangaluru', 'Meerut', 'Mumbai', 'Mysuru', 'Nagpur', 'Nashik',
+  'Navi Mumbai', 'Noida', 'Patna', 'Puducherry', 'Pune', 'Raipur', 'Rajkot',
+  'Ranchi', 'Rourkela', 'Salem', 'Siliguri', 'Surat', 'Thane', 'Thiruvananthapuram',
+  'Tiruchirappalli', 'Tiruppur', 'Udaipur', 'Ujjain', 'Vadodara', 'Varanasi',
+  'Vijayawada', 'Visakhapatnam',
+];
+
 const BOOKMYSHOW_CITY_SLUGS = {
-  Mumbai: 'mumbai',
-  Delhi: 'delhi-ncr',
-  Chennai: 'chennai',
+  Ahmedabad: 'ahmedabad',
   Bengaluru: 'bengaluru',
+  Bangalore: 'bengaluru',
+  Bhopal: 'bhopal',
+  Bhubaneswar: 'bhubaneswar',
+  Chandigarh: 'chandigarh',
+  Chennai: 'chennai',
+  Coimbatore: 'coimbatore',
+  Delhi: 'delhi-ncr',
+  Faridabad: 'delhi-ncr',
+  Ghaziabad: 'delhi-ncr',
+  Gurugram: 'delhi-ncr',
+  Gurgaon: 'delhi-ncr',
+  Hyderabad: 'hyderabad',
+  Indore: 'indore',
+  Jaipur: 'jaipur',
+  Kochi: 'kochi',
+  Kolkata: 'kolkata',
+  Lucknow: 'lucknow',
+  Ludhiana: 'ludhiana',
+  Mumbai: 'mumbai',
+  Mysuru: 'mysuru',
+  Nagpur: 'nagpur',
+  NaviMumbai: 'mumbai',
+  Noida: 'delhi-ncr',
+  Patna: 'patna',
+  Pune: 'pune',
+  Raipur: 'raipur',
+  Ranchi: 'ranchi',
+  Surat: 'surat',
+  Thane: 'mumbai',
+  Vadodara: 'vadodara',
+  Varanasi: 'varanasi',
+  Vijayawada: 'vijayawada',
+  Visakhapatnam: 'visakhapatnam',
   Hisar: 'hisar',
 };
 
 function getBookMyShowUrl(city) {
-  const citySlug = BOOKMYSHOW_CITY_SLUGS[city];
-  return citySlug ? `https://in.bookmyshow.com/explore/movies-${citySlug}` : 'https://in.bookmyshow.com/explore/movies';
+  const cityKey = city.replace(/[\s-]/g, '').toLowerCase();
+  const cityEntry = Object.entries(BOOKMYSHOW_CITY_SLUGS)
+    .find(([name]) => name.replace(/[\s-]/g, '').toLowerCase() === cityKey);
+  const citySlug = cityEntry?.[1] || city.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return citySlug
+    ? `https://in.bookmyshow.com/explore/movies-${citySlug}`
+    : 'https://in.bookmyshow.com/explore/movies';
+}
+
+async function fetchWithTimeout(url, options, timeoutMs = 9000) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  const parentSignal = options.signal;
+  const abortFromParent = () => controller.abort();
+
+  if (parentSignal?.aborted) controller.abort();
+  else parentSignal?.addEventListener('abort', abortFromParent, { once: true });
+
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted && !parentSignal?.aborted) {
+      throw new Error('The public cinema map timed out. Please try again or use the BookMyShow link.');
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+    parentSignal?.removeEventListener('abort', abortFromParent);
+  }
 }
 
 async function findMappedCinemas(city, signal) {
@@ -159,16 +232,24 @@ async function findMappedCinemas(city, signal) {
   geocodeUrl.search = new URLSearchParams({
     q: `${city}, India`,
     format: 'jsonv2',
-    limit: '1',
+    limit: '5',
     countrycodes: 'in',
+    addressdetails: '1',
   });
-  const geocodeResponse = await fetch(geocodeUrl, { signal, headers: { 'Accept-Language': 'en' } });
-  if (!geocodeResponse.ok) throw new Error('Could not locate that city.');
+  const geocodeResponse = await fetchWithTimeout(geocodeUrl, {
+    signal,
+    headers: { 'Accept-Language': 'en' },
+  });
+  if (!geocodeResponse.ok) throw new Error(`Could not locate ${city}. Try another spelling or use the BookMyShow link.`);
   const places = await geocodeResponse.json();
-  if (!places.length) throw new Error('City not found. Try an Indian city name.');
+  if (!places.length) throw new Error(`Could not find ${city} on the public map. Try another spelling or use BookMyShow.`);
 
-  const { lat, lon, display_name: displayName } = places[0];
-  const query = `[out:json][timeout:30];nwr(around:35000,${lat},${lon})["amenity"="cinema"];out center tags;`;
+  const place = places.find(item =>
+    ['city', 'town', 'municipality', 'administrative'].includes(item.type)
+    || ['city', 'town'].includes(item.addresstype)
+  ) || places[0];
+  const { lat, lon, display_name: displayName } = place;
+  const query = `[out:json][timeout:15];nwr(around:50000,${lat},${lon})["amenity"="cinema"];out center tags;`;
   const endpoints = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
@@ -177,12 +258,12 @@ async function findMappedCinemas(city, signal) {
 
   for (const endpoint of endpoints) {
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetchWithTimeout(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
         body: new URLSearchParams({ data: query }),
         signal,
-      });
+      }, 9000);
       if (!response.ok) throw new Error(`The public theatre map returned ${response.status}.`);
       const data = await response.json();
       const found = new Map();
@@ -208,7 +289,7 @@ async function findMappedCinemas(city, signal) {
     }
   }
 
-  throw lastError || new Error('Could not load mapped theatres right now.');
+  throw new Error(lastError?.message || 'Could not load mapped theatres right now. Please try again or use the BookMyShow link.');
 }
 
 function generateShowtimes(movieId, theatreIdx) {
@@ -282,6 +363,7 @@ export default function TheatreBooking() {
   // Theatre & showtime selection
   const [city, setCity] = useState(THEATRES[0].city);
   const [cityInput, setCityInput] = useState(THEATRES[0].city);
+  const [cityLookupAttempt, setCityLookupAttempt] = useState(0);
   const [mappedTheatres, setMappedTheatres] = useState([]);
   const [theatreLookupLoading, setTheatreLookupLoading] = useState(false);
   const [theatreLookupError, setTheatreLookupError] = useState('');
@@ -340,6 +422,12 @@ export default function TheatreBooking() {
   useEffect(() => {
     if (!city.trim()) return undefined;
     const controller = new AbortController();
+    let active = true;
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+    }, 18000);
     setTheatreLookupLoading(true);
     setTheatreLookupError('');
     setMappedTheatres([]);
@@ -349,20 +437,38 @@ export default function TheatreBooking() {
 
     findMappedCinemas(city.trim(), controller.signal)
       .then(items => {
+        if (!active) return;
         setMappedTheatres(items);
         if (!items.length) setTheatreLookupError(`No named cinemas are mapped near ${city}.`);
       })
       .catch(error => {
-        if (error.name !== 'AbortError') {
+        if (!active) return;
+        if (timedOut) {
+          setTheatreLookupError('The cinema search took too long. Try again or open the BookMyShow city listings.');
+        } else if (error.name !== 'AbortError') {
           setTheatreLookupError(error.message || 'Could not load cinemas from OpenStreetMap.');
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setTheatreLookupLoading(false);
+        if (active) setTheatreLookupLoading(false);
       });
 
-    return () => controller.abort();
-  }, [city]);
+    return () => {
+      active = false;
+      clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [city, cityLookupAttempt]);
+
+  const searchCityTheatres = () => {
+    const nextCity = cityInput.trim();
+    if (!nextCity) return;
+    if (nextCity.toLowerCase() === city.trim().toLowerCase()) {
+      setCityLookupAttempt(attempt => attempt + 1);
+    } else {
+      setCity(nextCity);
+    }
+  };
 
   useEffect(() => {
     selectedSeatsRef.current = [];
@@ -1291,19 +1397,24 @@ export default function TheatreBooking() {
                 value={cityInput}
                 onChange={e => setCityInput(e.target.value)}
                 onKeyDown={e => {
-                  if (e.key === 'Enter' && cityInput.trim()) setCity(cityInput.trim());
+                  if (e.key === 'Enter') searchCityTheatres();
                 }}
+                list="indian-cinema-cities"
                 placeholder="Enter a city"
+                aria-label="Search cinemas by Indian city"
                 style={{
                   background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
                   borderRadius: 8, color: '#f5f0e8', fontFamily: 'Outfit, sans-serif',
                   fontSize: '0.82rem', padding: '0.4rem 0.8rem',
                 }}
               />
+              <datalist id="indian-cinema-cities">
+                {INDIAN_CITIES.map(item => <option key={item} value={item} />)}
+              </datalist>
             </label>
             <button
-              onClick={() => cityInput.trim() && setCity(cityInput.trim())}
-              disabled={theatreLookupLoading || !cityInput.trim()}
+              onClick={searchCityTheatres}
+              disabled={!cityInput.trim()}
               style={{ ...primaryBtnStyle, padding: '0.55rem 0.9rem', fontSize: '0.75rem', opacity: theatreLookupLoading ? 0.6 : 1 }}
             >
               {theatreLookupLoading ? 'Searching…' : 'Find theatres'}
@@ -1332,7 +1443,7 @@ export default function TheatreBooking() {
               )}
             </select>
             <span role="status" style={{ fontFamily: 'Outfit, sans-serif', color: 'rgba(245,240,232,0.65)', fontSize: '0.72rem' }}>
-              {mappedTheatres.length ? `${mappedTheatres.length} mapped cinemas within 35 km` : `${cityTheatres.length} sample cinemas`}
+              {mappedTheatres.length ? `${mappedTheatres.length} mapped cinemas within 50 km` : `${cityTheatres.length} sample cinemas`}
             </span>
             {mappedTheatres.length > 0 && (
               <a
