@@ -74,8 +74,22 @@ export default function MyTickets() {
           </Link>
         </div>
         <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.45)', marginBottom: '2rem' }}>
-          {tickets.length} ticket{tickets.length !== 1 ? 's' : ''} booked
+          {tickets.length} demo ticket{tickets.length !== 1 ? 's' : ''} saved
         </p>
+
+        <div style={{
+          padding: '0.85rem 1rem',
+          marginBottom: '1.5rem',
+          background: 'rgba(212,175,55,0.08)',
+          border: '1px solid rgba(212,175,55,0.25)',
+          borderRadius: 10,
+          color: 'rgba(245,240,232,0.78)',
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: '0.8rem',
+          lineHeight: 1.5,
+        }}>
+          Tickets created in CineShelf are demo previews saved only in this browser. They are not real bookings, payments, or valid entry passes.
+        </div>
 
         {tickets.length === 0 ? (
           <div style={{
@@ -88,7 +102,7 @@ export default function MyTickets() {
               No tickets yet
             </div>
             <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.45)', marginBottom: '1.5rem' }}>
-              Book your first movie and your ticket will appear here.
+              Try the cinema demo or find real showtimes on BookMyShow.
             </p>
             <Link to="/panorama" style={{
               display: 'inline-flex', padding: '0.6rem 1.5rem',
@@ -133,7 +147,7 @@ export default function MyTickets() {
                       {ticket.movieTitle}
                     </div>
                     <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'rgba(245,240,232,0.55)', lineHeight: 1.5 }}>
-                      {ticket.theatre} · {ticket.time} · {ticket.format}<br />
+                      {ticket.theatre} · {ticket.city} · {ticket.time} · {ticket.format}<br />
                       Seats: {ticket.seats.join(', ')}
                     </div>
                   </div>
@@ -171,7 +185,7 @@ export default function MyTickets() {
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                         <QRCode ticketId={ticket.id} size={110} />
                         <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.62rem', color: 'rgba(245,240,232,0.35)', letterSpacing: '0.06em' }}>
-                          SCAN AT ENTRY
+                          DEMO ONLY — NOT VALID FOR ENTRY
                         </div>
                       </div>
 
@@ -244,4 +258,3 @@ function Detail({ label, value, gold, mono }) {
     </div>
   );
 }
-

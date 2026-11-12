@@ -141,6 +141,18 @@ const THEATRES = [
 
 const FORMATS = ['2D', 'IMAX', '4DX', 'Dolby Atmos'];
 const SLOT_TIMES = ['10:00 AM', '1:15 PM', '4:30 PM', '7:45 PM', '10:30 PM'];
+const BOOKMYSHOW_CITY_SLUGS = {
+  Mumbai: 'mumbai',
+  Delhi: 'delhi-ncr',
+  Chennai: 'chennai',
+  Bengaluru: 'bengaluru',
+  Hisar: 'hisar',
+};
+
+function getBookMyShowUrl(city) {
+  const citySlug = BOOKMYSHOW_CITY_SLUGS[city];
+  return citySlug ? `https://in.bookmyshow.com/explore/movies-${citySlug}` : 'https://in.bookmyshow.com/explore/movies';
+}
 
 function generateShowtimes(movieId, theatreIdx) {
   const rng = seededRand(hashStr(`${movieId}-${theatreIdx}`));
@@ -211,8 +223,13 @@ export default function TheatreBooking() {
   const [loading, setLoading]   = useState(true);
 
   // Theatre & showtime selection
+  const [city, setCity] = useState(THEATRES[0].city);
   const [theatreIdx, setTheatreIdx] = useState(0);
-  const HALL = buildHall(THEATRES[theatreIdx]);
+  const theatre = THEATRES[theatreIdx] || THEATRES[0];
+  const HALL = buildHall(theatre);
+  const cityTheatres = THEATRES
+    .map((item, index) => ({ ...item, index }))
+    .filter(item => item.city === city);
   const PRESETS = buildCameraPresets(HALL);
   const [showtimes, setShowtimes]   = useState([]);
   const [showIdx, setShowIdx]       = useState(0);
@@ -230,8 +247,6 @@ export default function TheatreBooking() {
   const [cart, setCart] = useState({});   // snackId → qty
   const [payLoading, setPayLoading] = useState(false);
   const [ticket, setTicket] = useState(null);
-  const [selectedPayment, setSelectedPayment] = useState('upi');
-  const [upiId, setUpiId] = useState('');
 
   // Refs for 3D interaction
   const selectedSeatsRef = useRef([]);
@@ -990,15 +1005,15 @@ export default function TheatreBooking() {
     setPayLoading(true);
     setTimeout(() => {
       const ticketId = `CS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,6).toUpperCase()}`;
-      const theatre  = THEATRES[theatreIdx];
+      const selectedTheatre  = THEATRES[theatreIdx];
       const show     = showtimes[showIdx];
       const newTicket = {
         id: ticketId,
         movieId,
         movieTitle: movie?.title || 'Movie',
         moviePoster: movie?.poster_path ? apiUrl(`/api/tmdb/image/w342${movie.poster_path}`) : null,
-        theatre: theatre.name,
-        city: theatre.city,
+        theatre: selectedTheatre.name,
+        city: selectedTheatre.city,
         time: show?.time,
         format: show?.format,
         seats: selectedSeats,
@@ -1008,6 +1023,7 @@ export default function TheatreBooking() {
         }).filter(Boolean),
         total: grandTotal,
         bookedAt: new Date().toISOString(),
+        demo: true,
       };
       // Save to localStorage
       const existing = JSON.parse(localStorage.getItem('cineshelf_tickets') || '[]');
@@ -1027,8 +1043,7 @@ export default function TheatreBooking() {
   });
 
   const CAT_LABEL = { standard: 'Standard', premium: 'Premium', recliner: 'Recliner' };
-  const STEP_LABELS = ['', 'Pick Seats', 'Snacks', 'Review', 'Payment', 'Your Ticket'];
-  const theatre = THEATRES[theatreIdx];
+  const STEP_LABELS = ['', 'Pick Seats (Demo)', 'Snacks', 'Review', 'Demo Checkout', 'Demo Ticket'];
   const show    = showtimes[showIdx];
 
   // ── Suggest best seats ─────────────────────────────────────────────────────
@@ -1183,7 +1198,29 @@ export default function TheatreBooking() {
             borderBottom: '1px solid rgba(255,255,255,0.05)',
             display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center',
           }}>
-            {/* Theatre select */}
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem', color: 'rgba(245,240,232,0.6)' }}>
+              City
+              <select
+                value={city}
+                onChange={e => {
+                  const nextCity = e.target.value;
+                  setCity(nextCity);
+                  const firstTheatre = THEATRES.findIndex(item => item.city === nextCity);
+                  if (firstTheatre >= 0) setTheatreIdx(firstTheatre);
+                }}
+                style={{
+                  background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: 8, color: '#f5f0e8', fontFamily: 'Outfit, sans-serif',
+                  fontSize: '0.82rem', padding: '0.4rem 0.8rem', cursor: 'pointer',
+                }}
+              >
+                {[...new Set(THEATRES.map(item => item.city))].map(item => (
+                  <option key={item} value={item} style={{ background: '#0a0f1a' }}>{item}</option>
+                ))}
+              </select>
+            </label>
+
+            {/* Demo theatre selector */}
             <select
               value={theatreIdx}
               onChange={e => setTheatreIdx(Number(e.target.value))}
@@ -1193,9 +1230,9 @@ export default function TheatreBooking() {
                 fontSize: '0.82rem', padding: '0.4rem 0.8rem', cursor: 'pointer',
               }}
             >
-              {THEATRES.map((t, i) => (
-                <option key={i} value={i} style={{ background: '#0a0f1a' }}>
-                  {t.name} · {t.city} · {t.layout.rowCount} rows · {getSeatCount(t)} seats · {t.dist} km
+              {cityTheatres.map(t => (
+                <option key={t.index} value={t.index} style={{ background: '#0a0f1a' }}>
+                  {t.name} · demo layout · {t.dist} km (sample)
                 </option>
               ))}
             </select>
@@ -1215,6 +1252,25 @@ export default function TheatreBooking() {
                 </button>
               ))}
             </div>
+            <a
+              href={getBookMyShowUrl(city)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="vc-btn vc-btn-primary"
+              style={{ padding: '0.45rem 0.85rem', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+            >
+              Find live shows on BookMyShow ↗
+            </a>
+          </div>
+          <div style={{
+            padding: '0.55rem 1.5rem',
+            background: 'rgba(212,175,55,0.08)',
+            borderBottom: '1px solid rgba(212,175,55,0.16)',
+            color: 'rgba(245,240,232,0.72)',
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: '0.75rem',
+          }}>
+            Demo only: theatre names, distances, layouts, showtimes, seat availability and prices below are sample data, not verified or live BookMyShow listings. Use the link above for current listings and real bookings.
           </div>
 
           {/* 3D canvas + controls */}
@@ -1471,72 +1527,35 @@ export default function TheatreBooking() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1.5rem' }}>
             <button onClick={() => setStep(2)} style={backBtnStyle}>← Back</button>
-            <button onClick={() => setStep(4)} style={primaryBtnStyle}>Proceed to Pay →</button>
+            <button onClick={() => setStep(4)} style={primaryBtnStyle}>Continue to Demo Checkout →</button>
           </div>
         </div>
       )}
 
       {/* ═══════════════════════════════════════════════════════════════
-          STEP 4 — Payment
+          STEP 4 — Demo checkout
       ═══════════════════════════════════════════════════════════════ */}
       {step === 4 && (
         <div style={{ maxWidth: 480, margin: '0 auto', padding: '1.5rem 1rem' }}>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.6rem', marginBottom: '0.5rem' }}>💳 Payment</h2>
+          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.6rem', marginBottom: '0.5rem' }}>🎟 Demo checkout</h2>
           <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.5)', marginBottom: '1.5rem' }}>
-            Demo payment — no real charges
+            No live ticket inventory or payment provider is connected. This only creates a sample ticket in this browser.
           </p>
 
-          {/* Payment options */}
-          {[
-            { id: 'upi', label: 'UPI', desc: 'Google Pay · PhonePe · Paytm', icon: '📱' },
-            { id: 'card', label: 'Credit / Debit Card', desc: 'Visa · Mastercard · Rupay', icon: '💳' },
-            { id: 'nb', label: 'Net Banking', desc: 'All major banks supported', icon: '🏦' },
-          ].map(opt => (
-            <div key={opt.id}>
-              <div
-                onClick={() => setSelectedPayment(opt.id)}
-                style={{
-                  background: selectedPayment === opt.id ? 'rgba(212,175,55,0.08)' : 'rgba(255,255,255,0.04)',
-                  border: selectedPayment === opt.id ? '1px solid rgba(212,175,55,0.5)' : '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 10, padding: '0.9rem 1rem', marginBottom: '0.6rem',
-                  display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer',
-                  transition: 'border-color 0.2s, background 0.2s',
-                }}
-              >
-                <div style={{ fontSize: '1.4rem' }}>{opt.icon}</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '0.88rem' }}>{opt.label}</div>
-                  <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'rgba(245,240,232,0.5)' }}>{opt.desc}</div>
-                </div>
-                <div style={{
-                  width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
-                  border: selectedPayment === opt.id ? '2px solid #d4af37' : '2px solid rgba(255,255,255,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {selectedPayment === opt.id && (
-                    <div style={{ width: 9, height: 9, borderRadius: '50%', background: '#d4af37' }} />
-                  )}
-                </div>
-              </div>
-              {opt.id === 'upi' && selectedPayment === 'upi' && (
-                <div style={{ marginTop: '-0.3rem', marginBottom: '0.6rem', paddingLeft: '0.2rem' }}>
-                  <input
-                    placeholder="Enter UPI ID (e.g. name@paytm)"
-                    value={upiId}
-                    onChange={e => setUpiId(e.target.value)}
-                    style={{
-                      width: '100%', boxSizing: 'border-box',
-                      background: 'rgba(255,255,255,0.06)',
-                      border: '1px solid rgba(212,175,55,0.3)',
-                      borderRadius: 8, padding: '0.5rem 0.9rem',
-                      color: '#f5f0e8', fontFamily: 'Outfit, sans-serif', fontSize: '0.84rem',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              )}
-            </div>
-          ))}
+          <div style={{
+            padding: '1rem',
+            background: 'rgba(212,175,55,0.08)',
+            border: '1px solid rgba(212,175,55,0.25)',
+            borderRadius: 10,
+            fontFamily: 'Outfit, sans-serif',
+            fontSize: '0.85rem',
+            lineHeight: 1.6,
+          }}>
+            For real showtimes, seat availability and booking, open the official BookMyShow listings for {city}.
+            <a href={getBookMyShowUrl(city)} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '0.5rem', color: '#d4af37', fontWeight: 700 }}>
+              Search {city} movies on BookMyShow ↗
+            </a>
+          </div>
 
           <div style={{
             margin: '1.5rem 0', padding: '0.9rem 1rem',
@@ -1544,7 +1563,7 @@ export default function TheatreBooking() {
             display: 'flex', justifyContent: 'space-between',
             fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: '1rem',
           }}>
-            <span>Total to Pay</span>
+            <span>Sample total (not charged)</span>
             <span style={{ color: '#d4af37' }}>₹{grandTotal}</span>
           </div>
 
@@ -1561,8 +1580,8 @@ export default function TheatreBooking() {
               }}
             >
               {payLoading ? (
-                <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>↻</span> Processing…</>
-              ) : '✓ Pay Now'}
+                <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>↻</span> Creating demo…</>
+              ) : 'Create Demo Ticket'}
             </button>
           </div>
 
@@ -1577,10 +1596,10 @@ export default function TheatreBooking() {
         <div style={{ maxWidth: 480, margin: '0 auto', padding: '1.5rem 1rem', textAlign: 'center' }}>
           <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🎉</div>
           <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.8rem', marginBottom: '0.3rem' }}>
-            Booking Confirmed!
+            Demo ticket created
           </h2>
-          <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.5)', marginBottom: '2rem' }}>
-            Ticket ID: <strong style={{ color: '#d4af37' }}>{ticket.id}</strong>
+          <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.72)', marginBottom: '2rem' }}>
+            This is a sample only—not a real booking or entry ticket. Ticket ID: <strong style={{ color: '#d4af37' }}>{ticket.id}</strong>
           </p>
 
           {/* Ticket card */}
@@ -1621,7 +1640,7 @@ export default function TheatreBooking() {
               <QRCode ticketId={ticket.id} size={130} />
             </div>
             <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'rgba(245,240,232,0.4)', letterSpacing: '0.08em' }}>
-              SCAN AT ENTRY · {ticket.id}
+              DEMO QR — NOT VALID FOR ENTRY · {ticket.id}
             </div>
           </div>
 

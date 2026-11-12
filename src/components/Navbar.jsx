@@ -207,7 +207,7 @@ export default function Navbar() {
           className="book-tickets-btn navbar-book-tickets"
         >
           <TicketIcon />
-          Book Now
+          Explore Cinema
         </Link>
 
         {/* Right side: user or auth */}
