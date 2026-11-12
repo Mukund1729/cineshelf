@@ -285,7 +285,7 @@ export default function Navbar() {
                     />
                   )}
                   </div>
-                <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.username || user.name}
                 </span>
                 <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ opacity: 0.5 }}>
@@ -479,6 +479,12 @@ export default function Navbar() {
           .nav-item-desktop { display: none !important; }
           .navbar-book-tickets { display: none !important; }
           [data-navbar-signin] { display: none !important; }
+        }
+        @media (max-width: 480px) {
+          .vc-container {
+            padding-left: 0.75rem !important;
+            padding-right: 0.75rem !important;
+          }
         }
         @keyframes bookBtnPulse {
           0%, 100% { box-shadow: 0 0 14px rgba(212,175,55,0.35), 0 2px 8px rgba(0,0,0,0.3); }

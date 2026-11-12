@@ -625,6 +625,15 @@ body, html {
     padding-right: 1rem;
     padding-left: 1rem;
   }
+
+  /* Prevent horizontal scroll on mobile */
+  body, html {
+    overflow-x: hidden;
+  }
+
+  * {
+    max-width: 100%;
+  }
 }
 
 /* ── LEGACY COMPAT ────────────────────────── */
