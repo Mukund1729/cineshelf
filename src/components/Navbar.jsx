@@ -143,6 +143,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link
           to="/"
+          className="navbar-logo"
           style={{
             fontFamily: 'Playfair Display, serif',
             fontWeight: 700,
@@ -154,7 +155,8 @@ export default function Navbar() {
             flexShrink: 0,
           }}
         >
-          visual<span style={{ color: 'var(--vc-gold)', margin: '0 1px' }}>.</span>cineaste
+          <span className="logo-full">visual<span style={{ color: 'var(--vc-gold)', margin: '0 1px' }}>.</span>cineaste</span>
+          <span className="logo-short" style={{ display: 'none' }}>VC</span>
         </Link>
 
         {/* Desktop nav */}
@@ -482,9 +484,13 @@ export default function Navbar() {
         @media (max-width: 900px) {
           .nav-item-desktop { display: none !important; }
           .navbar-hamburger { display: flex !important; }
+          .logo-full { display: none !important; }
+          .logo-short { display: inline !important; }
         }
         @media (min-width: 901px) {
           .navbar-hamburger { display: none !important; }
+          .logo-full { display: inline !important; }
+          .logo-short { display: none !important; }
         }
         @media (max-width: 640px) {
           .nav-item-desktop { display: none !important; }
