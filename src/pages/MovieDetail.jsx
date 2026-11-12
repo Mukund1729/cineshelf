@@ -197,6 +197,10 @@ const MovieDetail = () => {
       setDiaryNotice('Rating/review saved to your profile and Movie Diary.');
       setDiaryError('');
     } catch (err) {
+      const savedReview = err.response?.data?.data;
+      if (savedReview?._id) {
+        setReviews(current => [savedReview, ...current.filter(review => review._id !== savedReview._id)]);
+      }
       setReviewError(err.response?.data?.error || err.message || 'Failed to submit review.');
     } finally {
       setReviewLoading(false);

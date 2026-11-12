@@ -40,7 +40,7 @@ export const getReviewsByMovie = async (req, res) => {
       return res.status(400).json({ success: false, error: 'A valid movie ID is required.' });
     }
 
-    const reviews = await Review.find({ tmdbId })
+    const reviews = await Review.find({ tmdbId, mediaType: { $ne: 'tv' } })
       .populate('user', 'username name avatar')
       .sort({ createdAt: -1 });
     res.json({ success: true, data: reviews, count: reviews.length });
