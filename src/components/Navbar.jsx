@@ -285,7 +285,7 @@ export default function Navbar() {
                     />
                   )}
                   </div>
-                <span style={{ maxWidth: '100px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                <span className="navbar-username" style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.username || user.name}
                 </span>
                 <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ opacity: 0.5 }}>
@@ -355,7 +355,9 @@ export default function Navbar() {
           <button
             onClick={() => setMenuOpen(v => !v)}
             style={{
-              display: 'none',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               background: 'none',
               border: '1px solid rgba(255,255,255,0.1)',
               borderRadius: '6px',
@@ -367,9 +369,15 @@ export default function Navbar() {
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={menuOpen}
           >
-            <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
-              <path d="M0 1h18M0 6h18M0 11h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
+            {menuOpen ? (
+              <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
+                <path d="M1 1l16 10M17 1L1 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            ) : (
+              <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
+                <path d="M0 1h18M0 6h18M0 11h18" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            )}
           </button>
         </div>
       </div>
@@ -479,6 +487,7 @@ export default function Navbar() {
           .nav-item-desktop { display: none !important; }
           .navbar-book-tickets { display: none !important; }
           [data-navbar-signin] { display: none !important; }
+          .navbar-username { max-width: 60px !important; }
         }
         @media (max-width: 480px) {
           .vc-container {
