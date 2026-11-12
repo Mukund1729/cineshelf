@@ -213,7 +213,7 @@ export default function Navbar() {
 
         {/* Book Tickets CTA */}
         <Link
-          to="/popular-movies"
+          to="/panorama"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -238,7 +238,7 @@ export default function Navbar() {
           className="book-tickets-btn navbar-book-tickets"
         >
           <TicketIcon />
-          Explore Movies
+          Book Tickets
         </Link>
 
         {/* Right side: user or auth */}
