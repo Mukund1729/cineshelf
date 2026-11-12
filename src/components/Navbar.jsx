@@ -481,7 +481,10 @@ export default function Navbar() {
       <style>{`
         @media (max-width: 900px) {
           .nav-item-desktop { display: none !important; }
-          .navbar-hamburger { display: block !important; }
+          .navbar-hamburger { display: flex !important; }
+        }
+        @media (min-width: 901px) {
+          .navbar-hamburger { display: none !important; }
         }
         @media (max-width: 640px) {
           .nav-item-desktop { display: none !important; }
