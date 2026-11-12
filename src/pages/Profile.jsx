@@ -177,7 +177,12 @@ const Profile = () => {
       const profileRes = await axios.put('/api/user/profile', updateData, { headers, withCredentials: true });
 
       const profileData = profileRes.data?.data || profileRes.data;
-      setProfile(profileData?.user || profileData);
+      const savedProfile = profileData?.user || profileData;
+      setProfile(savedProfile);
+      const cachedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const updatedUser = { ...cachedUser, ...savedProfile };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      window.dispatchEvent(new CustomEvent('profile-updated', { detail: updatedUser }));
       setMessage('Profile updated successfully!');
       setEditing(false);
       setAvatarFile(null);

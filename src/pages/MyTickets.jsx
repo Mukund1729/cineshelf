@@ -64,7 +64,7 @@ export default function MyTickets() {
           <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '2rem', margin: 0 }}>
             🎟 My Tickets
           </h1>
-          <Link to="/panorama" style={{
+          <Link to="/popular-movies" style={{
             padding: '0.45rem 1.1rem',
             background: 'linear-gradient(135deg,#d4af37,#f5cc50)',
             borderRadius: 8, fontFamily: 'Outfit, sans-serif', fontWeight: 700,
@@ -104,7 +104,7 @@ export default function MyTickets() {
             <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.45)', marginBottom: '1.5rem' }}>
               Try the cinema demo or find real showtimes on BookMyShow.
             </p>
-            <Link to="/panorama" style={{
+            <Link to="/popular-movies" style={{
               display: 'inline-flex', padding: '0.6rem 1.5rem',
               background: 'linear-gradient(135deg,#d4af37,#f5cc50)',
               borderRadius: 8, fontFamily: 'Outfit, sans-serif', fontWeight: 700,

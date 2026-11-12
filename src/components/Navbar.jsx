@@ -6,7 +6,6 @@ import { apiUrl } from '../api/config';
 const NAV_LINKS = [
   { to: '/',               label: 'Home' },
   { to: '/discover',       label: 'Discover' },
-  { to: '/panorama',       label: '3D Cinema' },
   { to: '/cinematic-picks', label: 'Picks' },
   { to: '/trending',       label: 'Trending' },
   { to: '/popular-movies', label: 'Movies' },
@@ -33,7 +32,14 @@ const USER_LINKS = [
 ];
 
 export default function Navbar() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      return null;
+    }
+  });
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -48,10 +54,35 @@ export default function Navbar() {
         headers: { Authorization: `Bearer ${token}` },
         withCredentials: true,
       })
-        .then(res => setUser(res.data?.data || res.data?.user || res.data))
-        .catch(() => { localStorage.removeItem('token'); setUser(null); });
+        .then(res => {
+          const responseData = res.data?.data || res.data?.user || res.data;
+          const nextUser = responseData?.user || responseData;
+          setUser(nextUser);
+          localStorage.setItem('user', JSON.stringify(nextUser));
+        })
+        .catch(err => {
+          if (err.response?.status === 401) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            setUser(null);
+          }
+        });
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    const handleProfileUpdated = event => {
+      const updatedUser = event.detail;
+      if (!updatedUser) return;
+      setUser(updatedUser);
+      setAvatarFailed(false);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+    };
+    window.addEventListener('profile-updated', handleProfileUpdated);
+    return () => window.removeEventListener('profile-updated', handleProfileUpdated);
+  }, []);
+
+  useEffect(() => setAvatarFailed(false), [user?.avatar]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -182,7 +213,7 @@ export default function Navbar() {
 
         {/* Book Tickets CTA */}
         <Link
-          to="/panorama"
+          to="/popular-movies"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -207,7 +238,7 @@ export default function Navbar() {
           className="book-tickets-btn navbar-book-tickets"
         >
           <TicketIcon />
-          Explore Cinema
+          Explore Movies
         </Link>
 
         {/* Right side: user or auth */}
@@ -233,24 +264,22 @@ export default function Navbar() {
                 onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(212,175,55,0.4)'}
                 onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'}
               >
-                {user.avatar ? (
-                  <img
-                    src={user.avatar.startsWith('/') ? apiUrl(user.avatar) : user.avatar}
-                    alt={user.username}
-                    style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }}
-                    onError={e => { e.target.style.display = 'none'; }}
-                  />
-                ) : (
-                  <div style={{
+                <div style={{
                     width: 26, height: 26, borderRadius: '50%',
                     background: 'linear-gradient(135deg, var(--vc-gold) 0%, #b8860b 100%)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '0.7rem', fontWeight: 700, color: '#0a0f1a',
-                    flexShrink: 0,
+                    flexShrink: 0, position: 'relative', overflow: 'hidden',
                   }}>
                     {(user.username || user.name || 'U')[0].toUpperCase()}
+                  {user.avatar && !avatarFailed && (
+                    <img
+                      src={user.avatar.startsWith('/') ? apiUrl(user.avatar) : user.avatar}
+                      alt=""
+                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                      onError={() => setAvatarFailed(true)}
+                    />
                   </div>
-                )}
                 <span style={{ maxWidth: '80px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.username || user.name}
                 </span>

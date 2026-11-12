@@ -65,7 +65,6 @@ const PersonBoxOffice = lazy(() => import('./pages/PersonBoxOffice'));
 const FullFilmography = lazy(() => import('./pages/FullFilmography'));
 const BoxOfficeTabsPage = lazy(() => import('./pages/BoxOfficeTabsPage'));
 const PersonBoxOfficeSearchPage = lazy(() => import('./pages/PersonBoxOfficeSearchPage'));
-const PanoramaHero = lazy(() => import('./pages/PanoramaHero'));
 const TheatreBooking = lazy(() => import('./pages/TheatreBooking'));
 const MyTickets = lazy(() => import('./pages/MyTickets'));
 
@@ -110,7 +109,6 @@ function AppWrapper() {
             <Route path="/discover" element={<Discover />} />
             <Route path="/genre/:genreId/:genreName" element={<GenrePage />} />
             <Route path="/compare" element={<ComparePage />} />
-            <Route path="/panorama" element={<PanoramaHero />} />
             <Route path="/booking/:movieId" element={<TheatreBooking />} />
             <Route path="/my-tickets" element={<MyTickets />} />
 
