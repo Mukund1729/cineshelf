@@ -28,12 +28,16 @@ test('parses source-reported India nett and worldwide amounts without mixing typ
   assert.equal(dailyReports[0].reportDate, '2026-11-12');
   assert.equal(dailyReports[0].dailyCollection, 535_000_000);
   assert.equal(dailyReports[0].cumulativeCollection, 6_181_000_000);
+  assert.equal(dailyReports[0].sourceReportedValue, '₹53.5 Cr');
+  assert.equal(dailyReports[0].sourceReportedCumulativeValue, '₹618.1 Cr');
 
   const netReport = lifetimeReports.find(report => report.collectionType === 'india_nett');
   const worldwideReport = lifetimeReports.find(report => report.collectionType === 'worldwide_gross');
   assert.equal(netReport.amount, 6_181_000_000);
+  assert.equal(netReport.sourceReportedValue, '₹618.1 Cr');
   assert.equal(netReport.territory, 'IN');
   assert.equal(worldwideReport.amount, 10_336_000_000);
+  assert.equal(worldwideReport.sourceReportedValue, '₹1,033.6 Cr');
   assert.equal(worldwideReport.territory, 'WW');
   assert.equal(dailyReports[0].sourceMovieKey, 'ramayana_part_1_2026');
 });

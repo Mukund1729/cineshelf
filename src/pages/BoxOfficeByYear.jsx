@@ -149,7 +149,14 @@ export default function BoxOfficeByYear() {
                   </td>
                   <td style={{ padding: '0.7rem', color: 'var(--vc-slate)' }}>{report.collectionType.replace(/_/g, ' ')}</td>
                   <td style={{ padding: '0.7rem', textAlign: 'center', color: 'var(--vc-slate)' }}>{report.originalLanguage || 'Not reported'}</td>
-                  <td style={{ padding: '0.7rem', textAlign: 'right', color: 'var(--vc-gold-light)', fontWeight: 700 }}>{formatAmount(report.amount, report.currency)}</td>
+                  <td style={{ padding: '0.7rem', textAlign: 'right', color: 'var(--vc-gold-light)', fontWeight: 700 }}>
+                    {formatAmount(report.amount, report.currency)}
+                    {report.sourceReportedValue && (
+                      <small style={{ display: 'block', color: 'var(--vc-slate)', fontWeight: 400 }}>
+                        Provider: {report.sourceReportedValue}
+                      </small>
+                    )}
+                  </td>
                   <td style={{ padding: '0.7rem' }}>
                     <a href={report.sourceUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--vc-slate)' }}>{report.source}</a>
                     <small style={{ display: 'block', marginTop: 3, color: report.isEstimate ? '#e5b946' : 'var(--vc-slate)' }}>

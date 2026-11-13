@@ -280,7 +280,7 @@ const MovieDetail = () => {
               } else {
                 val = val.toLocaleString();
               }
-              list.push({ name: label, amount: `₹${val}${suffix}`, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate });
+              list.push({ name: label, amount: `₹${val}${suffix}`, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate, sourceReportedValue: obj.sourceReportedValue });
             } else {
               // Assume USD
               if (val >= 1000000) {
@@ -289,7 +289,7 @@ const MovieDetail = () => {
               } else {
                 val = val.toLocaleString();
               }
-              list.push({ name: label, amount: `$${val}${suffix}`, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate });
+              list.push({ name: label, amount: `$${val}${suffix}`, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate, sourceReportedValue: obj.sourceReportedValue });
             }
           } else {
             list.push({ name: label, amount: val, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate });
@@ -311,6 +311,7 @@ const MovieDetail = () => {
               source: report.source,
               sourceUrl: report.sourceUrl,
               isEstimate: report.isEstimate,
+              sourceReportedValue: report.sourceReportedValue,
             }, labels[report.collectionType] || report.collectionType);
           });
         } else {
@@ -666,6 +667,9 @@ const MovieDetail = () => {
                   <div key={item.name + '-' + idx} className="flex flex-col items-center justify-center min-w-[9rem] max-w-[14rem] bg-[#232526]/80 rounded-xl shadow border border-cyan-900/40 px-4 py-3 hover:scale-105 transition-transform duration-200" title={`Source: ${item.source}`}>
                     <span className="font-bold text-cyan-300 text-xs uppercase tracking-wider mb-1">{item.name}</span>
                     <span className="text-base text-yellow-400 font-extrabold">{item.amount}</span>
+                    {item.sourceReportedValue && (
+                      <span className="text-[10px] text-gray-400">Provider: {item.sourceReportedValue}</span>
+                    )}
                     <span className="text-[10px] text-gray-500 mt-1 capitalize">
                       {item.sourceUrl ? <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="underline">via {item.source}</a> : `via ${item.source}`}
                     </span>

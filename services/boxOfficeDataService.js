@@ -144,6 +144,8 @@ export function parseIndianBoxOfficeFeed(xml) {
           dayNumber: Number(daily[3]),
           dailyCollection,
           cumulativeCollection,
+          sourceReportedValue: `₹${daily[2]} Cr`,
+          sourceReportedCumulativeValue: cumulativeMatch ? `₹${cumulativeMatch[1]} Cr` : null,
           reportedAt,
           sourceUrl: item.link,
         });
@@ -159,6 +161,7 @@ export function parseIndianBoxOfficeFeed(xml) {
             market: 'worldwide',
             territory: 'WW',
             amount,
+            sourceReportedValue: `₹${worldwideMatch[1]} Cr`,
             reportDate,
             reportedAt,
             sourceUrl: item.link,
@@ -197,6 +200,7 @@ export function parseIndianBoxOfficeFeed(xml) {
           market: 'india',
           territory: 'IN',
           amount,
+          sourceReportedValue: `₹${netMatch[1]} Cr`,
           reportDate,
           reportedAt,
           sourceUrl: item.link,
@@ -214,6 +218,7 @@ export function parseIndianBoxOfficeFeed(xml) {
           market: 'worldwide',
           territory: 'WW',
           amount,
+          sourceReportedValue: `₹${worldwideMatch[1]} Cr`,
           reportDate,
           reportedAt,
           sourceUrl: item.link,
@@ -275,20 +280,27 @@ async function upsertReportBatch(Model, reports, kind) {
     const changed = kind === 'daily'
       ? previous && (
         previous.dailyCollection !== report.dailyCollection ||
-        previous.cumulativeCollection !== report.cumulativeCollection
+        previous.cumulativeCollection !== report.cumulativeCollection ||
+        previous.sourceReportedValue !== report.sourceReportedValue ||
+        previous.sourceReportedCumulativeValue !== report.sourceReportedCumulativeValue
       )
       : previous && (
-        previous.amount !== report.amount || previous.currency !== report.currency
+        previous.amount !== report.amount ||
+        previous.currency !== report.currency ||
+        previous.sourceReportedValue !== report.sourceReportedValue
       );
     const priorRevision = kind === 'daily'
       ? {
         dailyCollection: previous?.dailyCollection,
         cumulativeCollection: previous?.cumulativeCollection,
+        sourceReportedValue: previous?.sourceReportedValue,
+        sourceReportedCumulativeValue: previous?.sourceReportedCumulativeValue,
         reportedAt: previous?.reportedAt,
       }
       : {
         amount: previous?.amount,
         currency: previous?.currency,
+        sourceReportedValue: previous?.sourceReportedValue,
         reportedAt: previous?.reportedAt,
       };
 
@@ -400,6 +412,8 @@ export async function syncIndianBoxOfficeFeed() {
         collectionType: 'india_nett',
         dailyCollection: report.dailyCollection,
         cumulativeCollection: report.cumulativeCollection,
+        sourceReportedValue: report.sourceReportedValue,
+        sourceReportedCumulativeValue: report.sourceReportedCumulativeValue,
         currency: 'INR',
         rank: null,
         source: INDIA_PROVIDER,
@@ -434,6 +448,7 @@ export async function syncIndianBoxOfficeFeed() {
         territory: report.territory,
         collectionType: report.collectionType,
         amount: report.amount,
+        sourceReportedValue: report.sourceReportedValue,
         currency: 'INR',
         source: INDIA_PROVIDER,
         sourceMovieKey: report.sourceMovieKey,
@@ -757,6 +772,7 @@ export async function getMovieBoxOfficeReports(tmdbId) {
     reports: lifetimeReports.map(report => ({
       collectionType: report.collectionType,
       amount: report.amount,
+      sourceReportedValue: report.sourceReportedValue,
       currency: report.currency,
       source: report.source,
       sourceUrl: report.sourceUrl,
@@ -784,6 +800,8 @@ export async function getMovieBoxOfficeReports(tmdbId) {
         date: report.reportDate.toISOString().slice(0, 10),
         amount: report.dailyCollection,
         cumulativeAmount: report.cumulativeCollection,
+        sourceReportedValue: report.sourceReportedValue,
+        sourceReportedCumulativeValue: report.sourceReportedCumulativeValue,
         currency: report.currency,
         source: report.source,
         sourceUrl: report.sourceUrl,

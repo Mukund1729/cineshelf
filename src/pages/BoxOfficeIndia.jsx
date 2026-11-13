@@ -456,6 +456,11 @@ export default function BoxOfficeIndia() {
                       <td style={{ padding: '0.75rem', color: 'var(--vc-slate)' }}>{row.releaseDate ? formatDate(row.releaseDate) : 'Not reported'}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--vc-gold-light)', fontWeight: 700 }}>
                         {formatAmount(amount, currency)}
+                        {row.sourceReportedValue && (
+                          <small style={{ display: 'block', color: 'var(--vc-slate)', fontWeight: 400 }}>
+                            Provider: {row.sourceReportedValue}
+                          </small>
+                        )}
                         {period !== 'daily' && market === 'india' && row.reportedDays ? (
                           <small style={{ display: 'block', color: 'var(--vc-slate)', fontWeight: 400 }}>{row.reportedDays} reported day(s)</small>
                         ) : null}

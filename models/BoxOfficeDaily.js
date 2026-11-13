@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 const revisionSchema = new mongoose.Schema({
   dailyCollection: Number,
   cumulativeCollection: Number,
+  sourceReportedValue: String,
+  sourceReportedCumulativeValue: String,
   reportedAt: Date,
 }, { _id: false });
 
@@ -22,6 +24,8 @@ const boxOfficeDailySchema = new mongoose.Schema({
   collectionType: { type: String, required: true },
   dailyCollection: { type: Number, required: true, min: 0 },
   cumulativeCollection: { type: Number, default: null, min: 0 },
+  sourceReportedValue: { type: String, default: null },
+  sourceReportedCumulativeValue: { type: String, default: null },
   currency: { type: String, required: true },
   rank: { type: Number, default: null, min: 1 },
   source: { type: String, required: true },

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 const revisionSchema = new mongoose.Schema({
   amount: Number,
   currency: String,
+  sourceReportedValue: String,
   reportedAt: Date,
 }, { _id: false });
 
@@ -21,6 +22,7 @@ const boxOfficeLifetimeSchema = new mongoose.Schema({
   territory: { type: String, required: true },
   collectionType: { type: String, required: true },
   amount: { type: Number, required: true, min: 0 },
+  sourceReportedValue: { type: String, default: null },
   currency: { type: String, required: true },
   source: { type: String, required: true },
   sourceMovieKey: { type: String, required: true },
