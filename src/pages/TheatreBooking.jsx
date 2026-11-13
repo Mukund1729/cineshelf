@@ -639,38 +639,78 @@ export default function TheatreBooking() {
     paintScreenImage(movie?.backdrop_path || movie?.poster_path);
 
     if (trailer) {
-      // YouTube on the cinema plane. Keep the element simple — extra masks and
-      // oversized crops stop the player from painting inside a CSS 3D transform.
-      const baseWidth = 1280;
-      const baseHeight = 720;
-      const frame = document.createElement('div');
-      Object.assign(frame.style, {
-        width: `${baseWidth}px`,
-        height: `${baseHeight}px`,
-        background: '#000',
-        overflow: 'hidden',
-      });
+      // Check if mobile - CSS3D doesn't work well on narrow screens
+      const isMobile = getW() < 600;
 
-      const iframe = document.createElement('iframe');
-      const videoId = encodeURIComponent(trailer.key);
-      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
-      iframe.title = `${movie?.title || 'Movie'} trailer`;
-      iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
-      iframe.setAttribute('allowfullscreen', '');
-      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-      Object.assign(iframe.style, {
-        width: '100%',
-        height: '100%',
-        border: '0',
-        display: 'block',
-        pointerEvents: 'none',
-      });
-      frame.appendChild(iframe);
+      if (!isMobile) {
+        // Desktop: YouTube on the cinema plane via CSS3D
+        const baseWidth = 1280;
+        const baseHeight = 720;
+        const frame = document.createElement('div');
+        Object.assign(frame.style, {
+          width: `${baseWidth}px`,
+          height: `${baseHeight}px`,
+          background: '#000',
+          overflow: 'hidden',
+        });
 
-      const trailerScreen = new CSS3DObject(frame);
-      trailerScreen.position.set(0, scrY, HALL.screenZ + 0.06);
-      trailerScreen.scale.set(scrW / baseWidth, scrH / baseHeight, 1);
-      scene.add(trailerScreen);
+        const iframe = document.createElement('iframe');
+        const videoId = encodeURIComponent(trailer.key);
+        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+        iframe.title = `${movie?.title || 'Movie'} trailer`;
+        iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+        iframe.setAttribute('allowfullscreen', '');
+        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+        Object.assign(iframe.style, {
+          width: '100%',
+          height: '100%',
+          border: '0',
+          display: 'block',
+          pointerEvents: 'none',
+        });
+        frame.appendChild(iframe);
+
+        const trailerScreen = new CSS3DObject(frame);
+        trailerScreen.position.set(0, scrY, HALL.screenZ + 0.06);
+        trailerScreen.scale.set(scrW / baseWidth, scrH / baseHeight, 1);
+        scene.add(trailerScreen);
+      } else {
+        // Mobile: Show play button on screen to open trailer in new tab
+        screen.visible = true;
+        screen.material.color.setHex(0x0d1220);
+
+        const trailerBtn = document.createElement('a');
+        trailerBtn.href = `https://www.youtube.com/watch?v=${trailer.key}`;
+        trailerBtn.target = '_blank';
+        trailerBtn.rel = 'noopener noreferrer';
+        Object.assign(trailerBtn.style, {
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          zIndex: '20',
+          background: 'rgba(212,175,55,0.15)',
+          border: '1px solid #d4af37',
+          borderRadius: '999px',
+          padding: '0.5rem 1.2rem',
+          color: '#d4af37',
+          fontFamily: 'Outfit, sans-serif',
+          fontSize: '0.8rem',
+          fontWeight: 600,
+          letterSpacing: '0.08em',
+          textDecoration: 'none',
+          backdropFilter: 'blur(8px)',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'auto',
+        });
+        trailerBtn.textContent = '▶ Watch Trailer';
+        container.appendChild(trailerBtn);
+
+        // Clean up button on dispose
+        const cleanupBtn = () => { trailerBtn.remove(); };
+        renderer.domElement.addEventListener('__dispose__', cleanupBtn);
+        trailerBtn.dataset.cleanup = 'true';
+      }
     } else if (movie?.backdrop_path || movie?.poster_path) {
       const screenImagePath = movie.backdrop_path || movie.poster_path;
       const textureLoader = new THREE.TextureLoader();
