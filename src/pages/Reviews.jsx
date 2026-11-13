@@ -176,7 +176,7 @@ export default function Reviews() {
         </div>
       </section>
 
-      <div className="vc-container" style={{ paddingTop: '2.5rem', paddingBottom: '4rem', display: 'grid', gridTemplateColumns: friends.length > 0 ? '1fr 280px' : '1fr', gap: '2rem', alignItems: 'start' }}>
+      <div className="vc-container reviews-layout" style={{ paddingTop: '2.5rem', paddingBottom: '4rem', display: 'grid', gridTemplateColumns: friends.length > 0 ? '1fr 280px' : '1fr', gap: '2rem', alignItems: 'start' }}>
         {/* Main reviews */}
         <div>
           {loading ? (

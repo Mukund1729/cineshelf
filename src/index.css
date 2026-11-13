@@ -527,8 +527,9 @@ body, html {
 
 @media (max-width: 640px) {
   .vc-container {
-    padding-right: 0.75rem !important;
-    padding-left: 0.75rem !important;
+    padding-right: 0.5rem !important;
+    padding-left: 0.5rem !important;
+    max-width: 100% !important;
   }
 
   .notification-panel {
@@ -638,6 +639,11 @@ body, html {
   /* Full width sections on mobile */
   section, .vc-container > div {
     width: 100%;
+  }
+  
+  /* Reviews layout on mobile */
+  .reviews-layout {
+    grid-template-columns: 1fr !important;
   }
 }
 
