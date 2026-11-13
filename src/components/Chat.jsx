@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { apiUrl } from '../api/config';
 
-export default function Chat({ friendId, friendName, friendAvatar, onClose }) {
+export default function Chat({ friendId, friendName, friendAvatar, onClose, docked = false }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
@@ -86,24 +86,13 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose }) {
     : '';
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      zIndex: 1000,
-      background: 'rgba(0,0,0,0.8)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '1rem',
-    }}>
+    <div className={`vc-chat-overlay${docked ? ' vc-chat-overlay--docked' : ''}`}>
       <section
+        className="vc-chat-window"
         role="dialog"
         aria-modal="true"
         aria-label={`Chat with ${friendName}`}
         style={{
-          width: '100%',
-          maxWidth: '600px',
-          height: '80vh',
           background: 'var(--vc-bg-card)',
           borderRadius: '16px',
           display: 'flex',

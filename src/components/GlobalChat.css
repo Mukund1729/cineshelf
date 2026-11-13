@@ -1,0 +1,226 @@
+.vc-messages-widget {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 1100;
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 12px;
+  font-family: Outfit, sans-serif;
+}
+
+.vc-messages-launcher {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 52px;
+  padding: 0 18px;
+  border: 1px solid rgba(255,255,255,0.16);
+  border-radius: 999px;
+  background: var(--vc-gold);
+  color: #0a0f1a;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.35);
+  font: 600 0.9rem Outfit, sans-serif;
+  cursor: pointer;
+}
+
+.vc-messages-launcher svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.vc-messages-panel {
+  display: flex;
+  width: 340px;
+  height: min(460px, calc(100dvh - 110px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  background: var(--vc-bg-card);
+  box-shadow: 0 18px 55px rgba(0,0,0,0.5);
+  color: var(--vc-cream);
+}
+
+.vc-messages-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: var(--vc-bg-elevated);
+}
+
+.vc-messages-header h2 {
+  margin: 0;
+  font: 600 1rem Outfit, sans-serif;
+}
+
+.vc-messages-header p {
+  margin: 4px 0 0;
+  color: var(--vc-slate);
+  font-size: 0.76rem;
+}
+
+.vc-messages-close {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--vc-slate);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.vc-messages-friend-list {
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.vc-messages-friend {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--vc-cream);
+  text-align: left;
+  font: 500 0.9rem Outfit, sans-serif;
+  cursor: pointer;
+}
+
+.vc-messages-friend:hover,
+.vc-messages-friend:focus-visible {
+  background: rgba(255,255,255,0.07);
+}
+
+.vc-messages-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.vc-messages-avatar-fallback {
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--vc-gold), #b8860b);
+  color: #0a0f1a;
+  font-weight: 700;
+}
+
+.vc-messages-chevron {
+  margin-left: auto;
+  color: var(--vc-slate);
+  font-size: 1.4rem;
+}
+
+.vc-messages-state,
+.vc-messages-empty {
+  margin: auto;
+  padding: 24px;
+  color: var(--vc-slate);
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.vc-messages-empty p {
+  margin: 0 0 14px;
+}
+
+.vc-chat-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1101;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0,0,0,0.8);
+}
+
+.vc-chat-overlay--docked {
+  position: static;
+  display: block;
+  padding: 0;
+  background: transparent;
+}
+
+.vc-chat-window {
+  display: flex;
+  width: 100%;
+  max-width: 600px;
+  height: 80vh;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  background: var(--vc-bg-card);
+}
+
+.vc-chat-overlay--docked .vc-chat-window {
+  width: 360px;
+  max-width: min(360px, calc(100vw - 48px));
+  height: min(520px, calc(100dvh - 110px));
+  box-shadow: 0 18px 55px rgba(0,0,0,0.5);
+}
+
+@media (max-width: 640px) {
+  .vc-messages-widget {
+    right: 16px;
+    bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+
+  .vc-messages-widget.is-open .vc-messages-launcher {
+    display: none;
+  }
+
+  .vc-messages-launcher {
+    width: 54px;
+    height: 54px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .vc-messages-launcher span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+
+  .vc-messages-panel {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .vc-chat-overlay--docked {
+    position: fixed;
+    inset: 0;
+  }
+
+  .vc-chat-overlay--docked .vc-chat-window {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    border: 0;
+    border-radius: 0;
+  }
+}

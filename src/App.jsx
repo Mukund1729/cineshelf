@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom';
 import ScrollToTop from './ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
 import AuthModal from './components/AuthModal';
+import GlobalChat from './components/GlobalChat';
 
 // Global auth modal — listens to custom event fired from Navbar / any page
 function GlobalAuthModal() {
@@ -171,6 +172,7 @@ function AppWrapper() {
           </Routes>
         </Suspense>
       </ErrorBoundary>
+      <GlobalChat />
     </div>
   );
 }
