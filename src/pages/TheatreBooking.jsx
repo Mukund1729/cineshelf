@@ -640,8 +640,8 @@ export default function TheatreBooking() {
 
     if (trailer) {
       const isMobile = getW() < 768;
-      const baseWidth = 1280;
-      const baseHeight = 720;
+      const baseWidth = isMobile ? Math.max(320, getW()) : 1280;
+      const baseHeight = baseWidth * 9 / 16;
       const frame = document.createElement('div');
       Object.assign(frame.style, {
         width: `${baseWidth}px`,
