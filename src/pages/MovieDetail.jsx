@@ -436,15 +436,15 @@ const MovieDetail = () => {
       <div className="vc-container movie-detail-content relative z-10 pt-10 pb-16">
         {/* Main Movie Content with Poster and Info */}
         {movie && (
-          <div className="flex flex-col md:flex-row gap-10 items-start p-0 mb-10 mt-2 md:mt-4 bg-gradient-to-br from-[#10111a]/80 via-[#181c24]/70 to-[#10111a]/80 rounded-3xl shadow-2xl border border-cyan-900/50 backdrop-blur-xl mx-auto px-6 py-8" style={{maxWidth:'100%', boxShadow:'0 12px 36px 0 rgba(0,0,0,0.30)'}}>
+          <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start p-0 mb-10 mt-2 md:mt-4 bg-gradient-to-br from-[#10111a]/80 via-[#181c24]/70 to-[#10111a]/80 rounded-3xl shadow-2xl border border-cyan-900/50 backdrop-blur-xl mx-auto px-4 md:px-6 py-6 md:py-8" style={{maxWidth:'100%', boxShadow:'0 12px 36px 0 rgba(0,0,0,0.30)'}}>
             {/* Movie Poster */}
             <div className="flex-shrink-0 mx-auto md:mx-0 mb-6 md:mb-0 flex flex-col items-center gap-4">
               <div className="relative group rounded-2xl bg-gradient-to-br from-[#181c24]/80 via-[#232526]/60 to-[#10111a]/80 border-2 border-cyan-900/40 shadow-xl transition-all duration-300 hover:shadow-cyan-400/40 hover:border-cyan-400/80 hover:scale-105" style={{padding:'0.5rem', boxShadow:'0 6px 32px 0 rgba(0,255,255,0.08)'}}>
                 <img
                   src={movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w400') : '/placeholder.jpg'}
                   alt={movie.title}
-                  className="rounded-xl shadow-lg w-44 h-auto object-cover bg-[#232526] border-2 border-cyan-900 group-hover:border-cyan-400 group-hover:shadow-cyan-400/40 transition-all duration-300"
-                  style={{ maxHeight: 320 }}
+                  className="rounded-xl shadow-lg w-36 md:w-44 h-auto object-cover bg-[#232526] border-2 border-cyan-900 group-hover:border-cyan-400 group-hover:shadow-cyan-400/40 transition-all duration-300"
+                  style={{ maxHeight: 280 }}
                 />
                 <div className="absolute inset-0 rounded-xl pointer-events-none group-hover:ring-4 group-hover:ring-cyan-400/30 transition-all duration-300" />
               </div>
@@ -525,13 +525,13 @@ const MovieDetail = () => {
             </div>
             {/* Main Details */}
             <div className="flex-1 w-full bg-transparent px-0 md:px-6">
-              <h1 className="text-3xl md:text-4xl font-bold font-playfair flex items-center mb-4 text-cyan-200 drop-shadow-lg">
+              <h1 className="text-2xl md:text-4xl font-bold font-playfair flex items-center mb-4 text-cyan-200 drop-shadow-lg">
                 {movie.title}
                 {movie.release_date && (
-                  <span className="text-cyan-400 text-lg font-normal ml-2">({movie.release_date.split("-")[0]})</span>
+                  <span className="text-cyan-400 text-sm md:text-lg font-normal ml-2">({movie.release_date.split("-")[0]})</span>
                 )}
               </h1>
-              <div className="flex flex-wrap gap-4 text-base bg-white/10 p-4 rounded-xl border border-cyan-900/30 mb-5 shadow-inner font-semibold tracking-wide" style={{fontSize:'1.03rem', lineHeight:'1.5'}}>
+              <div className="flex flex-wrap gap-2 md:gap-4 text-sm md:text-base bg-white/10 p-3 md:p-4 rounded-xl border border-cyan-900/30 mb-5 shadow-inner font-semibold tracking-wide" style={{fontSize:'0.9rem', lineHeight:'1.5'}}>
                 <div className="flex items-center gap-1.5">
                   <FiStar className="text-cyan-300 text-lg" />
                   <span>{movie.vote_average?.toFixed(1)}/10</span>
@@ -558,7 +558,7 @@ const MovieDetail = () => {
               {/* Overview */}
               <section className="mb-5">
                 <h3 className="text-xs text-cyan-400 uppercase tracking-wider border-b border-gray-700 mb-1 pb-0.5 font-semibold">Overview</h3>
-                <p className="text-sm md:text-base text-gray-200 leading-normal font-lato" style={{fontSize:'1.01rem', lineHeight:'1.5', letterSpacing:'0.01em', padding:'0.1rem 0.05rem'}}>
+                <p className="text-sm md:text-base text-gray-200 leading-normal font-lato" style={{fontSize:'0.9rem', lineHeight:'1.5', letterSpacing:'0.01em', padding:'0.1rem 0.05rem'}}>
                   {movie.overview || 'No overview available.'}
                 </p>
               </section>
@@ -607,24 +607,24 @@ const MovieDetail = () => {
         {/* Top Cast Section (separate, aesthetic card) */}
         {movie && movie.credits && movie.credits.cast && movie.credits.cast.length > 0 && (
           <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto mt-6 mb-8">
-            <div className="bg-[#181c24]/95 rounded-2xl shadow-xl border border-cyan-900/30 px-6 py-5">
-              <h3 className="text-xl md:text-2xl font-bold text-cyan-300 mb-3 font-playfair tracking-tight flex items-center gap-2 drop-shadow-lg">
-                <span className="text-2xl">👥</span> Top Cast
+            <div className="bg-[#181c24]/95 rounded-2xl shadow-xl border border-cyan-900/30 px-4 md:px-6 py-4 md:py-5">
+              <h3 className="text-lg md:text-2xl font-bold text-cyan-300 mb-3 font-playfair tracking-tight flex items-center gap-2 drop-shadow-lg">
+                <span className="text-xl md:text-2xl">👥</span> Top Cast
               </h3>
-              <div className="flex overflow-x-auto gap-4 pb-1 no-scrollbar">
+              <div className="flex overflow-x-auto gap-3 md:gap-4 pb-1 no-scrollbar">
                 {movie.credits.cast.slice(0, 10).map(actor => (
                   <Link
                     key={actor.id}
                     to={`/person/${actor.id}`}
-                    className="min-w-[90px] max-w-[90px] flex-shrink-0 bg-[#232526]/80 rounded-xl overflow-hidden shadow-md hover:scale-105 hover:shadow-cyan-400 transition-transform duration-200 flex flex-col items-center border border-cyan-900/30"
+                    className="min-w-[75px] md:min-w-[90px] max-w-[75px] md:max-w-[90px] flex-shrink-0 bg-[#232526]/80 rounded-xl overflow-hidden shadow-md hover:scale-105 hover:shadow-cyan-400 transition-transform duration-200 flex flex-col items-center border border-cyan-900/30"
                   >
                     <img
                       src={actor.profile_path ? tmdbImageUrl(actor.profile_path, 'w200') : '/actor-placeholder.jpg'}
                       alt={actor.name}
-                      className="w-full h-24 object-cover rounded-t-xl bg-[#10111a]"
+                      className="w-full h-20 md:h-24 object-cover rounded-t-xl bg-[#10111a]"
                     />
-                    <span className="text-white font-semibold text-xs text-center p-1 line-clamp-2 font-lato">{actor.name}</span>
-                    <span className="text-cyan-300 font-bold mb-2 text-[10px] truncate">{actor.character}</span>
+                    <span className="text-white font-semibold text-[10px] md:text-xs text-center p-1 line-clamp-2 font-lato">{actor.name}</span>
+                    <span className="text-cyan-300 font-bold mb-2 text-[9px] md:text-[10px] truncate">{actor.character}</span>
                   </Link>
                 ))}
               </div>
@@ -690,9 +690,9 @@ const MovieDetail = () => {
           {/* Divider */}
           <div className="w-full h-0.5 bg-gradient-to-r from-cyan-900/0 via-cyan-900/40 to-cyan-900/0 my-0" />
           {/* Review Form and Reviews - side by side on desktop, stacked on mobile */}
-          <div className="flex flex-col md:flex-row gap-8 px-6 py-8">
+          <div className="flex flex-col md:flex-row gap-6 md:gap-8 px-4 md:px-6 py-6 md:py-8">
             {/* Review Form */}
-            <form onSubmit={handleReviewSubmit} className="flex-1 max-w-lg bg-[#10111a]/80 rounded-xl shadow-md border border-cyan-900/20 p-6 flex flex-col gap-3 mx-auto">
+            <form onSubmit={handleReviewSubmit} className="flex-1 max-w-lg bg-[#10111a]/80 rounded-xl shadow-md border border-cyan-900/20 p-4 md:p-6 flex flex-col gap-3 mx-auto">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-cyan-300 text-xl font-bold">Your Review</span>
                 <span className="text-gray-400 text-xs font-lato">(review text optional)</span>
