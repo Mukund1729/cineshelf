@@ -652,7 +652,7 @@ export default function TheatreBooking() {
 
       const iframe = document.createElement('iframe');
       const videoId = encodeURIComponent(trailer.key);
-      const mobileParams = 'controls=1&playsinline=1&rel=0&modestbranding=1';
+      const mobileParams = 'autoplay=1&mute=1&controls=1&playsinline=1&rel=0&modestbranding=1';
       const desktopParams = `autoplay=1&mute=1&loop=1&playlist=${videoId}&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
       iframe.src = `https://www.youtube.com/embed/${videoId}?${isMobile ? mobileParams : desktopParams}`;
       iframe.title = `${movie?.title || 'Movie'} trailer`;
