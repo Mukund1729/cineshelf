@@ -9,7 +9,7 @@
     "worker:boxoffice": "node workers/boxofficeWorker.js",
     "backup:mongodb": "node scripts/backup-mongodb.js",
     "worker:backups": "node workers/backupWorker.js",
-    "test:boxoffice": "node --test tests/boxOfficeDataService.test.js tests/backupMongoDatabase.test.js",
+    "test:boxoffice": "node --test tests/boxOfficeDataService.test.js tests/backupMongoDatabase.test.js tests/boxOfficeController.test.js",
     "dev:full": "concurrently \"npm run server\" \"npm run dev\"",
     "build": "vite build",
     "preview": "vite preview"
