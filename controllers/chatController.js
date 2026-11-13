@@ -45,19 +45,53 @@ export const getConversation = async (req, res) => {
     const friendId = getFriendId(req, res);
     if (!friendId || !(await ensureFriends(req.user.id, friendId, res))) return;
 
-    const messages = await ChatMessage.find({
-      $or: [
-        { sender: req.user.id, recipient: friendId },
-        { sender: friendId, recipient: req.user.id },
-      ],
-    })
-      .sort({ createdAt: -1 })
-      .limit(200)
+    const limit = Number(req.query.limit || 40);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
+      return res.status(400).json({ success: false, error: 'Message page limit must be between 1 and 100.' });
+    }
+
+    const conversation = [
+      { sender: req.user.id, recipient: friendId },
+      { sender: friendId, recipient: req.user.id },
+    ];
+    let cursor = null;
+    if (req.query.before !== undefined) {
+      if (!mongoose.Types.ObjectId.isValid(req.query.before)) {
+        return res.status(400).json({ success: false, error: 'Invalid message cursor.' });
+      }
+      cursor = await ChatMessage.findOne({
+        _id: req.query.before,
+        $or: conversation,
+      }).select('_id createdAt').lean();
+      if (!cursor) {
+        return res.status(400).json({ success: false, error: 'Message cursor is not in this conversation.' });
+      }
+    }
+
+    const query = {
+      $or: conversation.map(pair => {
+        if (!cursor) return pair;
+        return {
+          ...pair,
+          $or: [
+            { createdAt: { $lt: cursor.createdAt } },
+            { createdAt: cursor.createdAt, _id: { $lt: cursor._id } },
+          ],
+        };
+      }),
+    };
+    const page = await ChatMessage.find(query)
+      .sort({ createdAt: -1, _id: -1 })
+      .limit(limit + 1)
       .lean();
+    const hasMore = page.length > limit;
+    const messages = page.slice(0, limit).reverse();
 
     res.json({
       success: true,
-      messages: messages.reverse().map(serializeMessage),
+      messages: messages.map(serializeMessage),
+      hasMore,
+      nextCursor: hasMore && messages.length ? messages[0]._id.toString() : null,
     });
   } catch (err) {
     console.error('Get chat conversation error:', err);
@@ -96,8 +130,7 @@ export const sendMessage = async (req, res) => {
         link: `/people?chat=${req.user.id}`,
       });
     } catch (notificationError) {
-      await message.deleteOne();
-      throw notificationError;
+      console.error('Create chat notification error; message was retained:', notificationError);
     }
 
     res.status(201).json({ success: true, message: serializeMessage(message) });

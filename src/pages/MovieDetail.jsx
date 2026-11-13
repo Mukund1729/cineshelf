@@ -280,7 +280,7 @@ const MovieDetail = () => {
               } else {
                 val = val.toLocaleString();
               }
-              list.push({ name: label, amount: `₹${val}${suffix}`, source: obj.source });
+              list.push({ name: label, amount: `₹${val}${suffix}`, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate });
             } else {
               // Assume USD
               if (val >= 1000000) {
@@ -289,21 +289,40 @@ const MovieDetail = () => {
               } else {
                 val = val.toLocaleString();
               }
-              list.push({ name: label, amount: `$${val}${suffix}`, source: obj.source });
+              list.push({ name: label, amount: `$${val}${suffix}`, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate });
             }
           } else {
-            list.push({ name: label, amount: val, source: obj.source });
+            list.push({ name: label, amount: val, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate });
           }
         };
 
-        formatValue(data.budget, 'Budget');
-        formatValue(data.openingDay, 'Opening Day');
-        formatValue(data.openingWeekend, 'Opening Weekend');
-        formatValue(data.indiaNet, 'India Net');
-        formatValue(data.indiaGross, 'India Gross');
-        formatValue(data.overseasGross, 'Overseas Gross');
-        formatValue(data.worldwideGross, 'Worldwide Gross');
-        formatValue(data.verdict, 'Verdict');
+        if (Array.isArray(data.reports) && data.reports.length) {
+          const labels = {
+            india_nett: 'India nett',
+            india_gross: 'India gross',
+            domestic_gross: 'Domestic gross',
+            international_gross: 'International gross',
+            worldwide_gross: 'Worldwide gross',
+          };
+          data.reports.forEach(report => {
+            formatValue({
+              value: report.amount,
+              currency: report.currency,
+              source: report.source,
+              sourceUrl: report.sourceUrl,
+              isEstimate: report.isEstimate,
+            }, labels[report.collectionType] || report.collectionType);
+          });
+        } else {
+          formatValue(data.budget, 'Budget');
+          formatValue(data.openingDay, 'Opening Day');
+          formatValue(data.openingWeekend, 'Opening Weekend');
+          formatValue(data.indiaNet, 'India Net');
+          formatValue(data.indiaGross, 'India Gross');
+          formatValue(data.overseasGross, 'Overseas Gross');
+          formatValue(data.worldwideGross, 'Worldwide Gross');
+          formatValue(data.verdict, 'Verdict');
+        }
 
         setBoxOffice(list);
         setRawBoxOfficeData(data);
@@ -647,7 +666,10 @@ const MovieDetail = () => {
                   <div key={item.name + '-' + idx} className="flex flex-col items-center justify-center min-w-[9rem] max-w-[14rem] bg-[#232526]/80 rounded-xl shadow border border-cyan-900/40 px-4 py-3 hover:scale-105 transition-transform duration-200" title={`Source: ${item.source}`}>
                     <span className="font-bold text-cyan-300 text-xs uppercase tracking-wider mb-1">{item.name}</span>
                     <span className="text-base text-yellow-400 font-extrabold">{item.amount}</span>
-                    <span className="text-[10px] text-gray-500 mt-1 capitalize">via {item.source}</span>
+                    <span className="text-[10px] text-gray-500 mt-1 capitalize">
+                      {item.sourceUrl ? <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="underline">via {item.source}</a> : `via ${item.source}`}
+                    </span>
+                    {item.isEstimate && <span className="text-[10px] text-yellow-500 mt-1">Publisher estimate</span>}
                   </div>
                 ))}
               </div>

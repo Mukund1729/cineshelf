@@ -5,6 +5,7 @@ import List from '../models/List.js';
 import CustomList from '../models/CustomList.js';
 import BlogPost from '../models/BlogPost.js';
 import Notification from '../models/Notification.js';
+import { getDatabaseStorageStats } from '../services/storageMonitor.js';
 
 // GET /api/admin/users
 export const getAllUsers = async (req, res) => {
@@ -119,5 +120,15 @@ export const getSystemStats = async (req, res) => {
   } catch (err) {
     console.error('Get system stats error:', err);
     res.status(500).json({ success: false, error: 'Failed to fetch stats' });
+  }
+};
+
+export const getStorageStats = async (req, res) => {
+  try {
+    const data = await getDatabaseStorageStats();
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('Get database storage stats error:', err.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch database storage statistics' });
   }
 };

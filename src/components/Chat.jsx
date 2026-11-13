@@ -2,13 +2,31 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { apiUrl } from '../api/config';
 
+function mergeMessages(current, incoming) {
+  const merged = new Map(current.map(message => [message._id, message]));
+  incoming.forEach(message => merged.set(message._id, message));
+  const ordered = [...merged.values()].sort(
+    (left, right) => new Date(left.createdAt) - new Date(right.createdAt) ||
+      left._id.localeCompare(right._id)
+  );
+  if (ordered.length === current.length &&
+      ordered.every((message, index) => message._id === current[index]._id)) {
+    return current;
+  }
+  return ordered;
+}
+
 export default function Chat({ friendId, friendName, friendAvatar, onClose, docked = false }) {
   const [messages, setMessages] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [syncStatus, setSyncStatus] = useState('Loading conversation…');
   const [error, setError] = useState('');
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
+  const autoScrollRef = useRef(true);
 
   useEffect(() => {
     let active = true;
@@ -20,15 +38,15 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
       if (requestInFlight || !friendId) return;
       requestInFlight = true;
       try {
-        const response = await axios.get(`/api/chat/${friendId}`, { headers });
+        const container = messagesContainerRef.current;
+        const nearBottom = !container ||
+          container.scrollHeight - container.scrollTop - container.clientHeight < 80;
+        const response = await axios.get(`/api/chat/${friendId}?limit=40`, { headers });
         if (!active) return;
         const incomingMessages = response.data?.messages || [];
-        setMessages(current => (
-          current.length === incomingMessages.length
-            && current.every((message, index) => message._id === incomingMessages[index]._id)
-            ? current
-            : incomingMessages
-        ));
+        if (nearBottom) autoScrollRef.current = true;
+        setMessages(current => mergeMessages(current, incomingMessages));
+        setHasMore(Boolean(response.data?.hasMore));
         setSyncStatus('Auto-refreshing');
         setError('');
       } catch (err) {
@@ -49,8 +67,39 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
   }, [friendId]);
 
   useEffect(() => {
+    if (!autoScrollRef.current) return;
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    autoScrollRef.current = false;
   }, [messages]);
+
+  const loadOlderMessages = async () => {
+    const oldestMessage = messages[0];
+    if (!friendId || !oldestMessage || !hasMore || loadingOlder) return;
+
+    const container = messagesContainerRef.current;
+    const previousHeight = container?.scrollHeight || 0;
+    const previousTop = container?.scrollTop || 0;
+    setLoadingOlder(true);
+    setError('');
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get(
+        `/api/chat/${friendId}?limit=40&before=${encodeURIComponent(oldestMessage._id)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const olderMessages = response.data?.messages || [];
+      autoScrollRef.current = false;
+      setMessages(current => mergeMessages(current, olderMessages));
+      setHasMore(Boolean(response.data?.hasMore));
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if (container) container.scrollTop = previousTop + container.scrollHeight - previousHeight;
+      }));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not load older messages.');
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
   const sendMessage = async event => {
     event.preventDefault();
@@ -66,11 +115,8 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
       });
       const message = response.data?.message;
       if (message) {
-        setMessages(current => (
-          current.some(item => item._id === message._id)
-            ? current
-            : [...current, message]
-        ));
+        autoScrollRef.current = true;
+        setMessages(current => mergeMessages(current, [message]));
       }
       setInput('');
       setSyncStatus('Auto-refreshing');
@@ -147,7 +193,7 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
           </button>
         </header>
 
-        <div style={{
+        <div ref={messagesContainerRef} style={{
           flex: 1,
           overflowY: 'auto',
           padding: '1rem',
@@ -155,6 +201,26 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
           flexDirection: 'column',
           gap: '0.75rem',
         }}>
+          {hasMore && (
+            <button
+              type="button"
+              onClick={loadOlderMessages}
+              disabled={loadingOlder}
+              style={{
+                alignSelf: 'center',
+                padding: '0.45rem 0.9rem',
+                borderRadius: '999px',
+                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'var(--vc-bg-elevated)',
+                color: 'var(--vc-slate)',
+                cursor: loadingOlder ? 'wait' : 'pointer',
+                fontFamily: 'Outfit, sans-serif',
+                fontSize: '0.78rem',
+              }}
+            >
+              {loadingOlder ? 'Loading older messages…' : 'Load older messages'}
+            </button>
+          )}
           {messages.length === 0 && !error && (
             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--vc-slate)' }}>
               <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem' }}>Start a conversation about cinema</p>

@@ -8,6 +8,7 @@ import {
   deleteUser,
   createAdminUser,
   getSystemStats,
+  getStorageStats,
 } from '../controllers/adminController.js';
 
 const router = express.Router();
@@ -17,6 +18,7 @@ router.use(auth, admin);
 
 // Dashboard stats
 router.get('/stats', getSystemStats);
+router.get('/storage', getStorageStats);
 
 // User management
 router.get('/users', getAllUsers);

@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { maintainDatabaseIndexes } from './services/databaseIndexMaintenance.js';
 
 dotenv.config();
 
@@ -11,6 +12,11 @@ const connectDB = async () => {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
+    try {
+      await maintainDatabaseIndexes();
+    } catch (indexError) {
+      console.error('Database index maintenance failed:', indexError.message);
+    }
     console.log('MongoDB connected!');
   } catch (err) {
     console.error('MongoDB connection error:', err.message);

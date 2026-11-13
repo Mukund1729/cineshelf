@@ -23,8 +23,7 @@ import blogRoutes from './routes/blog.js';
 import tmdbRoutes from './routes/tmdb.js';
 import gptRoute from './src/api/gpt.js';
 import connectDB from './db.js';
-import BoxOffice from './models/BoxOffice.js';
-import { syncMovieBoxOffice } from './services/boxOfficePipelineService.js';
+import { monitorDatabaseStorage } from './services/storageMonitor.js';
 
 dotenv.config();
 
@@ -111,7 +110,7 @@ connectDB()
     console.log('✅ MongoDB connected');
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Visual.Cineaste API listening on port ${PORT}`);
-      startBackgroundBoxOfficeUpdates();
+      startStorageMonitoring();
     });
   })
   .catch((err) => {
@@ -119,28 +118,13 @@ connectDB()
     process.exit(1);
   });
 
-function startBackgroundBoxOfficeUpdates() {
-  // Run update immediately after 1 minute, then every 12 hours
-  setTimeout(runUpdates, 60 * 1000);
-  setInterval(runUpdates, 12 * 60 * 60 * 1000);
-
-  async function runUpdates() {
-    console.log('[Background Update] Starting scheduled Box Office updates...');
-    try {
-      const movies = await BoxOffice.find({}, { tmdbId: 1, updatedAt: 1 });
-      console.log(`[Background Update] Found ${movies.length} movies to check.`);
-      
-      for (const m of movies) {
-        const isStale = Date.now() - new Date(m.updatedAt).getTime() > 24 * 60 * 60 * 1000;
-        if (isStale) {
-          console.log(`[Background Update] Syncing movie ${m.tmdbId}...`);
-          await syncMovieBoxOffice(m.tmdbId);
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      }
-      console.log('[Background Update] Finished scheduled Box Office updates.');
-    } catch (err) {
-      console.error('[Background Update] Error during Box Office updates:', err);
-    }
+  function startStorageMonitoring() {
+    const checkStorage = () => {
+      monitorDatabaseStorage().catch(error => {
+        console.error('[MongoDB storage] Monitoring failed:', error.message);
+      });
+    };
+    checkStorage();
+    const interval = setInterval(checkStorage, 6 * 60 * 60 * 1000);
+    interval.unref();
   }
-}
