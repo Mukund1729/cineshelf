@@ -111,7 +111,7 @@ export default function BoxOfficePage() {
 
         {/* Year Selector */}
         <div className="w-full flex justify-center mb-6">
-          <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-transparent px-2 py-1 rounded-lg bg-[#181c24]/60">
+          <div className="flex gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-transparent px-2 py-1 rounded-lg bg-[#181c24]/60 vc-mobile-wrap">
             {range(START_YEAR, END_YEAR).reverse().map(y => (
               <button
                 key={y}

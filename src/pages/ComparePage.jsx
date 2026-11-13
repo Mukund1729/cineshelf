@@ -176,7 +176,7 @@ export default function ComparePage() {
         </button>
       </form>
       {/* Horizontal train of movies for quick pick */}
-      <div className="relative overflow-x-auto mt-2 mb-8 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent"
+      <div className="relative overflow-x-auto mt-2 mb-8 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent vc-mobile-hide-train"
         style={{ WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)' }}>
         <div
           className="flex gap-3 md:gap-4 lg:gap-5 items-stretch animate-train min-w-[600px] md:min-w-0"

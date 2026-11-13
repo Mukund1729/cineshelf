@@ -613,7 +613,7 @@ const MovieDetail = () => {
               <h3 className="text-lg md:text-2xl font-bold text-cyan-300 mb-3 font-playfair tracking-tight flex items-center gap-2 drop-shadow-lg">
                 <span className="text-xl md:text-2xl">👥</span> Top Cast
               </h3>
-              <div className="flex overflow-x-auto gap-3 md:gap-4 pb-1 no-scrollbar">
+              <div className="flex overflow-x-auto gap-3 md:gap-4 pb-1 no-scrollbar vc-mobile-grid">
                 {movie.credits.cast.slice(0, 10).map(actor => (
                   <Link
                     key={actor.id}

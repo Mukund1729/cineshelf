@@ -85,20 +85,21 @@ function Strip({ title, label, items = [], linkTo, size = 'normal' }) {
   };
   return (
     <section style={{ marginBottom: '3.5rem' }}>
-      <div className="vc-container" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+      <div className="vc-container vc-strip-heading" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
         <div>
           {label && <span className="vc-section-label">{label}</span>}
           <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)', fontWeight: 700, margin: 0 }}>{title}</h2>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="vc-strip-controls" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {linkTo && <Link to={linkTo} style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.8rem', color: 'var(--vc-gold)', textDecoration: 'none', letterSpacing: '0.08em' }}>See all →</Link>}
-          <button onClick={() => scroll(-1)} style={{ background: 'var(--vc-bg-elevated)', border: 'none', borderRadius: 4, color: 'var(--vc-slate)', width: 28, height: 28, cursor: 'pointer', fontSize: '0.8rem' }}>‹</button>
-          <button onClick={() => scroll(1)}  style={{ background: 'var(--vc-bg-elevated)', border: 'none', borderRadius: 4, color: 'var(--vc-slate)', width: 28, height: 28, cursor: 'pointer', fontSize: '0.8rem' }}>›</button>
+          <button className="vc-strip-scroll-button" onClick={() => scroll(-1)} style={{ background: 'var(--vc-bg-elevated)', border: 'none', borderRadius: 4, color: 'var(--vc-slate)', width: 28, height: 28, cursor: 'pointer', fontSize: '0.8rem' }}>‹</button>
+          <button className="vc-strip-scroll-button" onClick={() => scroll(1)}  style={{ background: 'var(--vc-bg-elevated)', border: 'none', borderRadius: 4, color: 'var(--vc-slate)', width: 28, height: 28, cursor: 'pointer', fontSize: '0.8rem' }}>›</button>
         </div>
       </div>
       <div className="vc-container" style={{ overflowX: 'hidden', position: 'relative' }}>
         <div
           ref={scrollRef}
+          className="vc-mobile-grid vc-home-poster-row"
           style={{
             display: 'flex', gap: '0.75rem', overflowX: 'auto',
             scrollbarWidth: 'none', msOverflowStyle: 'none',

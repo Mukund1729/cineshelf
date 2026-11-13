@@ -96,7 +96,7 @@ export default function BoxOfficeDaywiseChart({ movieData, currency = 'INR' }) {
       </div>
 
       {/* Daywise Table */}
-      <div className="mt-6 overflow-x-auto">
+      <div className="mt-6 overflow-x-auto vc-mobile-table-wrap">
         <table className="min-w-full text-sm">
           <thead>
             <tr className="border-b border-gray-700">

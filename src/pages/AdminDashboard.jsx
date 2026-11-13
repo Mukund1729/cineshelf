@@ -168,8 +168,8 @@ export default function AdminDashboard() {
                   </span>
                 </div>
 
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem' }}>
+                <div className="vc-mobile-table-wrap" style={{ overflowX: 'auto' }}>
+                  <table className="vc-mobile-table-admin" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                         {['User', 'Email', 'Joined', 'Admin', 'Actions'].map(h => (

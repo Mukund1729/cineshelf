@@ -170,7 +170,7 @@ const PersonBoxOffice = () => {
           </div>
         )}
         {/* Table fallback for full details */}
-        <div className="overflow-x-auto rounded-2xl shadow-2xl bg-[#181c24]">
+        <div className="overflow-x-auto rounded-2xl shadow-2xl bg-[#181c24] vc-mobile-table-wrap">
           <table className="min-w-full rounded-2xl overflow-hidden">
             <thead>
               <tr className="bg-cyan-900/60 text-cyan-200 text-lg">

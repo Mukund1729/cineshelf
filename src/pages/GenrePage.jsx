@@ -67,7 +67,7 @@ export default function GenrePage() {
       {/* Top Rated */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-pink-400 mb-4">Top Rated</h2>
-        <div className="flex overflow-x-auto gap-4 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent">
+        <div className="flex overflow-x-auto gap-4 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent vc-mobile-grid">
           {topRated.map((movie) => (
             <Link to={`/movie/${movie.id}`} key={movie.id} className="min-w-[120px] max-w-[120px] flex-shrink-0 bg-[#181c24] rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-pink-400 transition-transform duration-200 flex flex-col items-center relative">
               <img src={getPoster(movie.poster_path)} alt={movie.title} className="w-full h-40 object-cover rounded-t-lg" />
@@ -81,7 +81,7 @@ export default function GenrePage() {
       {/* Hidden Gems */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-yellow-400 mb-4">Hidden Gems</h2>
-        <div className="flex overflow-x-auto gap-4 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent">
+        <div className="flex overflow-x-auto gap-4 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent vc-mobile-grid">
           {hiddenGems.map((movie) => (
             <Link to={`/movie/${movie.id}`} key={movie.id} className="min-w-[120px] max-w-[120px] flex-shrink-0 bg-[#181c24] rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-yellow-400 transition-transform duration-200 flex flex-col items-center relative">
               <img src={getPoster(movie.poster_path)} alt={movie.title} className="w-full h-40 object-cover rounded-t-lg" />
@@ -95,7 +95,7 @@ export default function GenrePage() {
       {/* New Arrivals */}
       <section className="mb-12">
         <h2 className="text-2xl font-bold text-green-400 mb-4">New Arrivals</h2>
-        <div className="flex overflow-x-auto gap-4 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent">
+        <div className="flex overflow-x-auto gap-4 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent vc-mobile-grid">
           {newArrivals.map((movie) => (
             <Link to={`/movie/${movie.id}`} key={movie.id} className="min-w-[120px] max-w-[120px] flex-shrink-0 bg-[#181c24] rounded-lg overflow-hidden shadow-md hover:scale-105 hover:shadow-green-400 transition-transform duration-200 flex flex-col items-center relative">
               <img src={getPoster(movie.poster_path)} alt={movie.title} className="w-full h-40 object-cover rounded-t-lg" />

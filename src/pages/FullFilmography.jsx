@@ -44,8 +44,8 @@ const FullFilmography = () => {
   return (
     <div className="max-w-5xl mx-auto p-6 bg-[#0f1c2d] min-h-screen text-white">
       <h1 className="text-3xl font-bold mb-4">{person?.name}'s Full Filmography</h1>
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-[#181c24] rounded-xl overflow-hidden">
+      <div className="overflow-x-auto vc-mobile-table-wrap">
+        <table className="min-w-full bg-[#181c24] rounded-xl overflow-hidden vc-mobile-table-filmography">
           <thead>
             <tr className="bg-cyan-900/60 text-cyan-200">
               <th className="px-4 py-2 text-left">Title</th>

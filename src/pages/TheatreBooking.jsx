@@ -1418,7 +1418,7 @@ export default function TheatreBooking() {
       )}
 
       {/* ── Step indicator ── */}
-      <div style={{
+      <div className="theatre-steps" style={{
         position: 'sticky', top: 58, zIndex: 50,
         background: 'rgba(7,9,15,0.95)', backdropFilter: 'blur(12px)',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
@@ -1466,7 +1466,7 @@ export default function TheatreBooking() {
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 58px - 46px)' }}>
 
           {/* Theatre + showtime selectors */}
-          <div style={{
+          <div className="theatre-booking-selectors" style={{
             padding: '0.75rem 1.5rem',
             background: 'rgba(255,255,255,0.03)',
             borderBottom: '1px solid rgba(255,255,255,0.05)',
@@ -1538,7 +1538,7 @@ export default function TheatreBooking() {
             )}
 
             {/* Showtimes */}
-            <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', flex: 1 }}>
+            <div className="vc-mobile-wrap theatre-showtimes" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', flex: 1 }}>
               {showtimes.map((s, i) => (
                 <button key={i} onClick={() => setShowIdx(i)} style={{
                   padding: '0.4rem 0.9rem', borderRadius: 8, whiteSpace: 'nowrap',

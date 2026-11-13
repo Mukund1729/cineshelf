@@ -111,7 +111,7 @@ export default function BoxOfficeByYear() {
           ))}
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
+        <div className="vc-mobile-form-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
           <input className="vc-input" style={{ width: 220 }} placeholder="Search movies…" value={search} onChange={e => setSearch(e.target.value)} />
           <select className="vc-input" style={{ width: 160 }} value={sort} onChange={e => setSort(e.target.value)}>
             {SORTS.map(s => (
@@ -120,7 +120,7 @@ export default function BoxOfficeByYear() {
           </select>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', marginBottom: '1rem', paddingBottom: 4 }}>
+        <div className="vc-mobile-wrap" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', marginBottom: '1rem', paddingBottom: 4 }}>
           {range(START_YEAR, END_YEAR).map(y => (
             <button key={y} type="button" style={pill(String(year) === String(y))} onClick={() => setYear(y)}>{y}</button>
           ))}
@@ -131,7 +131,7 @@ export default function BoxOfficeByYear() {
         ) : error ? (
           <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--vc-red)' }}>{error}</div>
         ) : (
-          <div style={{ overflowX: 'auto', borderRadius: 'var(--vc-radius-lg)', border: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="vc-mobile-table-wrap" style={{ overflowX: 'auto', borderRadius: 'var(--vc-radius-lg)', border: '1px solid rgba(255,255,255,0.06)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif', fontSize: '0.875rem' }}>
               <thead>
                 <tr style={{ background: 'var(--vc-bg-elevated)', color: 'var(--vc-gold)' }}>

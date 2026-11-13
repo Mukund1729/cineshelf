@@ -117,6 +117,7 @@ export default function Navbar() {
 
   return (
     <nav
+      className="vc-navbar"
       style={{
         position: 'sticky',
         top: 0,
@@ -131,7 +132,7 @@ export default function Navbar() {
       }}
     >
       <div
-        className="vc-container"
+        className="vc-container vc-navbar-inner"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -247,12 +248,13 @@ export default function Navbar() {
         </Link>
 
         {/* Right side: user or auth */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0, marginLeft: 'auto' }}>
+        <div className="navbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0, marginLeft: 'auto' }}>
           {user ? (
             <>
             <NotificationBell />
             <div ref={userMenuRef} style={{ position: 'relative' }}>
               <button
+                className="navbar-user-trigger"
                 onClick={() => setUserMenuOpen(v => !v)}
                 style={{
                   display: 'flex',
@@ -291,7 +293,7 @@ export default function Navbar() {
                 <span className="navbar-username" style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user.username || user.name}
                 </span>
-                <svg width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ opacity: 0.5 }}>
+                <svg className="navbar-user-chevron" width="10" height="6" viewBox="0 0 10 6" fill="none" style={{ opacity: 0.5 }}>
                   <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </button>
@@ -371,6 +373,7 @@ export default function Navbar() {
             className="navbar-hamburger"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={menuOpen}
+            aria-controls="navbar-mobile-menu"
           >
             {menuOpen ? (
               <svg width="18" height="12" viewBox="0 0 18 12" fill="none">
@@ -391,12 +394,12 @@ export default function Navbar() {
           background: 'var(--vc-bg-deep)',
           borderTop: '1px solid rgba(255,255,255,0.06)',
           padding: '1rem 1.5rem',
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+        }} className="navbar-mobile-menu" id="navbar-mobile-menu">
+          <div className="navbar-mobile-links" style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <Link
               to="/panorama"
               onClick={() => setMenuOpen(false)}
-              className="book-tickets-btn"
+              className="book-tickets-btn navbar-mobile-ticket"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -421,6 +424,7 @@ export default function Navbar() {
                 key={link.to}
                 to={link.to}
                 onClick={() => setMenuOpen(false)}
+                className="navbar-mobile-link"
                 style={{
                   fontFamily: 'Outfit, sans-serif',
                   fontSize: '0.9rem',
@@ -440,6 +444,7 @@ export default function Navbar() {
                     key={link.to}
                     to={link.to}
                     onClick={() => setMenuOpen(false)}
+                    className="navbar-mobile-link"
                     style={{
                       fontFamily: 'Outfit, sans-serif',
                       fontSize: '0.9rem',
@@ -453,6 +458,7 @@ export default function Navbar() {
                   </Link>
                 ))}
                 <button
+                  className="navbar-mobile-signout"
                   onClick={handleLogout}
                   style={{
                     textAlign: 'left',
@@ -471,7 +477,7 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => { setMenuOpen(false); window.dispatchEvent(new CustomEvent('open-auth-modal')); }}
-                className="vc-btn vc-btn-primary"
+                className="vc-btn vc-btn-primary navbar-mobile-signin"
                 style={{ marginTop: '0.75rem', width: '100%', justifyContent: 'center' }}
               >
                 Sign in

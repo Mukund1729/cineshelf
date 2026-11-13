@@ -58,7 +58,7 @@ export default function PersonDetail() {
             <p className="mt-3 mb-4 text-gray-200 text-sm md:text-base line-clamp-5">{person.biography || 'No biography available.'}</p>
             <div className="mt-6">
               <h3 className="text-lg font-semibold mb-2 text-cyan-200">Known For</h3>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-transparent">
+              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-transparent vc-mobile-grid">
                 {person.movie_credits?.cast?.slice(0, 10).map(movie => (
                   <Link to={`/movie/${movie.id}`} key={movie.id} className="block min-w-[90px] max-w-[90px]">
                     <img
