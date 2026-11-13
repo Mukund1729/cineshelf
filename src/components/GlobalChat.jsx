@@ -78,7 +78,7 @@ export default function GlobalChat() {
       const touch = event.changedTouches[0];
       const deltaX = touch.clientX - touchStart.x;
       const deltaY = touch.clientY - touchStart.y;
-      if (touchStart.x > window.innerWidth * 0.6 && deltaX < -80 && Math.abs(deltaY) < 70) {
+      if (deltaX < -80 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
         openInbox();
       }
       touchStart = null;
