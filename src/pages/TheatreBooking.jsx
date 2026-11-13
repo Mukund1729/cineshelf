@@ -595,156 +595,82 @@ export default function TheatreBooking() {
     scene.add(screen);
 
     let screenTexture = null;
-    const trailer = movie?.videos?.results?.find(
-      video => video.site === 'YouTube' && video.type === 'Trailer' && video.key
-    );
+    const videos = movie?.videos?.results || [];
+    const trailer = videos.find(video => video.site === 'YouTube' && video.type === 'Trailer' && video.key)
+      || videos.find(video => video.site === 'YouTube' && /trailer|teaser/i.test(video.type || '') && video.key)
+      || videos.find(video => video.site === 'YouTube' && video.key);
 
-    // ── Decide rendering strategy based on container width ────────────────
-    // CSS3DRenderer perspective breaks on narrow/mobile viewports.
-    // Threshold: use CSS3D only when wide enough for stable perspective maths.
-    const USE_CSS3D = getW() >= 600;
+    const paintScreenImage = (imagePath) => {
+      if (!imagePath) return;
+      const textureLoader = new THREE.TextureLoader();
+      screenTexture = textureLoader.load(
+        tmdbImageUrl(imagePath, 'w1280'),
+        (texture) => {
+          if (disposed) {
+            texture.dispose();
+            return;
+          }
+          texture.colorSpace = THREE.SRGBColorSpace;
+          texture.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 4);
+          const imageAspect = texture.image.width / texture.image.height;
+          const screenAspect = scrW / scrH;
+          if (imageAspect > screenAspect) {
+            texture.repeat.x = screenAspect / imageAspect;
+            texture.offset.x = (1 - texture.repeat.x) / 2;
+          } else {
+            texture.repeat.y = imageAspect / screenAspect;
+            texture.offset.y = (1 - texture.repeat.y) / 2;
+          }
+          screen.material.map = texture;
+          screen.material.color.setHex(0xffffff);
+          screen.material.needsUpdate = true;
+        },
+        undefined,
+        () => {
+          if (screenTexture) {
+            screenTexture.dispose();
+            screenTexture = null;
+          }
+        }
+      );
+    };
+
+    // Still sits on the WebGL screen until (and behind) the playing trailer.
+    paintScreenImage(movie?.backdrop_path || movie?.poster_path);
 
     if (trailer) {
-      if (USE_CSS3D) {
-        // ── Desktop: full-bleed YouTube iframe via CSS3DRenderer ────────────
-        const baseWidth  = 2560;
-        const baseHeight = 1440; // 16:9
+      // YouTube on the cinema plane. Keep the element simple — extra masks and
+      // oversized crops stop the player from painting inside a CSS 3D transform.
+      const baseWidth = 1280;
+      const baseHeight = 720;
+      const frame = document.createElement('div');
+      Object.assign(frame.style, {
+        width: `${baseWidth}px`,
+        height: `${baseHeight}px`,
+        background: '#000',
+        overflow: 'hidden',
+      });
 
-        const frame = document.createElement('div');
-        Object.assign(frame.style, {
-          width:    `${baseWidth}px`,
-          height:   `${baseHeight}px`,
-          overflow: 'hidden',
-          background: '#000',
-          position: 'relative',
-          pointerEvents: 'none',
-        });
+      const iframe = document.createElement('iframe');
+      const videoId = encodeURIComponent(trailer.key);
+      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+      iframe.title = `${movie?.title || 'Movie'} trailer`;
+      iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      Object.assign(iframe.style, {
+        width: '100%',
+        height: '100%',
+        border: '0',
+        display: 'block',
+        pointerEvents: 'none',
+      });
+      frame.appendChild(iframe);
 
-        // Oversize iframe ~15% each side → crops YouTube letterbox + UI chrome
-        const overshoot = 0.15;
-        const iframeH = Math.round(baseHeight * (1 + overshoot * 2));
-        const iframeW = Math.round(iframeH * (16 / 9));
-        const offsetX = -Math.round((iframeW - baseWidth) / 2);
-        const offsetY = -Math.round(baseHeight * overshoot);
-
-        const iframeWrap = document.createElement('div');
-        Object.assign(iframeWrap.style, {
-          position: 'absolute',
-          top:    `${offsetY}px`,
-          left:   `${offsetX}px`,
-          width:  `${iframeW}px`,
-          height: `${iframeH}px`,
-          pointerEvents: 'none',
-        });
-
-        const iframe = document.createElement('iframe');
-        iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(trailer.key)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${encodeURIComponent(trailer.key)}&playsinline=1&rel=0&disablekb=1&modestbranding=1&iv_load_policy=3&showinfo=0&fs=0&vq=hd1080&enablejsapi=0`;
-        iframe.title = `${movie.title || 'Movie'} trailer`;
-        iframe.allow = 'autoplay; encrypted-media';
-        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-        Object.assign(iframe.style, {
-          width: '100%', height: '100%',
-          border: '0', display: 'block',
-          pointerEvents: 'none',
-        });
-        iframeWrap.appendChild(iframe);
-        frame.appendChild(iframeWrap);
-
-        // Black mask strips — hide any residual YouTube UI chrome
-        const mk = (s) => {
-          const d = document.createElement('div');
-          Object.assign(d.style, { position: 'absolute', background: '#000', pointerEvents: 'none', ...s });
-          return d;
-        };
-        frame.appendChild(mk({ top: '0',    left: '0', width: '100%', height: '7%' }));  // top
-        frame.appendChild(mk({ bottom: '0', left: '0', width: '100%', height: '7%' }));  // bottom
-        frame.appendChild(mk({ top: '0',    left: '0', width: '3%',   height: '100%' })); // left
-        frame.appendChild(mk({ top: '0',    right: '0', width: '3%', height: '100%' }));  // right
-
-        const trailerScreen = new CSS3DObject(frame);
-        trailerScreen.position.set(0, scrY, HALL.screenZ + 0.045);
-        trailerScreen.scale.set(scrW / baseWidth, scrH / baseHeight, 1);
-        scene.add(trailerScreen);
-        screen.visible = false; // hide WebGL mesh — CSS3D covers it
-
-      } else {
-        // ── Mobile/narrow: HTML5 <video> → Three.js VideoTexture ────────────
-        // No CSS3DRenderer — renders directly on the WebGL screen mesh.
-        const vid = document.createElement('video');
-        vid.crossOrigin = 'anonymous';
-        vid.autoplay    = true;
-        vid.muted       = true;
-        vid.loop        = true;
-        vid.playsInline = true;
-        vid.setAttribute('playsinline', '');
-        // Use YouTube's thumbnail as fallback while video loads (video itself won't
-        // play via src — we fall through to backdrop. For mobile we show backdrop.)
-        vid.style.display = 'none';
-        document.body.appendChild(vid);
-
-        // Show movie backdrop on screen for mobile (video src = YouTube not streamable directly)
-        const fallbackPath = movie?.backdrop_path || movie?.poster_path;
-        if (fallbackPath) {
-          const textureLoader = new THREE.TextureLoader();
-          screenTexture = textureLoader.load(
-            tmdbImageUrl(fallbackPath, 'w1280'),
-            (texture) => {
-              if (disposed) { texture.dispose(); return; }
-              texture.colorSpace = THREE.SRGBColorSpace;
-              const imgAsp = texture.image.width / texture.image.height;
-              const scrAsp = scrW / scrH;
-              if (imgAsp > scrAsp) {
-                texture.repeat.x = scrAsp / imgAsp;
-                texture.offset.x = (1 - texture.repeat.x) / 2;
-              } else {
-                texture.repeat.y = imgAsp / scrAsp;
-                texture.offset.y = (1 - texture.repeat.y) / 2;
-              }
-              screen.material.map = texture;
-              screen.material.color.setHex(0xffffff);
-              screen.material.needsUpdate = true;
-            }
-          );
-        }
-
-        // Show "▶ Tap to watch trailer" overlay on screen
-        screen.visible = true;
-        screen.material.color.setHex(0x0d1220);
-
-        // Also show a floating "Watch Trailer" button in the DOM
-        const trailerBtn = document.createElement('a');
-        trailerBtn.href   = `https://www.youtube.com/watch?v=${trailer.key}`;
-        trailerBtn.target = '_blank';
-        trailerBtn.rel    = 'noopener noreferrer';
-        Object.assign(trailerBtn.style, {
-          position: 'absolute',
-          top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: '20',
-          background: 'rgba(212,175,55,0.15)',
-          border: '1px solid #d4af37',
-          borderRadius: '999px',
-          padding: '0.5rem 1.2rem',
-          color: '#d4af37',
-          fontFamily: 'Outfit, sans-serif',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          letterSpacing: '0.08em',
-          textDecoration: 'none',
-          backdropFilter: 'blur(8px)',
-          whiteSpace: 'nowrap',
-          pointerEvents: 'auto',
-        });
-        trailerBtn.textContent = '▶ Watch Trailer';
-        container.appendChild(trailerBtn);
-        // Clean up button on dispose
-        const _origDispose = disposed;
-        const cleanupBtn = () => { trailerBtn.remove(); };
-        renderer.domElement.addEventListener('__dispose__', cleanupBtn);
-        // Store for cleanup
-        trailerBtn.dataset.cleanup = 'true';
-      }
-
+      const trailerScreen = new CSS3DObject(frame);
+      trailerScreen.position.set(0, scrY, HALL.screenZ + 0.06);
+      trailerScreen.scale.set(scrW / baseWidth, scrH / baseHeight, 1);
+      scene.add(trailerScreen);
     } else if (movie?.backdrop_path || movie?.poster_path) {
       const screenImagePath = movie.backdrop_path || movie.poster_path;
       const textureLoader = new THREE.TextureLoader();
