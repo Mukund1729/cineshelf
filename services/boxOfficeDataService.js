@@ -710,6 +710,27 @@ export async function getLatestLifetimeReports(collectionType, date) {
     .lean();
 }
 
+export async function getLatestLifetimeReportsPage(collectionType, date, language, page, limit) {
+  const query = { expiresAt: { $gt: new Date() } };
+  if (collectionType) query.collectionType = collectionType;
+  if (language && language !== 'all') query.originalLanguage = language;
+  if (date) {
+    const start = reportDateValue(date);
+    const end = new Date(start);
+    end.setUTCDate(end.getUTCDate() + 1);
+    query.reportDate = { $gte: start, $lt: end };
+  }
+  const [reports, total] = await Promise.all([
+    BoxOfficeLifetime.find(query)
+      .sort({ amount: -1, reportedAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    BoxOfficeLifetime.countDocuments(query),
+  ]);
+  return { reports, total, page, limit };
+}
+
 export async function getMovieBoxOfficeReports(tmdbId) {
   const [lifetimeReports, dailyReports] = await Promise.all([
     BoxOfficeLifetime.find({ tmdbId, expiresAt: { $gt: new Date() } })

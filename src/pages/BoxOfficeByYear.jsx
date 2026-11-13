@@ -40,16 +40,19 @@ export default function BoxOfficeByYear() {
   const [language, setLanguage] = useState('all');
   const [sort, setSort] = useState('amount');
   const [coverage, setCoverage] = useState('');
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     setError('');
-    axios.get('/api/boxoffice/yearly', { params: { year } })
+    axios.get('/api/boxoffice/yearly', { params: { year, page, limit: 100 } })
       .then(({ data }) => {
         if (!active) return;
         setReports(data.reports || []);
         setCoverage(data.coverage || '');
+        setPages(data.pages || 1);
       })
       .catch(err => {
         if (active) setError(err.response?.data?.message || 'Could not load reported box office data.');
@@ -58,7 +61,7 @@ export default function BoxOfficeByYear() {
         if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [year]);
+  }, [year, page]);
 
   const visibleReports = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -110,7 +113,7 @@ export default function BoxOfficeByYear() {
 
       <div className="vc-mobile-wrap" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', marginBottom: '1rem', paddingBottom: 4 }}>
         {range(START_YEAR, END_YEAR).map(value => (
-          <button key={value} type="button" style={pill(year === value)} onClick={() => setYear(value)}>{value}</button>
+          <button key={value} type="button" style={pill(year === value)} onClick={() => { setYear(value); setPage(1); }}>{value}</button>
         ))}
       </div>
 
@@ -164,6 +167,13 @@ export default function BoxOfficeByYear() {
           </table>
         )}
       </div>
+      {pages > 1 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1rem' }}>
+          <button type="button" className="vc-btn vc-btn-secondary" disabled={page <= 1} onClick={() => setPage(current => current - 1)}>Previous</button>
+          <span style={{ color: 'var(--vc-slate)', fontSize: '0.8rem' }}>Page {page} of {pages}</span>
+          <button type="button" className="vc-btn vc-btn-secondary" disabled={page >= pages} onClick={() => setPage(current => current + 1)}>Next</button>
+        </div>
+      )}
     </section>
   );
 }

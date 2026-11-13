@@ -212,19 +212,32 @@ export default function BoxOfficeIndia() {
           setRows(response.data.rows || []);
           setPagination(response.data.pagination || null);
         } else if (market === 'worldwide' && period === 'daily') {
-          response = await axios.get('/api/boxoffice/worldwide', { params: { date } });
+          response = await axios.get('/api/boxoffice/worldwide', {
+            params: { date, page, limit: 50 },
+          });
           if (!active) return;
           setRows(response.data.reports || []);
+          setPagination({
+            page: response.data.page || 1,
+            pages: response.data.pages || 1,
+            total: response.data.total || 0,
+          });
         } else if (market === 'worldwide') {
           if (!active) return;
           setRows([]);
+          setPagination(null);
           setError('No verified weekly or monthly worldwide data source is currently integrated.');
         } else {
           response = await axios.get('/api/boxoffice/weekly', {
-            params: { market, date, language },
+            params: { market, date, language, page, limit: 50 },
           });
           if (!active) return;
           setRows(response.data.rows || []);
+          setPagination({
+            page: response.data.page || 1,
+            pages: response.data.pages || 1,
+            total: response.data.total || 0,
+          });
           if (response.data.coverage) setError(response.data.coverage);
         }
       } catch (err) {

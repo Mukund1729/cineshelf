@@ -8,6 +8,7 @@ import {
   getBoxOfficeSyncStatus,
   getIndianReportsForDate,
   getIndianReportsInRange,
+  getLatestLifetimeReportsPage,
   getLatestLifetimeReports,
   getMovieBoxOfficeReports,
   getReportDateRange,
@@ -19,6 +20,7 @@ const isValidDate = value => (
   !Number.isNaN(new Date(`${value}T00:00:00.000Z`).getTime()) &&
   new Date(`${value}T00:00:00.000Z`).toISOString().slice(0, 10) === value
 );
+const VALID_LANGUAGES = new Set(['all', 'hi', 'te', 'ta', 'ml', 'kn', 'en']);
 
 function getPagination(query) {
   const page = Number(query.page || 1);
@@ -281,7 +283,7 @@ export const getIndiaBoxOfficeReports = async (req, res) => {
     if (!['daily', 'weekly', 'monthly'].includes(period)) {
       return res.status(400).json({ success: false, error: 'invalid_period' });
     }
-    if (language && !['all', 'hi', 'te', 'ta', 'ml', 'kn', 'en'].includes(language)) {
+    if (language && !VALID_LANGUAGES.has(language)) {
       return res.status(400).json({ success: false, error: 'invalid_language' });
     }
     if (period === 'daily') {
@@ -353,6 +355,9 @@ export const getBoxOfficeDaily = async (req, res) => {
     const pagination = getPagination(req.query);
     if (!pagination) return res.status(400).json({ success: false, error: 'invalid_pagination' });
     if (date && !isValidDate(date)) return res.status(400).json({ success: false, error: 'invalid_date' });
+    if (language && !VALID_LANGUAGES.has(language)) {
+      return res.status(400).json({ success: false, error: 'invalid_language' });
+    }
 
     if (market === 'us' || market === 'domestic') {
       if (!date) return res.status(400).json({ success: false, error: 'date_required' });
@@ -373,11 +378,18 @@ export const getBoxOfficeDaily = async (req, res) => {
     }
     if (market === 'india') return getIndiaBoxOfficeReports(req, res);
     if (market === 'worldwide') {
-      const reports = await getLatestLifetimeReports('worldwide_gross', date);
+      const result = await getLatestLifetimeReportsPage(
+        'worldwide_gross',
+        date,
+        language,
+        pagination.page,
+        pagination.limit
+      );
       return res.json({
         success: true,
-        date: date || reports[0]?.reportDate?.toISOString().slice(0, 10) || null,
-        reports,
+        date: date || result.reports[0]?.reportDate?.toISOString().slice(0, 10) || null,
+        ...result,
+        pages: Math.ceil(result.total / result.limit),
         coverage: 'Available publisher-reported lifetime worldwide gross; no daily worldwide values are assumed.',
       });
     }
@@ -389,13 +401,25 @@ export const getBoxOfficeDaily = async (req, res) => {
 
 export const getBoxOfficeWorldwide = async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, language } = req.query;
+    const pagination = getPagination(req.query);
+    if (!pagination) return res.status(400).json({ success: false, error: 'invalid_pagination' });
     if (date && !isValidDate(date)) return res.status(400).json({ success: false, error: 'invalid_date' });
-    const reports = await getLatestLifetimeReports('worldwide_gross', date);
+    if (language && !VALID_LANGUAGES.has(language)) {
+      return res.status(400).json({ success: false, error: 'invalid_language' });
+    }
+    const result = await getLatestLifetimeReportsPage(
+      'worldwide_gross',
+      date,
+      language,
+      pagination.page,
+      pagination.limit
+    );
     res.json({
       success: true,
-      date: date || reports[0]?.reportDate?.toISOString().slice(0, 10) || null,
-      reports,
+      date: date || result.reports[0]?.reportDate?.toISOString().slice(0, 10) || null,
+      ...result,
+      pages: Math.ceil(result.total / result.limit),
       coverage: 'Available publisher-reported lifetime worldwide gross; no daily worldwide values are assumed.',
     });
   } catch (error) {
@@ -407,26 +431,41 @@ export const getBoxOfficeWeekly = async (req, res) => {
   try {
     const market = String(req.query.market || 'india').toLowerCase();
     const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const pagination = getPagination(req.query);
+    if (!pagination) return res.status(400).json({ success: false, error: 'invalid_pagination' });
     if (!isValidDate(date)) return res.status(400).json({ success: false, error: 'invalid_date' });
-    if (req.query.language && !['all', 'hi', 'te', 'ta', 'ml', 'kn', 'en'].includes(req.query.language)) {
+    if (req.query.language && !VALID_LANGUAGES.has(req.query.language)) {
       return res.status(400).json({ success: false, error: 'invalid_language' });
+    }
+    if (!['india', 'us', 'domestic', 'worldwide'].includes(market)) {
+      return res.status(400).json({ success: false, error: 'invalid_market' });
     }
     if (market !== 'india') {
       return res.json({
         success: true,
         market,
         rows: [],
+        page: pagination.page,
+        limit: pagination.limit,
+        total: 0,
+        pages: 0,
         coverage: 'No verified weekly source is currently integrated for this market.',
       });
     }
     const { start, end } = getReportDateRange('weekly', date);
     const reports = await getIndianReportsInRange(start, end, req.query.language);
+    const grouped = aggregateIndianReports(reports);
+    const startIndex = (pagination.page - 1) * pagination.limit;
     res.json({
       success: true,
       market,
       startDate: start.toISOString().slice(0, 10),
       endDate: new Date(end.getTime() - 1).toISOString().slice(0, 10),
-      rows: aggregateIndianReports(reports),
+      rows: grouped.slice(startIndex, startIndex + pagination.limit),
+      page: pagination.page,
+      limit: pagination.limit,
+      total: grouped.length,
+      pages: Math.ceil(grouped.length / pagination.limit),
       coverage: 'Partial sum of RSS-reported days only; this is not a complete weekly chart.',
     });
   } catch (error) {
@@ -437,17 +476,31 @@ export const getBoxOfficeWeekly = async (req, res) => {
 export const getBoxOfficeYearly = async (req, res) => {
   try {
     const year = Number(req.query.year);
+    const pagination = getPagination(req.query);
+    if (!pagination) return res.status(400).json({ success: false, error: 'invalid_pagination' });
     if (!Number.isInteger(year) || year < 1900 || year > 2100) {
       return res.status(400).json({ success: false, error: 'invalid_year' });
     }
-    const reports = await BoxOfficeLifetime.find({
+    const query = {
       releaseYear: year,
       expiresAt: { $gt: new Date() },
-    }).sort({ amount: -1 }).limit(100).lean();
+    };
+    const [reports, total] = await Promise.all([
+      BoxOfficeLifetime.find(query)
+        .sort({ amount: -1 })
+        .skip((pagination.page - 1) * pagination.limit)
+        .limit(pagination.limit)
+        .lean(),
+      BoxOfficeLifetime.countDocuments(query),
+    ]);
     res.json({
       success: true,
       year,
       reports,
+      page: pagination.page,
+      limit: pagination.limit,
+      total,
+      pages: Math.ceil(total / pagination.limit),
       coverage: 'Partial lifetime reports for movies released in this year; not a complete annual box-office total.',
     });
   } catch (error) {
