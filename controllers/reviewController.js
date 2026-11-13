@@ -51,6 +51,23 @@ export const getReviewsByMovie = async (req, res) => {
   }
 };
 
+// GET /api/review/tv/:tmdbId — Get all reviews for a TV show
+export const getReviewsByTv = async (req, res) => {
+  try {
+    const tmdbId = Number(req.params.tmdbId);
+    if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
+      return res.status(400).json({ success: false, error: 'A valid TV show ID is required.' });
+    }
+
+    const reviews = await Review.find({ tmdbId, mediaType: 'tv' })
+      .populate('user', 'username name avatar')
+      .sort({ createdAt: -1 });
+    res.json({ success: true, data: reviews, count: reviews.length });
+  } catch (err) {
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
 // GET /api/review/:id — Get one public review
 export const getReviewById = async (req, res) => {
   try {
@@ -142,7 +159,7 @@ export const addReview = async (req, res) => {
     const parsedRating = Number(rating);
     const reviewText = typeof review === 'string' ? review.trim() : '';
     if (!tmdbId || !Number.isInteger(Number(tmdbId)) || Number(tmdbId) <= 0) {
-      return res.status(400).json({ success: false, error: 'A valid movie ID is required.' });
+      return res.status(400).json({ success: false, error: 'A valid movie or TV show ID is required.' });
     }
     if (!watchedAt) return res.status(400).json({ success: false, error: 'Enter a valid watched date.' });
     if (!Number.isFinite(parsedRating) || parsedRating < 1 || parsedRating > 10) {
@@ -155,7 +172,7 @@ export const addReview = async (req, res) => {
       return res.status(400).json({ success: false, error: 'Media type must be movie or tv.' });
     }
 
-    // Upsert: create or update existing review for this user+movie
+    // Upsert: create or update the user's review for this title
     const savedReview = await Review.findOneAndUpdate(
       { user: req.user.id, tmdbId: Number(tmdbId) },
       {
@@ -183,7 +200,7 @@ export const addReview = async (req, res) => {
       };
       if (reviewText) diaryUpdate.note = reviewText;
       const diaryEntry = await DiaryEntry.findOneAndUpdate(
-        { user: req.user.id, tmdbId: Number(tmdbId), watchedAt },
+        { user: req.user.id, tmdbId: Number(tmdbId), mediaType, watchedAt },
         { $set: diaryUpdate, $setOnInsert: { user: req.user.id, tmdbId: Number(tmdbId) } },
         { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
       );

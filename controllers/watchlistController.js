@@ -18,15 +18,21 @@ export const addToWatchlist = async (req, res) => {
       watchlist = new Watchlist({ user: req.user.id, movies: [] });
     }
     
-    // Check if movie already exists
-    const existingMovie = watchlist.movies.find(m => m.tmdbId === req.body.tmdbId);
+    // Check whether this movie or TV show is already saved.
+    const mediaType = req.body.mediaType || 'movie';
+    const tmdbId = Number(req.body.tmdbId || req.body.id);
+    const existingMovie = watchlist.movies.find(m => (
+      m.tmdbId === tmdbId && (m.mediaType || 'movie') === mediaType
+    ));
     if (existingMovie) {
-      return res.status(400).json({ error: 'Movie already in watchlist' });
+      return res.status(400).json({
+        error: mediaType === 'tv' ? 'TV show already in watchlist' : 'Movie already in watchlist',
+      });
     }
     
     // Normalize movie/TV show data to match schema
     const movieData = {
-      tmdbId: req.body.tmdbId || req.body.id,
+      tmdbId,
       title: req.body.title || req.body.name, // Handle both movie.title and TV show.name
       poster: req.body.poster || req.body.posterUrl || req.body.poster_path,
       posterUrl: req.body.posterUrl || req.body.poster_path || req.body.poster,
@@ -34,7 +40,7 @@ export const addToWatchlist = async (req, res) => {
       releaseDate: req.body.releaseDate || req.body.release_date || req.body.first_air_date, // Handle TV show first_air_date
       voteAverage: req.body.voteAverage || req.body.vote_average,
       genreIds: req.body.genreIds || req.body.genre_ids,
-      mediaType: req.body.mediaType || 'movie', // Add media type to distinguish movies from TV shows
+      mediaType,
       addedAt: new Date()
     };
     

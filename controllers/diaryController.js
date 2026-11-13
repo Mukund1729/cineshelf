@@ -67,7 +67,7 @@ export const createDiaryEntry = async (req, res) => {
     if (note.trim()) update.note = note.trim();
 
     const entry = await DiaryEntry.findOneAndUpdate(
-      { user: req.user.id, tmdbId: parsedTmdbId, watchedAt: parsedDate },
+      { user: req.user.id, tmdbId: parsedTmdbId, mediaType, watchedAt: parsedDate },
       { $set: update, $setOnInsert: { user: req.user.id, tmdbId: parsedTmdbId } },
       { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
     );

@@ -4,6 +4,7 @@ import {
   getReviews,
   getReviewsByUser,
   getReviewsByMovie,
+  getReviewsByTv,
   getReviewById,
   addReviewComment,
   addReview,
@@ -22,6 +23,7 @@ router.get('/user/:userId', getReviewsByUser);
 
 // Public: all reviews for a specific movie/show
 router.get('/movie/:tmdbId', getReviewsByMovie);
+router.get('/tv/:tmdbId', getReviewsByTv);
 
 // Public: one full review
 router.get('/:id', getReviewById);
