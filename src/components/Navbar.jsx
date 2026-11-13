@@ -246,7 +246,7 @@ export default function Navbar() {
         </Link>
 
         {/* Right side: user or auth */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', flexShrink: 0, marginLeft: 'auto' }}>
           {user ? (
             <>
             <NotificationBell />
