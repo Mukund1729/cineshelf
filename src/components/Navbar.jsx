@@ -137,7 +137,7 @@ export default function Navbar() {
           alignItems: 'center',
           justifyContent: 'space-between',
           height: '58px',
-          gap: '1rem',
+          gap: '1.5rem',
         }}
       >
         {/* Logo */}

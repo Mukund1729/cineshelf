@@ -601,8 +601,8 @@ export default function TheatreBooking() {
     if (trailer) {
       const frame = document.createElement('div');
       Object.assign(frame.style, {
-        width: '1280px',
-        height: '600px',
+        width: '1920px',
+        height: '1080px',
         overflow: 'hidden',
         background: '#05060a',
         pointerEvents: 'auto',
@@ -624,7 +624,7 @@ export default function TheatreBooking() {
 
       const trailerScreen = new CSS3DObject(frame);
       trailerScreen.position.set(0, scrY, HALL.screenZ + 0.045);
-      trailerScreen.scale.set(scrW / 1280, scrH / 600, 1);
+      trailerScreen.scale.set(scrW / 1920, scrH / 1080, 1);
       scene.add(trailerScreen);
       scrMat.color.setHex(0x05060a);
     } else if (movie?.backdrop_path || movie?.poster_path) {
