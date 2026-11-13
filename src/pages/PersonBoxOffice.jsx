@@ -130,7 +130,7 @@ const PersonBoxOffice = () => {
         <h1 className="text-3xl md:text-4xl font-bold font-playfair mb-6 text-cyan-200 drop-shadow">{person?.name}'s Box Office Collection</h1>
         {/* Horizontally scrolling movie train */}
         {movies.length > 0 && (
-          <div className="relative overflow-x-auto mt-2 mb-8 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-transparent"
+          <div className="relative overflow-x-auto mt-2 mb-8 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-transparent vc-mobile-hide-train"
             style={{ WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)' }}>
             <div
               className="flex gap-4 items-stretch animate-train min-w-[600px] md:min-w-0"

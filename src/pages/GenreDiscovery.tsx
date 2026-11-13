@@ -51,7 +51,7 @@ export default function GenreHighlights() {
             <h3 className="text-xl font-semibold font-playfair text-cyan-100 mb-3">
               {genre.name}
             </h3>
-            <div className="flex overflow-x-auto gap-6 pb-2">
+            <div className="flex overflow-x-auto gap-6 pb-2 vc-mobile-grid">
               {(moviesByGenre[genre.name] || []).map((movie, idx) => (
                 <div
                   key={idx}

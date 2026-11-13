@@ -532,6 +532,37 @@ body, html {
     max-width: 100% !important;
   }
 
+  .pt-24,
+  .pt-20 {
+    padding-top: 2rem !important;
+  }
+
+  .pb-16,
+  .py-10 {
+    padding-bottom: 2rem !important;
+  }
+
+  .my-20 {
+    margin-top: 2rem !important;
+    margin-bottom: 2rem !important;
+  }
+
+  .mb-20 {
+    margin-bottom: 2rem !important;
+  }
+
+  .py-10 {
+    padding-top: 2rem !important;
+  }
+
+  .mb-12 {
+    margin-bottom: 2rem !important;
+  }
+
+  h1, h2, h3 {
+    overflow-wrap: anywhere;
+  }
+
   html, body, #root, .app {
     width: 100%;
     min-width: 0;

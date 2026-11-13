@@ -210,7 +210,7 @@ export default function GenreHighlights() {
                 {/* Top Rated */}
                 <div className="mb-8">
                   <h4 className="text-lg font-bold text-pink-400 mb-2">Top Rated</h4>
-                  <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent">
+                  <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent vc-mobile-grid">
                     {(movies[genre.name] || []).map((movie, idx) => (
                       <Link
                         to={`/movie/${movie.id}`}
@@ -233,7 +233,7 @@ export default function GenreHighlights() {
                 {/* Hidden Gems */}
                 <div className="mb-8">
                   <h4 className="text-lg font-bold text-yellow-400 mb-2">Hidden Gems</h4>
-                  <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent">
+                  <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent vc-mobile-grid">
                     {[...(hiddenGems[genre.name] || [])].map((movie, idx) => (
                       <Link
                         to={`/movie/${movie.id}`}
@@ -259,7 +259,7 @@ export default function GenreHighlights() {
                   {(newArrivals[genre.name] || []).length === 0 ? (
                     <div className="text-gray-400 italic py-8 text-center">No new arrivals on OTT for this genre right now.</div>
                   ) : (
-                    <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent">
+                    <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-thin scrollbar-thumb-[#232526] scrollbar-track-transparent vc-mobile-grid">
                       {[...(newArrivals[genre.name] || [])].map((movie, idx) => (
                         <Link
                           to={`/movie/${movie.id}`}
