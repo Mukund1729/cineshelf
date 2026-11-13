@@ -366,7 +366,7 @@ export default function Navbar() {
               padding: '0.35rem 0.5rem',
               cursor: 'pointer',
               color: '#f5f0e8',
-              marginLeft: '0.5rem',
+              marginLeft: 'auto',
             }}
             className="navbar-hamburger"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
