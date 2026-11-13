@@ -95,7 +95,7 @@ const PersonBoxOffice = () => {
     <div className="min-h-screen bg-gradient-to-br from-black via-[#181c24] to-[#1a1333] text-white font-lato relative overflow-x-hidden">
       {/* Header with the site logo */}
       <div className="fixed top-0 left-0 right-0 z-30 flex items-center w-full px-6 py-4 bg-gradient-to-b from-black/80 via-[#181c24]/60 to-transparent backdrop-blur-md">
-        <BrandLogo style={{ width: 175 }} />
+        <BrandLogo style={{ width: 190 }} />
       </div>
       {/* Search Bar for Person Box Office */}
       <div className="w-full flex justify-center pt-20 pb-2">

@@ -142,7 +142,7 @@ export default function Navbar() {
         <BrandLogo
           className="navbar-logo"
           style={{
-            width: 'clamp(128px, 14vw, 178px)',
+            width: 'clamp(165px, 17vw, 205px)',
             alignItems: 'center',
             flexShrink: 0,
           }}

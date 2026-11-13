@@ -139,7 +139,7 @@ const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
       <div className="bg-gray-900 p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto relative">
         <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white text-xl" aria-label="Close">×</button>
         <div className="flex justify-center mb-5">
-          <BrandLogo style={{ width: 150 }} />
+          <BrandLogo style={{ width: 180 }} />
         </div>
         <h2 className="text-2xl font-bold mb-4 text-center text-cyan-400">{isSignup ? 'Create your account' : 'Welcome back'}</h2>
         {error && <div className="mb-4 p-3 bg-red-600 text-white rounded text-sm">{error}</div>}

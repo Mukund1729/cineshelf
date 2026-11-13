@@ -142,7 +142,7 @@ export default function ComparePage() {
     <div className="min-h-screen bg-gradient-to-br from-black via-[#181c24] to-[#1a1333] text-white font-sans p-4">
       {/* Logo and title */}
       <div className="flex items-center justify-between mb-6">
-        <BrandLogo style={{ width: 165 }} />
+        <BrandLogo style={{ width: 190 }} />
         <div className="flex-1 flex justify-center">
           <h1 className="text-2xl md:text-3xl font-bold text-center text-cyan-100 font-playfair drop-shadow-lg">Compare Movies & TV Shows</h1>
         </div>

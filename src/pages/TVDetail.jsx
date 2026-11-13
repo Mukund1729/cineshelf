@@ -145,7 +145,7 @@ const TVDetail = () => {
     <>
       {/* Sticky Site Name Bar (modern header) */}
       <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between w-full px-8 py-4 bg-gradient-to-b from-black/90 via-[#181c24]/60 to-transparent backdrop-blur-md">
-        <BrandLogo style={{ width: 175 }} />
+        <BrandLogo style={{ width: 190 }} />
       </div>
       {/* Main content with modern search bar */}
       <div className="pt-16 min-h-screen bg-[#0e0f1b] bg-gradient-to-br from-[#0e0f1b] via-[#181c24] to-[#1a1333] text-white font-lato">

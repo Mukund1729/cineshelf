@@ -22,7 +22,7 @@ export default function UserProfile() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#181c24] via-[#232526] to-[#0a1833] text-white p-8 flex flex-col items-center">
       <div className="absolute top-4 left-4 z-50 select-none">
-        <BrandLogo style={{ width: 150 }} />
+        <BrandLogo style={{ width: 180 }} />
       </div>
       <div className="bg-[#232526] rounded-xl shadow-lg border border-cyan-700 px-8 py-6 mt-16 w-full max-w-md flex flex-col items-center">
         <img src={user.avatarUrl || 'https://via.placeholder.com/80x80?text=User'} alt={user.name} className="w-20 h-20 rounded-full object-cover border-2 border-cyan-400 mb-4" />

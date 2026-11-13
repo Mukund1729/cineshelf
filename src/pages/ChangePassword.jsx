@@ -52,7 +52,7 @@ const ChangePassword = () => {
       {/* Header */}
       <div className="relative">
         <div className="absolute top-4 left-4 z-50 select-none">
-          <BrandLogo style={{ width: 150 }} />
+          <BrandLogo style={{ width: 180 }} />
         </div>
       </div>
 

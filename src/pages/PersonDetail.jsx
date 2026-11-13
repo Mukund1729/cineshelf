@@ -34,7 +34,7 @@ export default function PersonDetail() {
     <div className="min-h-screen bg-gradient-to-br from-black via-[#181c24] to-[#1a1333] text-white font-lato relative overflow-x-hidden">
       {/* Header Row (no logo, homepage style) */}
       <div className="fixed top-0 left-0 right-0 z-30 flex items-center w-full px-6 py-4 bg-gradient-to-b from-black/80 via-[#181c24]/60 to-transparent backdrop-blur-md">
-        <BrandLogo style={{ width: 170 }} />
+        <BrandLogo style={{ width: 190 }} />
         <span className="ml-4 text-base md:text-lg font-semibold text-gray-300 tracking-wide select-none">Person Details</span>
       </div>
       <div className="pt-24 pb-16 container mx-auto px-4">

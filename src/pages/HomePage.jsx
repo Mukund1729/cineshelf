@@ -464,7 +464,7 @@ export default function HomePage() {
           {/* Label */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
             <div style={{ width: 32, height: 2, background: 'linear-gradient(90deg, var(--vc-gold), transparent)' }} />
-            <BrandLogo style={{ width: 140, opacity: 0.9 }} />
+            <BrandLogo style={{ width: 180, opacity: 0.9 }} />
           </div>
 
           {/* Headline */}
