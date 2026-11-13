@@ -225,7 +225,7 @@ function getBookMyShowUrl(city) {
     : 'https://in.bookmyshow.com/explore/movies';
 }
 
-async function fetchWithTimeout(url, options, timeoutMs = 6500) {
+async function fetchWithTimeout(url, options, timeoutMs = 12000) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
   const parentSignal = options.signal;
@@ -259,7 +259,7 @@ async function findMappedCinemas(city, signal) {
   const geocodeResponse = await fetchWithTimeout(geocodeUrl, {
     signal,
     headers: { 'Accept-Language': 'en' },
-  }, 4500);
+  }, 8000);
   if (!geocodeResponse.ok) throw new Error(`Could not locate ${city}. Try another spelling or use the BookMyShow link.`);
   const places = await geocodeResponse.json();
   if (!places.length) throw new Error(`Could not find ${city} on the public map. Try another spelling or use BookMyShow.`);
@@ -283,7 +283,7 @@ async function findMappedCinemas(city, signal) {
       requestUrl.searchParams.set('data', query);
       const response = await fetchWithTimeout(requestUrl, {
         signal,
-      }, 5500);
+      }, 10000);
       if (!response.ok) throw new Error(`The public theatre map returned ${response.status}.`);
       const data = await response.json();
       const found = new Map();
@@ -457,7 +457,7 @@ export default function TheatreBooking() {
     const timeoutId = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 20000);
+    }, 30000);
     setTheatreLookupLoading(true);
     setTheatreLookupError('');
     setMappedTheatres([]);
@@ -639,78 +639,37 @@ export default function TheatreBooking() {
     paintScreenImage(movie?.backdrop_path || movie?.poster_path);
 
     if (trailer) {
-      // Check if mobile - CSS3D doesn't work well on narrow screens
-      const isMobile = getW() < 600;
+      // YouTube on the cinema plane via CSS3D - works on both desktop and mobile
+      const baseWidth = 1280;
+      const baseHeight = 720;
+      const frame = document.createElement('div');
+      Object.assign(frame.style, {
+        width: `${baseWidth}px`,
+        height: `${baseHeight}px`,
+        background: '#000',
+        overflow: 'hidden',
+      });
 
-      if (!isMobile) {
-        // Desktop: YouTube on the cinema plane via CSS3D
-        const baseWidth = 1280;
-        const baseHeight = 720;
-        const frame = document.createElement('div');
-        Object.assign(frame.style, {
-          width: `${baseWidth}px`,
-          height: `${baseHeight}px`,
-          background: '#000',
-          overflow: 'hidden',
-        });
+      const iframe = document.createElement('iframe');
+      const videoId = encodeURIComponent(trailer.key);
+      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
+      iframe.title = `${movie?.title || 'Movie'} trailer`;
+      iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+      iframe.setAttribute('allowfullscreen', '');
+      iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+      Object.assign(iframe.style, {
+        width: '100%',
+        height: '100%',
+        border: '0',
+        display: 'block',
+        pointerEvents: 'none',
+      });
+      frame.appendChild(iframe);
 
-        const iframe = document.createElement('iframe');
-        const videoId = encodeURIComponent(trailer.key);
-        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(window.location.origin)}`;
-        iframe.title = `${movie?.title || 'Movie'} trailer`;
-        iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
-        iframe.setAttribute('allowfullscreen', '');
-        iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-        Object.assign(iframe.style, {
-          width: '100%',
-          height: '100%',
-          border: '0',
-          display: 'block',
-          pointerEvents: 'none',
-        });
-        frame.appendChild(iframe);
-
-        const trailerScreen = new CSS3DObject(frame);
-        trailerScreen.position.set(0, scrY, HALL.screenZ + 0.06);
-        trailerScreen.scale.set(scrW / baseWidth, scrH / baseHeight, 1);
-        scene.add(trailerScreen);
-      } else {
-        // Mobile: Show play button on screen to open trailer in new tab
-        screen.visible = true;
-        screen.material.color.setHex(0x0d1220);
-
-        const trailerBtn = document.createElement('a');
-        trailerBtn.href = `https://www.youtube.com/watch?v=${trailer.key}`;
-        trailerBtn.target = '_blank';
-        trailerBtn.rel = 'noopener noreferrer';
-        Object.assign(trailerBtn.style, {
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: '20',
-          background: 'rgba(212,175,55,0.15)',
-          border: '1px solid #d4af37',
-          borderRadius: '999px',
-          padding: '0.5rem 1.2rem',
-          color: '#d4af37',
-          fontFamily: 'Outfit, sans-serif',
-          fontSize: '0.8rem',
-          fontWeight: 600,
-          letterSpacing: '0.08em',
-          textDecoration: 'none',
-          backdropFilter: 'blur(8px)',
-          whiteSpace: 'nowrap',
-          pointerEvents: 'auto',
-        });
-        trailerBtn.textContent = '▶ Watch Trailer';
-        container.appendChild(trailerBtn);
-
-        // Clean up button on dispose
-        const cleanupBtn = () => { trailerBtn.remove(); };
-        renderer.domElement.addEventListener('__dispose__', cleanupBtn);
-        trailerBtn.dataset.cleanup = 'true';
-      }
+      const trailerScreen = new CSS3DObject(frame);
+      trailerScreen.position.set(0, scrY, HALL.screenZ + 0.06);
+      trailerScreen.scale.set(scrW / baseWidth, scrH / baseHeight, 1);
+      scene.add(trailerScreen);
     } else if (movie?.backdrop_path || movie?.poster_path) {
       const screenImagePath = movie.backdrop_path || movie.poster_path;
       const textureLoader = new THREE.TextureLoader();
