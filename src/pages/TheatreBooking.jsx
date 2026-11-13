@@ -599,36 +599,73 @@ export default function TheatreBooking() {
       video => video.site === 'YouTube' && video.type === 'Trailer' && video.key
     );
     if (trailer) {
+      // ── Cinema screen: full-bleed YouTube trailer ─────────────────────────
+      // Strategy: oversize iframe to crop YouTube's letterbox/UI, then mask
+      // any remaining title bar or controls with black overlay divs.
+      const baseWidth  = 2560;
+      const baseHeight = 1440;  // 16:9
+
       const frame = document.createElement('div');
-      const baseWidth = 2500;
-      const baseHeight = 1406;
       Object.assign(frame.style, {
-        width: `${baseWidth}px`,
-        height: `${baseHeight}px`,
+        width:    `${baseWidth}px`,
+        height:   `${baseHeight}px`,
         overflow: 'hidden',
-        background: '#05060a',
-        pointerEvents: 'auto',
+        background: '#000',
+        position: 'relative',
+        pointerEvents: 'none',
       });
+
+      // Oversize iframe by ~15% each side to crop YouTube's letterbox + UI chrome
+      const overshoot = 0.15;
+      const iframeH = Math.round(baseHeight * (1 + overshoot * 2));
+      const iframeW = Math.round(iframeH * (16 / 9));
+      const offsetX = -Math.round((iframeW - baseWidth) / 2);
+      const offsetY = -Math.round(baseHeight * overshoot);
+
+      const iframeWrap = document.createElement('div');
+      Object.assign(iframeWrap.style, {
+        position: 'absolute',
+        top:    `${offsetY}px`,
+        left:   `${offsetX}px`,
+        width:  `${iframeW}px`,
+        height: `${iframeH}px`,
+        pointerEvents: 'none',
+      });
+
       const iframe = document.createElement('iframe');
-      iframe.src = `https://www.youtube.com/embed/${encodeURIComponent(trailer.key)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${encodeURIComponent(trailer.key)}&playsinline=1&rel=0`;
+      iframe.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(trailer.key)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${encodeURIComponent(trailer.key)}&playsinline=1&rel=0&disablekb=1&modestbranding=1&iv_load_policy=3&showinfo=0&fs=0&vq=hd1080&enablejsapi=0`;
       iframe.title = `${movie.title || 'Movie'} trailer`;
-      iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+      iframe.allow = 'autoplay; encrypted-media';
       iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
-      iframe.setAttribute('allowfullscreen', '');
       Object.assign(iframe.style, {
-        width: '100%',
-        height: '100%',
-        border: '0',
-        display: 'block',
-        pointerEvents: 'auto',
+        width: '100%', height: '100%',
+        border: '0', display: 'block',
+        pointerEvents: 'none',
       });
-      frame.appendChild(iframe);
+      iframeWrap.appendChild(iframe);
+      frame.appendChild(iframeWrap);
+
+      // Black mask strips — block any residual YouTube title/controls chrome
+      const maskStyle = { position: 'absolute', left: '0', width: '100%', background: '#000', pointerEvents: 'none' };
+      const topMask = document.createElement('div');
+      Object.assign(topMask.style, { ...maskStyle, top: '0', height: '7%' });
+      const botMask = document.createElement('div');
+      Object.assign(botMask.style, { ...maskStyle, bottom: '0', height: '7%' });
+      const leftMask = document.createElement('div');
+      Object.assign(leftMask.style, { ...maskStyle, top: '0', left: '0', width: '3%', height: '100%' });
+      const rightMask = document.createElement('div');
+      Object.assign(rightMask.style, { ...maskStyle, top: '0', right: '0', left: 'auto', width: '3%', height: '100%' });
+      frame.appendChild(topMask);
+      frame.appendChild(botMask);
+      frame.appendChild(leftMask);
+      frame.appendChild(rightMask);
 
       const trailerScreen = new CSS3DObject(frame);
       trailerScreen.position.set(0, scrY, HALL.screenZ + 0.045);
       trailerScreen.scale.set(scrW / baseWidth, scrH / baseHeight, 1);
       scene.add(trailerScreen);
-      scrMat.color.setHex(0x05060a);
+      // Hide the WebGL screen mesh — CSS3D layer covers it; avoids z-fighting
+      screen.visible = false;
     } else if (movie?.backdrop_path || movie?.poster_path) {
       const screenImagePath = movie.backdrop_path || movie.poster_path;
       const textureLoader = new THREE.TextureLoader();
