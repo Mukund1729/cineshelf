@@ -161,6 +161,7 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <ul
+          className="nav-desktop-only"
           style={{
             display: 'flex',
             listStyle: 'none',

@@ -56,7 +56,14 @@ export default function MyTickets() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#07090f', color: '#f5f0e8' }}>
+    <div style={{ minHeight: '100vh', background: '#07090f', color: '#f5f0e8', overflowX: 'hidden' }}>
+      <style>{`
+        @media (max-width: 640px) {
+          .my-tickets-inner { padding: 1.25rem 0.75rem !important; }
+          .ticket-expanded-body { flex-direction: column !important; align-items: center !important; }
+          .ticket-qr svg { max-width: 240px !important; width: 100% !important; height: auto !important; }
+        }
+      `}</style>
       <Navbar />
 
       <div style={{ maxWidth: 740, margin: '0 auto', padding: '2rem 1rem' }}>

@@ -356,8 +356,10 @@ const MovieDetail = () => {
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
+              maxWidth: '100vw',
+              overflowX: 'hidden',
             }
-          : { backgroundColor: '#10111a' }
+          : { backgroundColor: '#10111a', maxWidth: '100vw', overflowX: 'hidden' }
       }
     >
       {/* Overlay for readability */}
