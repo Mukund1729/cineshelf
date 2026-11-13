@@ -1,72 +1,77 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import axios from 'axios';
 import { Link } from 'react-router-dom';
-import fallbackData from '../boxoffice_fallback.json';
-import Navbar from '../components/Navbar';
-import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
+import { tmdbImageUrl } from '../api/tmdb';
 
 const START_YEAR = 1980;
 const END_YEAR = new Date().getFullYear();
 const LANGUAGES = [
-  { code: '', label: '🌍 Global' },
-  { code: 'hi', label: '🇮🇳 Hindi' },
-  { code: 'ta', label: '🇮🇳 Tamil' },
-  { code: 'te', label: '🇮🇳 Telugu' },
-  { code: 'ml', label: '🇮🇳 Malayalam' },
-  { code: 'kn', label: '🇮🇳 Kannada' },
-];
-const SORTS = [
-  { value: 'revenue.desc', label: 'Revenue' },
-  { value: 'popularity.desc', label: 'Popularity' },
-  { value: 'vote_average.desc', label: 'Rating' },
+  { code: 'all', label: 'All languages' },
+  { code: 'hi', label: 'Hindi' },
+  { code: 'te', label: 'Telugu' },
+  { code: 'ta', label: 'Tamil' },
+  { code: 'ml', label: 'Malayalam' },
+  { code: 'kn', label: 'Kannada' },
+  { code: 'en', label: 'English' },
 ];
 
+function formatAmount(amount, currency) {
+  if (!Number.isFinite(Number(amount))) return 'Unavailable';
+  const value = Number(amount);
+  if (currency === 'INR') {
+    return value >= 10_000_000
+      ? `₹${(value / 10_000_000).toFixed(2)} Cr`
+      : `₹${value.toLocaleString('en-IN')}`;
+  }
+  if (currency === 'USD') return `$${value.toLocaleString('en-US')}`;
+  return `${currency || ''} ${value.toLocaleString()}`.trim();
+}
+
 function range(start, end) {
-  return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  return Array.from({ length: end - start + 1 }, (_, index) => start + index);
 }
 
 export default function BoxOfficeByYear() {
   const [year, setYear] = useState(END_YEAR);
-  const [movies, setMovies] = useState([]);
+  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [search, setSearch] = useState('');
-  const [region, setRegion] = useState('');
-  const [sort, setSort] = useState('revenue.desc');
+  const [language, setLanguage] = useState('all');
+  const [sort, setSort] = useState('amount');
+  const [coverage, setCoverage] = useState('');
 
   useEffect(() => {
-    async function fetchMovies() {
-      setLoading(true);
-      setError(null);
-      setMovies([]);
-      try {
-        const params = { sort_by: sort, primary_release_year: year, page: 1 };
-        if (region) params.with_original_language = region;
-        if (search) params.query = search;
-        const data = await tmdbGet('/discover/movie', params);
-        let movies = data.results || [];
-        // Fallback for Indian languages if revenue is missing
-        if (region && ['hi','ta','te','ml','kn'].includes(region)) {
-          movies = movies.map(m => {
-            if (!m.revenue || m.revenue === 0) {
-              const fallback = fallbackData.find(f => f.title.toLowerCase() === m.title.toLowerCase() && f.year === year && f.language === region);
-              if (fallback) {
-                return { ...m, revenue: fallback.revenue_usd };
-              }
-            }
-            return m;
-          });
-        }
-        setMovies(movies);
-      } catch (err) {
-        setError('Could not load box office data.');
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchMovies();
-  }, [year, region, sort, search]);
+    let active = true;
+    setLoading(true);
+    setError('');
+    axios.get('/api/boxoffice/yearly', { params: { year } })
+      .then(({ data }) => {
+        if (!active) return;
+        setReports(data.reports || []);
+        setCoverage(data.coverage || '');
+      })
+      .catch(err => {
+        if (active) setError(err.response?.data?.message || 'Could not load reported box office data.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [year]);
 
-  const pill = (active) => ({
+  const visibleReports = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return reports
+      .filter(report => language === 'all' || report.originalLanguage === language)
+      .filter(report => !query || report.movieTitle.toLowerCase().includes(query))
+      .slice()
+      .sort((left, right) => sort === 'title'
+        ? left.movieTitle.localeCompare(right.movieTitle)
+        : right.amount - left.amount);
+  }, [reports, language, search, sort]);
+
+  const pill = active => ({
     padding: '0.35rem 0.85rem',
     borderRadius: 'var(--vc-radius-pill)',
     fontFamily: 'Outfit, sans-serif',
@@ -79,91 +84,86 @@ export default function BoxOfficeByYear() {
   });
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)' }}>
-      <Navbar />
-      
-      <section style={{
-        paddingTop: '6rem',
-        paddingBottom: '3rem',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        background: 'linear-gradient(135deg, #060912 0%, #0a0f1a 50%, #0d1420 100%)',
-      }}>
-        <div className="vc-container">
-          <span className="vc-section-label">📅 By Year</span>
-          <h1 style={{
-            fontFamily: 'Playfair Display, serif',
-            fontSize: 'clamp(2rem, 4vw, 3rem)',
-            fontWeight: 800,
-            marginBottom: '0.75rem',
-          }}>
-            Box Office by Year
-          </h1>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
-            Explore box office collections by year with regional filters and sorting options.
-          </p>
-        </div>
-      </section>
+    <section style={{ paddingTop: '0.5rem', paddingBottom: '2rem' }}>
+      <h2 style={{ fontFamily: 'Playfair Display, serif', color: 'var(--vc-gold-light)' }}>
+        Lifetime reports by release year
+      </h2>
+      <p style={{ color: 'var(--vc-slate)', maxWidth: 700, fontSize: '0.85rem' }}>
+        This is a partial, source-attributed set of lifetime collection reports, not a complete annual box-office total. Estimates remain separate by collection type, currency, and provider.
+      </p>
 
-      <div className="vc-container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem', justifyContent: 'center' }}>
-          {LANGUAGES.map(l => (
-            <button key={l.code} type="button" style={pill(region === l.code)} onClick={() => setRegion(l.code)}>{l.label}</button>
-          ))}
-        </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', margin: '1rem 0', justifyContent: 'center' }}>
+        {LANGUAGES.map(item => (
+          <button key={item.code} type="button" style={pill(language === item.code)} onClick={() => setLanguage(item.code)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
 
-        <div className="vc-mobile-form-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
-          <input className="vc-input" style={{ width: 220 }} placeholder="Search movies…" value={search} onChange={e => setSearch(e.target.value)} />
-          <select className="vc-input" style={{ width: 160 }} value={sort} onChange={e => setSort(e.target.value)}>
-            {SORTS.map(s => (
-              <option key={s.value} value={s.value}>{s.label}</option>
-            ))}
-          </select>
-        </div>
+      <div className="vc-mobile-form-row" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem', alignItems: 'center' }}>
+        <input className="vc-input" style={{ width: 220 }} placeholder="Search movies…" value={search} onChange={event => setSearch(event.target.value)} />
+        <select className="vc-input" style={{ width: 180 }} value={sort} onChange={event => setSort(event.target.value)}>
+          <option value="amount">Sort by reported amount</option>
+          <option value="title">Sort by title</option>
+        </select>
+      </div>
 
-        <div className="vc-mobile-wrap" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', marginBottom: '1rem', paddingBottom: 4 }}>
-          {range(START_YEAR, END_YEAR).map(y => (
-            <button key={y} type="button" style={pill(String(year) === String(y))} onClick={() => setYear(y)}>{y}</button>
-          ))}
-        </div>
+      <div className="vc-mobile-wrap" style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', marginBottom: '1rem', paddingBottom: 4 }}>
+        {range(START_YEAR, END_YEAR).map(value => (
+          <button key={value} type="button" style={pill(year === value)} onClick={() => setYear(value)}>{value}</button>
+        ))}
+      </div>
 
+      {coverage && <p style={{ color: 'var(--vc-slate)', fontSize: '0.8rem' }}>{coverage}</p>}
+      {error && <p role="alert" style={{ color: '#fc8181' }}>{error}</p>}
+
+      <div className="vc-mobile-table-wrap" style={{ overflowX: 'auto', borderRadius: 'var(--vc-radius-lg)', border: '1px solid rgba(255,255,255,0.06)', background: 'var(--vc-bg-card)' }}>
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--vc-slate)' }}>Loading…</div>
-        ) : error ? (
-          <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--vc-red)' }}>{error}</div>
+          <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--vc-slate)' }}>Loading reports…</p>
         ) : (
-          <div className="vc-mobile-table-wrap" style={{ overflowX: 'auto', borderRadius: 'var(--vc-radius-lg)', border: '1px solid rgba(255,255,255,0.06)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif', fontSize: '0.875rem' }}>
-              <thead>
-                <tr style={{ background: 'var(--vc-bg-elevated)', color: 'var(--vc-gold)' }}>
-                  <th style={{ padding: '0.65rem' }}>#</th>
-                  <th style={{ padding: '0.65rem', textAlign: 'left' }}>Title</th>
-                  <th style={{ padding: '0.65rem' }}>Year</th>
-                  <th style={{ padding: '0.65rem', textAlign: 'right' }}>Box Office</th>
+          <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif', fontSize: '0.84rem' }}>
+            <thead>
+              <tr style={{ background: 'var(--vc-bg-elevated)', color: 'var(--vc-gold)' }}>
+                <th style={{ padding: '0.7rem' }}>#</th>
+                <th style={{ padding: '0.7rem', textAlign: 'left' }}>Movie</th>
+                <th style={{ padding: '0.7rem' }}>Collection type</th>
+                <th style={{ padding: '0.7rem' }}>Language</th>
+                <th style={{ padding: '0.7rem', textAlign: 'right' }}>Reported amount</th>
+                <th style={{ padding: '0.7rem' }}>Source / status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visibleReports.map((report, index) => (
+                <tr key={report.reportKey || report._id} style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <td style={{ padding: '0.7rem', color: 'var(--vc-slate)' }}>{index + 1}</td>
+                  <td style={{ padding: '0.7rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                      {report.posterPath && <img src={tmdbImageUrl(report.posterPath, 'w92')} alt="" loading="lazy" style={{ width: 32, height: 48, objectFit: 'cover', borderRadius: 4 }} />}
+                      {report.tmdbId
+                        ? <Link to={`/movie/${report.tmdbId}`} style={{ color: 'var(--vc-cream)', textDecoration: 'none' }}>{report.movieTitle}</Link>
+                        : <span>{report.movieTitle}</span>}
+                    </div>
+                  </td>
+                  <td style={{ padding: '0.7rem', color: 'var(--vc-slate)' }}>{report.collectionType.replace(/_/g, ' ')}</td>
+                  <td style={{ padding: '0.7rem', textAlign: 'center', color: 'var(--vc-slate)' }}>{report.originalLanguage || 'Not reported'}</td>
+                  <td style={{ padding: '0.7rem', textAlign: 'right', color: 'var(--vc-gold-light)', fontWeight: 700 }}>{formatAmount(report.amount, report.currency)}</td>
+                  <td style={{ padding: '0.7rem' }}>
+                    <a href={report.sourceUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--vc-slate)' }}>{report.source}</a>
+                    <small style={{ display: 'block', marginTop: 3, color: report.isEstimate ? '#e5b946' : 'var(--vc-slate)' }}>
+                      {report.isEstimate ? 'Publisher estimate' : report.verificationStatus}
+                    </small>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {movies.map((movie, idx) => (
-                  <tr key={movie.id} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                    <td style={{ padding: '0.65rem', textAlign: 'center' }}>{idx + 1}</td>
-                    <td style={{ padding: '0.65rem' }}>
-                      <Link to={`/movie/${movie.id}`} style={{ color: 'var(--vc-cream)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        {movie.poster_path && (
-                          <img src={tmdbImageUrl(movie.poster_path, 'w92')} alt="" style={{ width: 32, height: 48, objectFit: 'cover', borderRadius: 4 }} />
-                        )}
-                        <span style={{ fontWeight: 600 }}>{movie.title}</span>
-                      </Link>
-                    </td>
-                    <td style={{ padding: '0.65rem', textAlign: 'center' }}>{movie.release_date ? movie.release_date.slice(0, 4) : 'N/A'}</td>
-                    <td style={{ padding: '0.65rem', textAlign: 'right', color: 'var(--vc-gold)', fontWeight: 700 }}>
-                      {typeof movie.revenue === 'number' && movie.revenue > 0 ? `$${movie.revenue.toLocaleString()}` : 'N/A'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+              {!visibleReports.length && !error && (
+                <tr><td colSpan={6} style={{ padding: '2rem', textAlign: 'center', color: 'var(--vc-slate)' }}>
+                  No source-reported lifetime collections are available for this release year.
+                </td></tr>
+              )}
+            </tbody>
+          </table>
         )}
       </div>
-    </div>
+    </section>
   );
 }

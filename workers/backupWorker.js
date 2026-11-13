@@ -37,7 +37,6 @@ function stop(signal) {
   }, 250);
 }
 
-dotenv.config();
 process.on('SIGINT', () => stop('SIGINT'));
 process.on('SIGTERM', () => stop('SIGTERM'));
 console.log('[MongoDB backup worker] Starting; first encrypted S3 backup will run now.');

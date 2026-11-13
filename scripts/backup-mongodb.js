@@ -6,6 +6,10 @@ import { spawn } from 'node:child_process';
 import { pipeline } from 'node:stream/promises';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const MAGIC = Buffer.from('VCB1');
 const DEFAULT_RETENTION_DAYS = 30;
@@ -35,6 +39,8 @@ function getRetentionDays() {
 
 function getS3Config() {
   const bucket = requiredEnv('S3_BUCKET');
+  requiredEnv('AWS_ACCESS_KEY_ID');
+  requiredEnv('AWS_SECRET_ACCESS_KEY');
   if (!/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/i.test(bucket)) {
     throw new Error('S3_BUCKET is not a valid bucket name.');
   }
@@ -208,7 +214,7 @@ export async function backupMongoDatabase() {
   }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1'))) {
+if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
   backupMongoDatabase().catch(error => {
     console.error('[MongoDB backup] Failed:', error.message);
     process.exitCode = 1;

@@ -109,7 +109,42 @@ All browser TMDB requests use the Express proxy. The server sends `TMDB_READ_ACC
 
 Vercel Hobby is limited by Vercel's terms to personal or non-commercial use. Its `*.vercel.app` address is included; a `.in` or `.com` custom domain can be connected, but the domain registration itself is paid separately. Add the domain under Vercel Project Settings → Domains and follow the DNS records shown there.
 
-The Render free web service may sleep when idle, and its local filesystem is not persistent. Avatar uploads currently write to local disk, so use persistent/object storage before relying on uploaded avatars. The 3D seat map and payment flow are demo-only; bookings are stored in the user's browser, not in a production booking/payment system. Chat also has no matching backend route/WebSocket implementation in this repository yet.
+The Render free web service may sleep when idle. Existing user avatars are stored as MongoDB binary data (not Base64); friend chat messages are stored separately and are not TTL-deleted. Chat retrieval uses cursor pagination. The 3D seat map and payment flow are demo-only; bookings are stored in the user's browser, not in a production booking/payment system.
+
+## Box Office ingestion and MongoDB storage
+
+The existing `/boxoffice` page uses source-attributed data only. The Indian Box Office RSS is polled by a separate worker; it provides selected daily briefs and lifetime India-nett/worldwide-gross reports, not a complete daily chart or full historical day-wise dataset. Those figures are publisher estimates. Box Office History is queried on demand for documented US daily charts, TMDB-ID lookup, US weekend history, and US opening records. It is not an India-nett provider. Other providers are not enabled unless their API access and reuse permissions can be verified.
+
+Run the API and the Box Office worker as separate processes:
+
+```bash
+npm run server
+npm run worker:boxoffice
+```
+
+`BOX_OFFICE_SYNC_INTERVAL_HOURS` defaults to 4 and must be between 3 and 6. The worker retries provider requests and records its last successful synchronization. Older US/movie history is fetched only when requested and cached for `BOX_OFFICE_CACHE_TTL_SECONDS` (default 24 hours). RSS reports expire after `BOX_OFFICE_REPORT_TTL_DAYS` (default 30 days); report counts are capped by `BOX_OFFICE_MAX_DAILY_REPORTS` and `BOX_OFFICE_MAX_LIFETIME_REPORTS`. Missing dates and unavailable figures are never synthesized. TMDB matching uses the server-only `TMDB_READ_ACCESS_TOKEN`; unmatched or ambiguous titles remain unmatched.
+
+Available endpoints include:
+
+- `GET /api/boxoffice/overview`
+- `GET /api/boxoffice/daily?date=YYYY-MM-DD&market=india|us`
+- `GET /api/boxoffice/india?date=YYYY-MM-DD&period=daily|weekly|monthly`
+- `GET /api/boxoffice/worldwide?date=YYYY-MM-DD`
+- `GET /api/boxoffice/weekly?date=YYYY-MM-DD`
+- `GET /api/boxoffice/yearly?year=YYYY`
+- `GET /api/boxoffice/records`
+- `GET /api/boxoffice/movie/:tmdbId`
+- `GET /api/boxoffice/movie/:tmdbId/history`
+- `GET /api/boxoffice/sources`
+- `GET /api/boxoffice/last-updated`
+
+Only Box Office reports/cache use TTL indexes. Permanent users, reviews, watchlists, and chat messages do not. MongoDB storage checks use `dbStats`; the API logs threshold warnings at 60%, 75%, 85%, and 90% of `MONGO_STORAGE_LIMIT_BYTES` (default 512 MiB). `MONGO_STORAGE_BLOCK_AT_PERCENT` (default 85) pauses non-essential Box Office cache writes only. Admins can read the current snapshot at `GET /api/admin/storage`.
+
+### Encrypted S3-compatible backups
+
+MongoDB backups are encrypted locally with AES-256-GCM before upload. The backup process requires MongoDB Database Tools (`mongodump`) and AWS CLI v2. Configure `MONGO_URI`, `S3_BUCKET`, `S3_PREFIX`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, and a 32-byte Base64 `BACKUP_ENCRYPTION_KEY`; set `S3_ENDPOINT_URL` for R2/B2/other compatible services. Keep all credentials and the encryption key in the deployment secret store, not in source control.
+
+Run a one-time backup with `npm run backup:mongodb`. Run `npm run worker:backups` as a separate always-on process for daily backups; failures retry after one hour. `BACKUP_RETENTION_DAYS` defaults to 30 and applies only to backup objects. Protect the encryption key separately from the bucket; the project cannot restore encrypted backups without it.
 
 ## 📁 Project Structure
 

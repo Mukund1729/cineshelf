@@ -37,7 +37,7 @@ export default function BoxOfficeTabsPage() {
             Box Office Collections
           </h1>
           <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', maxWidth: 640, marginBottom: '2rem' }}>
-            Explore revenue by year, person filmographies, and Indian collections with daywise charts. Track the performance of films across different markets.
+            Explore source-attributed collection reports, lifetime totals by release year, and filmographies. Coverage and estimates are labeled; unavailable figures are never filled in.
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button type="button" style={tabStyle(tab === 'india')} onClick={() => setTab('india')}>India</button>
