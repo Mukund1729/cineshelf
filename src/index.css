@@ -527,8 +527,8 @@ body, html {
 
 @media (max-width: 640px) {
   .vc-container {
-    padding-right: 1rem;
-    padding-left: 1rem;
+    padding-right: 0.75rem !important;
+    padding-left: 0.75rem !important;
   }
 
   .notification-panel {
@@ -633,6 +633,11 @@ body, html {
 
   * {
     max-width: 100%;
+  }
+  
+  /* Full width sections on mobile */
+  section, .vc-container > div {
+    width: 100%;
   }
 }
 

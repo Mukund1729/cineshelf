@@ -199,7 +199,7 @@ export default function People() {
   const friendIds = friends.map(f => f._id);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)', width: '100%' }}>
       <Navbar />
 
       <section style={{
