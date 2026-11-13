@@ -2,6 +2,8 @@ import React, { useEffect, useState, useRef, lazy, Suspense } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
+import BrandLogo from '../components/BrandLogo';
 import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 
 // Lazy-load Three.js canvas (not critical for FCP)
@@ -462,9 +464,7 @@ export default function HomePage() {
           {/* Label */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
             <div style={{ width: 32, height: 2, background: 'linear-gradient(90deg, var(--vc-gold), transparent)' }} />
-            <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: 'var(--vc-gold)', fontWeight: 700 }}>
-              Visual · Cineaste
-            </span>
+            <BrandLogo style={{ width: 140, opacity: 0.9 }} />
           </div>
 
           {/* Headline */}
@@ -667,23 +667,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ── FOOTER ────────────────────────────────────────────── */}
-      <footer style={{ background: 'var(--vc-bg-deep)', borderTop: '1px solid rgba(255,255,255,0.04)', padding: '2rem 0' }}>
-        <div className="vc-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '1rem', fontWeight: 700, color: 'var(--vc-cream)' }}>
-            visual<span style={{ color: 'var(--vc-gold)' }}>.</span>cineaste
-          </span>
-          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-            {[['Discover', '/discover'], ['Lists', '/lists'], ['People', '/people'], ['Box Office', '/boxoffice'], ['About', '/about']].map(([l, to]) => (
-              <Link key={to} to={to} style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.8rem', color: 'var(--vc-slate)', textDecoration: 'none' }}
-                onMouseEnter={e => e.target.style.color = 'var(--vc-cream)'}
-                onMouseLeave={e => e.target.style.color = 'var(--vc-slate)'}
-              >{l}</Link>
-            ))}
-          </div>
-          <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-slate-dark)' }}>© {new Date().getFullYear()} visual.cineaste</span>
-        </div>
-      </footer>
+      <Footer />
 
       {/* Hide hero featured card on mobile */}
       <style>{`

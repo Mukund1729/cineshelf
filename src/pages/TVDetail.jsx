@@ -9,6 +9,7 @@ import EpisodeList from "../components/EpisodeList";
 import ReviewList from "../components/ReviewList";
 import RecommendationsGrid from "../components/RecommendationsGrid";
 import RatingStars from "../components/RatingStars";
+import BrandLogo from "../components/BrandLogo";
 
 const TVDetail = () => {
   const { id } = useParams();
@@ -144,9 +145,7 @@ const TVDetail = () => {
     <>
       {/* Sticky Site Name Bar (modern header) */}
       <div className="fixed top-0 left-0 right-0 z-30 flex items-center justify-between w-full px-8 py-4 bg-gradient-to-b from-black/90 via-[#181c24]/60 to-transparent backdrop-blur-md">
-        <div className="flex items-center cursor-pointer" onClick={() => navigate('/') }>
-          <span className="text-2xl font-extrabold tracking-tight font-playfair text-white hover:text-cyan-400 transition-colors select-none">visual.cineaste</span>
-        </div>
+        <BrandLogo style={{ width: 175 }} />
       </div>
       {/* Main content with modern search bar */}
       <div className="pt-16 min-h-screen bg-[#0e0f1b] bg-gradient-to-br from-[#0e0f1b] via-[#181c24] to-[#1a1333] text-white font-lato">

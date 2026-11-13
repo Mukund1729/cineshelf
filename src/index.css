@@ -525,6 +525,85 @@ body, html {
   border-color: rgba(212,175,55,0.3) !important;
 }
 
+.vc-site-footer {
+  padding: 2rem 0 1.25rem;
+  background: #171e2a;
+  border-top: 1px solid rgba(255,255,255,0.07);
+}
+
+.vc-site-footer-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding-bottom: 1.5rem;
+}
+
+.vc-footer-brand img {
+  max-height: 64px;
+}
+
+.vc-footer-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem 1.15rem;
+}
+
+.vc-footer-links a {
+  color: #b7c3d3;
+  font-family: Outfit, sans-serif;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.vc-footer-links a:hover {
+  color: var(--vc-gold);
+}
+
+.vc-site-footer-legal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  color: var(--vc-slate);
+  font-family: Outfit, sans-serif;
+  font-size: 0.75rem;
+}
+
+.vc-footer-info-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--vc-bg-base);
+  color: var(--vc-cream);
+}
+
+.vc-footer-info-content {
+  flex: 1;
+  min-height: 45vh;
+  padding-top: clamp(5rem, 12vh, 9rem);
+  padding-bottom: 5rem;
+}
+
+.vc-footer-info-content h1 {
+  margin: 0.75rem 0 1rem;
+  font-family: "Playfair Display", serif;
+  font-size: clamp(2.5rem, 7vw, 5rem);
+}
+
+.vc-footer-info-content p {
+  margin-bottom: 2rem;
+  color: var(--vc-slate);
+  font-family: Outfit, sans-serif;
+  font-size: 1.05rem;
+}
+
 @media (max-width: 640px) {
   .vc-container {
     padding-right: 1rem !important;
@@ -578,6 +657,28 @@ body, html {
     gap: 0.5rem !important;
     padding-right: 1rem !important;
     padding-left: 1rem !important;
+  }
+
+  .vc-site-footer-main {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .vc-footer-brand {
+    width: 168px !important;
+  }
+
+  .vc-footer-links {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.9rem 0.75rem;
+  }
+
+  .vc-site-footer-legal {
+    flex-direction: column;
+    font-size: 0.72rem;
   }
 
   .navbar-actions {

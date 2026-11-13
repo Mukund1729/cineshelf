@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import BrandLogo from './BrandLogo';
 
 const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', username: '' });
@@ -137,7 +138,10 @@ const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
       <div className="bg-gray-900 p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto relative">
         <button onClick={onClose} className="absolute top-2 right-2 text-gray-400 hover:text-white text-xl" aria-label="Close">×</button>
-        <h2 className="text-2xl font-bold mb-4 text-center text-cyan-400">{isSignup ? 'Sign Up' : 'Login'} to visual.cineaste</h2>
+        <div className="flex justify-center mb-5">
+          <BrandLogo style={{ width: 150 }} />
+        </div>
+        <h2 className="text-2xl font-bold mb-4 text-center text-cyan-400">{isSignup ? 'Create your account' : 'Welcome back'}</h2>
         {error && <div className="mb-4 p-3 bg-red-600 text-white rounded text-sm">{error}</div>}
         {success && <div className="mb-4 p-3 bg-green-600 text-white rounded text-sm">{success}</div>}
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
+import BrandLogo from '../components/BrandLogo';
 
 export default function PersonBoxOfficeSearchPage() {
   const [search, setSearch] = useState("");
@@ -30,7 +31,7 @@ export default function PersonBoxOfficeSearchPage() {
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#0a1833] via-[#181c24] to-black text-white font-sans relative overflow-x-hidden">
       {/* Header */}
       <div className="fixed top-0 left-0 right-0 z-40 flex items-center w-full px-8 py-4 bg-gradient-to-b from-black/90 via-[#181c24]/80 to-transparent backdrop-blur-xl border-b border-[#232526]/40 shadow-lg">
-        <Link to="/" className="text-2xl font-extrabold tracking-tight font-playfair text-white hover:text-cyan-400 transition-colors select-none">visual.cineaste</Link>
+        <BrandLogo style={{ width: 175 }} />
       </div>
       <div className="pt-28 pb-8 flex flex-col items-center justify-center flex-1">
         <h1 className="text-2xl md:text-3xl font-bold text-white text-center mb-2 font-sans tracking-tight">Search Person Box Office</h1>

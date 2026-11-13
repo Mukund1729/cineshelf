@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
+import BrandLogo from '../components/BrandLogo';
 
 export default function PersonDetail() {
   const { id } = useParams();
@@ -33,9 +34,7 @@ export default function PersonDetail() {
     <div className="min-h-screen bg-gradient-to-br from-black via-[#181c24] to-[#1a1333] text-white font-lato relative overflow-x-hidden">
       {/* Header Row (no logo, homepage style) */}
       <div className="fixed top-0 left-0 right-0 z-30 flex items-center w-full px-6 py-4 bg-gradient-to-b from-black/80 via-[#181c24]/60 to-transparent backdrop-blur-md">
-        <Link to="/" className="text-xl md:text-2xl font-bold font-playfair text-cyan-300 tracking-wide select-none hover:underline transition-all">
-          visual.cineaste
-        </Link>
+        <BrandLogo style={{ width: 170 }} />
         <span className="ml-4 text-base md:text-lg font-semibold text-gray-300 tracking-wide select-none">Person Details</span>
       </div>
       <div className="pt-24 pb-16 container mx-auto px-4">

@@ -71,6 +71,19 @@ const PersonBoxOfficeSearchPage = lazy(() => import('./pages/PersonBoxOfficeSear
 const PanoramaHero = lazy(() => import('./pages/PanoramaHero'));
 const TheatreBooking = lazy(() => import('./pages/TheatreBooking'));
 const MyTickets = lazy(() => import('./pages/MyTickets'));
+const FooterInfoPage = lazy(() => import('./pages/FooterInfoPage'));
+
+const FOOTER_INFO_ROUTES = [
+  { path: '/pro', slug: 'pro' },
+  { path: '/news', slug: 'news' },
+  { path: '/apps', slug: 'apps' },
+  { path: '/help', slug: 'help' },
+  { path: '/year-in-review', slug: 'year-in-review' },
+  { path: '/gifts', slug: 'gifts' },
+  { path: '/terms', slug: 'terms' },
+  { path: '/developer-api', slug: 'api' },
+  { path: '/contact', slug: 'contact' },
+];
 
 function PageFallback() {
   return (
@@ -133,6 +146,9 @@ function AppWrapper() {
             <Route path="/about" element={<About />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
+            {FOOTER_INFO_ROUTES.map(({ path, slug }) => (
+              <Route key={path} path={path} element={<FooterInfoPage slug={slug} />} />
+            ))}
 
             {/* Box Office */}
             <Route path="/boxoffice" element={<BoxOfficeTabsPage />} />

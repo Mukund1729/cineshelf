@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
+import BrandLogo from '../components/BrandLogo';
 
 
 const navLinks = [
@@ -92,11 +93,9 @@ const PersonBoxOffice = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-[#181c24] to-[#1a1333] text-white font-lato relative overflow-x-hidden">
-      {/* Header with visual.cineaste text logo */}
+      {/* Header with the site logo */}
       <div className="fixed top-0 left-0 right-0 z-30 flex items-center w-full px-6 py-4 bg-gradient-to-b from-black/80 via-[#181c24]/60 to-transparent backdrop-blur-md">
-        <Link to="/" className="text-xl md:text-2xl font-bold font-playfair text-cyan-300 tracking-wide select-none hover:underline transition-all">
-          visual.cineaste
-        </Link>
+        <BrandLogo style={{ width: 175 }} />
       </div>
       {/* Search Bar for Person Box Office */}
       <div className="w-full flex justify-center pt-20 pb-2">

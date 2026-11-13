@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import BrandLogo from '../components/BrandLogo';
 
 const ChangePassword = () => {
   const [oldPassword, setOldPassword] = useState('');
@@ -52,11 +52,7 @@ const ChangePassword = () => {
       {/* Header */}
       <div className="relative">
         <div className="absolute top-4 left-4 z-50 select-none">
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <span className="text-lg font-extrabold tracking-tight font-playfair text-white px-4 py-1 rounded-full shadow-lg bg-[#1e0000a0] border border-[#ffd6c1] hover:bg-[#ffd6c133] transition-colors" style={{ fontFamily: 'Playfair Display, serif', letterSpacing: '0.04em', textShadow: '0 2px 8px #2d0101' }}>
-              visual.cineaste
-            </span>
-          </Link>
+          <BrandLogo style={{ width: 150 }} />
         </div>
       </div>
 

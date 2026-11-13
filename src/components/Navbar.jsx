@@ -3,18 +3,15 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { apiUrl } from '../api/config';
 import NotificationBell from './NotificationBell';
+import BrandLogo from './BrandLogo';
 
 const NAV_LINKS = [
   { to: '/',               label: 'Home' },
   { to: '/discover',       label: 'Discover' },
   { to: '/cinematic-picks', label: 'Picks' },
-  { to: '/trending',       label: 'Trending' },
-  { to: '/popular-movies', label: 'Movies' },
-  { to: '/popular-tv',     label: 'TV' },
   { to: '/boxoffice',      label: 'Box Office' },
   { to: '/blog',           label: 'Journal' },
   { to: '/people',         label: 'People' },
-  { to: '/about',          label: 'About' },
 ];
 
 // Ticket icon SVG for the Book Now button
@@ -142,23 +139,14 @@ export default function Navbar() {
         }}
       >
         {/* Logo */}
-        <Link
-          to="/"
+        <BrandLogo
           className="navbar-logo"
           style={{
-            fontFamily: 'Playfair Display, serif',
-            fontWeight: 700,
-            fontSize: '1.15rem',
-            color: '#f5f0e8',
-            textDecoration: 'none',
-            letterSpacing: '0.02em',
-            whiteSpace: 'nowrap',
+            width: 'clamp(128px, 14vw, 178px)',
+            alignItems: 'center',
             flexShrink: 0,
           }}
-        >
-          <span className="logo-full">visual<span style={{ color: 'var(--vc-gold)', margin: '0 1px' }}>.</span>cineaste</span>
-          <span className="logo-short" style={{ display: 'none' }}>V<span style={{ color: 'var(--vc-gold)' }}>.</span>C</span>
-        </Link>
+        />
 
         {/* Desktop nav */}
         <ul
@@ -491,13 +479,9 @@ export default function Navbar() {
         @media (max-width: 900px) {
           .nav-item-desktop { display: none !important; }
           .navbar-hamburger { display: flex !important; }
-          .logo-full { display: none !important; }
-          .logo-short { display: inline !important; }
         }
         @media (min-width: 901px) {
           .navbar-hamburger { display: none !important; }
-          .logo-full { display: inline !important; }
-          .logo-short { display: none !important; }
         }
         @media (max-width: 640px) {
           .nav-item-desktop { display: none !important; }
