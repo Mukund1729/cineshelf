@@ -640,7 +640,7 @@ export default function TheatreBooking() {
 
     if (trailer) {
       // Check if mobile - CSS3D doesn't work well on narrow screens
-      const isMobile = getW() < 600;
+      const isMobile = getW() < 768;
 
       if (!isMobile) {
         // Desktop: YouTube on the cinema plane via CSS3D
@@ -1216,7 +1216,7 @@ export default function TheatreBooking() {
       cssRenderer.setSize(w, h);
       // On narrow screens hide the CSS3D layer (iframe doesn't work well)
       // so it doesn't block the WebGL render or show garbled
-      cssRenderer.domElement.style.display = w < 600 ? 'none' : '';
+      cssRenderer.domElement.style.display = w < 768 ? 'none' : '';
     };
     window.addEventListener('resize', onResize);
     const ro = new ResizeObserver(onResize);
