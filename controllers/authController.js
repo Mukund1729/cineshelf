@@ -71,7 +71,13 @@ async function sendNewVerificationCode(user) {
   user.emailVerificationSentAt = now;
   user.emailVerificationAttempts = 0;
   await user.save();
-  await sendVerificationCode(user.email, code);
+  try {
+    await sendVerificationCode(user.email, code);
+  } catch (error) {
+    user.emailVerificationSentAt = undefined;
+    await user.save();
+    throw error;
+  }
   return true;
 }
 
