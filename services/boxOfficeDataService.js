@@ -14,14 +14,19 @@ const HISTORY_PROVIDER = 'box-office-history';
 const CRORE_INR = 10_000_000;
 const MAX_RSS_BYTES = 1_000_000;
 const MAX_CACHE_PAYLOAD_BYTES = 128 * 1024;
+const MAX_HISTORY_RESPONSE_BYTES = 4 * 1024 * 1024;
+const MAX_HISTORY_MEMORY_ENTRY_BYTES = 2 * 1024 * 1024;
+const MAX_HISTORY_MEMORY_CACHE_BYTES = 8 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 100;
 const MAX_DAILY_REPORTS = 1000;
 const MAX_LIFETIME_REPORTS = 300;
 const MAX_TMDB_LOOKUPS_PER_SYNC = 30;
-const DEFAULT_CACHE_TTL_SECONDS = 24 * 60 * 60;
+const DEFAULT_CACHE_TTL_SECONDS = 60 * 60;
 const DEFAULT_REPORT_TTL_DAYS = 30;
 const SYNC_LEASE_MS = 30 * 60 * 1000;
 const inFlight = new Map();
+const historyMemoryCache = new Map();
+let historyMemoryCacheBytes = 0;
 
 function envInteger(name, fallback, min, max) {
   const value = Number(process.env[name]);
@@ -556,6 +561,41 @@ async function cacheProviderResponse(cacheKey, provider, payload) {
   }
 }
 
+function getHistoryMemoryCache(cacheKey) {
+  const cached = historyMemoryCache.get(cacheKey);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    historyMemoryCache.delete(cacheKey);
+    historyMemoryCacheBytes -= cached.bytes;
+    return null;
+  }
+  historyMemoryCache.delete(cacheKey);
+  historyMemoryCache.set(cacheKey, cached);
+  return cached.payload;
+}
+
+function cacheHistoryMemoryResponse(cacheKey, payload, ttlSeconds) {
+  const bytes = Buffer.byteLength(JSON.stringify(payload), 'utf8');
+  if (bytes > MAX_HISTORY_MEMORY_ENTRY_BYTES) return;
+  const previous = historyMemoryCache.get(cacheKey);
+  if (previous) {
+    historyMemoryCache.delete(cacheKey);
+    historyMemoryCacheBytes -= previous.bytes;
+  }
+  while (historyMemoryCache.size && historyMemoryCacheBytes + bytes > MAX_HISTORY_MEMORY_CACHE_BYTES) {
+    const oldestKey = historyMemoryCache.keys().next().value;
+    const oldest = historyMemoryCache.get(oldestKey);
+    historyMemoryCache.delete(oldestKey);
+    historyMemoryCacheBytes -= oldest.bytes;
+  }
+  historyMemoryCache.set(cacheKey, {
+    payload,
+    bytes,
+    expiresAt: Date.now() + ttlSeconds * 1000,
+  });
+  historyMemoryCacheBytes += bytes;
+}
+
 async function getCachedResponse(cacheKey) {
   const cached = await BoxOfficeCache.findOne({
     cacheKey,
@@ -565,6 +605,9 @@ async function getCachedResponse(cacheKey) {
 }
 
 async function fetchHistoryJson(cacheKey, path) {
+  const memoryCached = getHistoryMemoryCache(cacheKey);
+  if (memoryCached) return memoryCached;
+
   const cached = await getCachedResponse(cacheKey);
   if (cached) return cached;
 
@@ -574,11 +617,21 @@ async function fetchHistoryJson(cacheKey, path) {
       const response = await axios.get(`${BOX_OFFICE_HISTORY_API}/${path}`, {
         timeout: 15_000,
         responseType: 'json',
-        maxContentLength: MAX_CACHE_PAYLOAD_BYTES * 8,
+        maxContentLength: MAX_HISTORY_RESPONSE_BYTES,
+        maxBodyLength: MAX_HISTORY_RESPONSE_BYTES,
         headers: { Accept: 'application/json' },
       });
       if (!response.data || typeof response.data !== 'object') {
         throw new Error('Box Office History returned an invalid response.');
+      }
+      const cacheTtlSeconds = envInteger(
+        'BOX_OFFICE_CACHE_TTL_SECONDS',
+        DEFAULT_CACHE_TTL_SECONDS,
+        60,
+        30 * 24 * 60 * 60
+      );
+      if (Buffer.byteLength(JSON.stringify(response.data), 'utf8') > MAX_CACHE_PAYLOAD_BYTES) {
+        cacheHistoryMemoryResponse(cacheKey, response.data, cacheTtlSeconds);
       }
       await cacheProviderResponse(cacheKey, HISTORY_PROVIDER, response.data);
       return response.data;
