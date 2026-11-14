@@ -65,6 +65,9 @@ A modern, cinematic movie discovery platform built with React, Node.js, and Mong
    # Allowed frontend origins
    CORS_ORIGINS=http://localhost:5173,http://localhost:5174
 
+   # Temporarily skip signup email OTP; set to true to require verification again
+   REQUIRE_SIGNUP_EMAIL_VERIFICATION=false
+
    # Leave blank for local Vite and Vercel same-origin /api proxy
    VITE_API_BASE_URL=
    
