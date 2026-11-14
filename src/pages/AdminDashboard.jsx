@@ -11,6 +11,10 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState('overview');
   const [search, setSearch] = useState('');
   const [toast, setToast] = useState('');
+  const [journalStatus, setJournalStatus] = useState(null);
+  const [journalLoading, setJournalLoading] = useState(false);
+  const [journalError, setJournalError] = useState('');
+  const [journalSyncing, setJournalSyncing] = useState(false);
   const navigate = useNavigate();
 
   const token = localStorage.getItem('token');
@@ -20,6 +24,10 @@ export default function AdminDashboard() {
     if (!token) { navigate('/'); return; }
     fetchAdminData();
   }, []);
+
+  useEffect(() => {
+    if (tab === 'journal') fetchJournalStatus();
+  }, [tab]);
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -39,6 +47,35 @@ export default function AdminDashboard() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchJournalStatus = async () => {
+    setJournalLoading(true);
+    setJournalError('');
+    try {
+      const response = await axios.get('/api/journal/admin/status', { headers });
+      setJournalStatus(response.data?.data || null);
+    } catch (requestError) {
+      setJournalError(requestError.response?.data?.error || 'Failed to load Journal sync status.');
+    } finally {
+      setJournalLoading(false);
+    }
+  };
+
+  const handleJournalSync = async () => {
+    setJournalSyncing(true);
+    setJournalError('');
+    try {
+      const response = await axios.post('/api/journal/admin/sync', {}, { headers });
+      setJournalStatus(previous => ({ ...previous, ...(response.data?.data || {}) }));
+      showToast('Medium RSS synchronization completed.');
+      await fetchJournalStatus();
+    } catch (requestError) {
+      setJournalError(requestError.response?.data?.error || 'Medium synchronization failed.');
+      await fetchJournalStatus();
+    } finally {
+      setJournalSyncing(false);
     }
   };
 
@@ -65,7 +102,7 @@ export default function AdminDashboard() {
     !search || u.username?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const TABS = ['overview', 'users', 'picks'];
+  const TABS = ['overview', 'users', 'picks', 'journal'];
 
   if (error) return (
     <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)' }}>
@@ -239,6 +276,59 @@ export default function AdminDashboard() {
                   Picks CRUD management UI coming soon. Use the API directly for now: POST /api/picks (admin token required).
                 </p>
               </div>
+            )}
+
+            {tab === 'journal' && (
+              <section>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
+                  <div>
+                    <span className="vc-section-label">Medium · Mukund Mangal</span>
+                    <h2 style={{ margin: '0.35rem 0', fontFamily: 'Playfair Display, serif' }}>THE JOURNAL sync</h2>
+                    <p style={{ maxWidth: 700, color: 'var(--vc-slate)', lineHeight: 1.65 }}>
+                      The public RSS feed currently exposes a limited recent window, not the complete lifetime archive.
+                      Sync imports only the articles actually present in that feed; it does not bypass Medium access restrictions.
+                    </p>
+                  </div>
+                  <button className="vc-btn vc-btn-gold" onClick={handleJournalSync} disabled={journalSyncing || journalLoading}>
+                    {journalSyncing ? 'Syncing…' : 'Sync / Resume RSS import'}
+                  </button>
+                </div>
+
+                {journalError && (
+                  <p role="alert" style={{ padding: '0.9rem 1rem', border: '1px solid rgba(255,100,100,.25)', borderRadius: 10, color: '#ffc8c8' }}>
+                    {journalError}
+                  </p>
+                )}
+                {journalLoading ? (
+                  <div className="vc-skeleton" style={{ height: 190, borderRadius: 12 }} />
+                ) : (
+                  <>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+                      {[
+                        ['Imported articles', journalStatus?.importedArticleCount ?? 0],
+                        ['Discovered this sync', journalStatus?.totalDiscovered ?? 0],
+                        ['Added / updated', `${journalStatus?.imported ?? 0} / ${journalStatus?.updated ?? 0}`],
+                        ['Unchanged / failed', `${journalStatus?.duplicates ?? 0} / ${journalStatus?.failed ?? 0}`],
+                        ['Missing images', journalStatus?.missingImages ?? 0],
+                        ['Missing metadata', journalStatus?.missingMetadata ?? 0],
+                      ].map(([label, value]) => (
+                        <div key={label} style={{ background: 'var(--vc-bg-card)', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, padding: '1rem' }}>
+                          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.6rem', color: 'var(--vc-gold)' }}>{value}</div>
+                          <div style={{ color: 'var(--vc-slate)', fontSize: '.78rem' }}>{label}</div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ marginTop: '1rem', padding: '1rem 1.2rem', background: 'var(--vc-bg-card)', borderRadius: 12, color: 'var(--vc-slate)', lineHeight: 1.8 }}>
+                      <div><strong style={{ color: 'var(--vc-cream)' }}>Status:</strong> {journalStatus?.status || 'Not yet synced'}</div>
+                      <div><strong style={{ color: 'var(--vc-cream)' }}>Last successful sync:</strong> {journalStatus?.lastSuccessfulSyncAt ? new Date(journalStatus.lastSuccessfulSyncAt).toLocaleString() : 'Not yet synced'}</div>
+                      <div><strong style={{ color: 'var(--vc-cream)' }}>Imported date range:</strong> {journalStatus?.oldestImportedArticleAt ? new Date(journalStatus.oldestImportedArticleAt).toLocaleDateString() : 'Unavailable'} – {journalStatus?.newestImportedArticleAt ? new Date(journalStatus.newestImportedArticleAt).toLocaleDateString() : 'Unavailable'}</div>
+                      <div><strong style={{ color: 'var(--vc-cream)' }}>Coverage:</strong> Limited to publicly exposed RSS items; lifetime completeness is not verified.</div>
+                      {journalStatus?.message && <div style={{ marginTop: '.4rem' }}>{journalStatus.message}</div>}
+                    </div>
+                    <a href="/journal" className="vc-btn vc-btn-outline" style={{ display: 'inline-flex', marginTop: '1rem' }}>View THE JOURNAL →</a>
+                  </>
+                )}
+              </section>
             )}
           </>
         )}

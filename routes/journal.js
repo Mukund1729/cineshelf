@@ -5,12 +5,14 @@ import {
   getJournalAdminStatus,
   getJournalArticle,
   getJournalPosts,
+  getJournalSitemap,
   runJournalSync,
 } from '../controllers/journalController.js';
 
 const router = express.Router();
 
 router.get('/', getJournalPosts);
+router.get('/sitemap.xml', getJournalSitemap);
 router.get('/admin/status', auth, admin, getJournalAdminStatus);
 router.post('/admin/sync', auth, admin, runJournalSync);
 router.get('/:slug', getJournalArticle);

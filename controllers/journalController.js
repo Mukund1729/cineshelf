@@ -84,6 +84,34 @@ export async function getJournalArticle(req, res) {
   }
 }
 
+export async function getJournalSitemap(req, res) {
+  const siteUrl = (process.env.PUBLIC_APP_URL || 'https://cineshelf-eight.vercel.app').replace(/\/+$/, '');
+  const xmlEscape = value => String(value).replace(/[&<>"']/g, character => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;',
+  }[character]));
+
+  try {
+    res.type('application/xml');
+    res.write('<?xml version="1.0" encoding="UTF-8"?>');
+    res.write('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+    res.write(`<url><loc>${xmlEscape(`${siteUrl}/journal`)}</loc></url>`);
+    const cursor = BlogPost.find({ source: 'medium', published: true })
+      .select('slug publishedAt')
+      .sort({ publishedAt: -1 })
+      .lean()
+      .cursor();
+    for await (const article of cursor) {
+      const lastmod = article.publishedAt ? `<lastmod>${new Date(article.publishedAt).toISOString()}</lastmod>` : '';
+      res.write(`<url><loc>${xmlEscape(`${siteUrl}/journal/${encodeURIComponent(article.slug)}`)}</loc>${lastmod}</url>`);
+    }
+    res.end('</urlset>');
+  } catch (error) {
+    console.error('[Journal] Sitemap generation failed:', error.message);
+    if (res.headersSent) res.destroy(error);
+    else res.status(500).json({ success: false, error: 'Failed to generate Journal sitemap' });
+  }
+}
+
 export async function getJournalAdminStatus(req, res) {
   try {
     res.json({ success: true, data: await getMediumJournalSyncStatus() });

@@ -151,7 +151,18 @@ Only Box Office reports/cache use TTL indexes. Permanent users, reviews, watchli
 
 `Ardha` and `Hasrat` are stored as first-party movie records, with poster files served from `public/original-films/` rather than stored in MongoDB. Their details, clickable cast/crew profiles, director biography, exact runtimes, YouTube film links, reviews, ratings, diary entries, and watchlist controls use the existing movie experience. The catalog endpoints are `GET /api/original-films`, `GET /api/original-films/search?query=...`, `GET /api/original-films/:slug`, and `GET /api/original-films/people/:slug`.
 
-The API seeds the two film/person records idempotently at startup. New accounts receive both films in their watchlist once at signup; to add them to existing accounts, first confirm the API points at the intended MongoDB database, then run `npm run migrate:original-watchlists` once. The migration adds only missing entries, preserves existing watchlist data, and marks processed users so login never re-adds films a user later removes.
+The API seeds the two film/person records idempotently at startup. New accounts receive both films in their watchlist once at signup. Existing accounts are migrated additively in bounded batches at API startup; `npm run migrate:original-watchlists` is also available for a manual/recovery run. The migration adds only missing entries, preserves existing watchlist data, and marks processed users so login never re-adds films a user later removes. The `/cinematic-picks` page features the two films with their supplied runtimes and direct YouTube viewing links.
+
+## THE JOURNAL / Medium
+
+The `/journal` archive imports Mukund Mangal's public Medium RSS feed (`https://medium.com/feed/@mukundmangal2173`) into the existing `BlogPost` collection. It synchronizes at API startup and every 12 hours, uses an expiring MongoDB lease to prevent parallel API instances from importing at once, and upserts in batches so an interrupted run can safely be repeated. Public listing/search is paginated at `GET /api/journal`; article pages use `/journal/:slug`. The Journal tab in the admin dashboard displays the latest sync report and provides a protected sync action:
+
+- `GET /api/journal/admin/status` — requires an admin token.
+- `POST /api/journal/admin/sync` — requires an admin token.
+
+No Medium API key is required. Article HTML from the RSS feed is allowlist-sanitized before storage; only remote image URLs are kept, not image binaries. Content is capped at 40,000 characters per article; oversized or missing content falls back to the available excerpt and links to the original Medium page. The importer keeps Medium's canonical URL, source ID, date, author, available categories, and reading-time estimate. The RSS feed did not provide categories in the inspected items, so category filters remain empty rather than inventing tags.
+
+**Historical coverage is limited.** At the time this feed was inspected it exposed 10 items dated 2025-10-21 through 2026-10-26 and had no RSS continuation link. Medium's public profile archive returned HTTP 403, so the importer does not bypass that restriction or treat unrelated global sitemap data as the author's archive. The system reports the actual imported count/date range; it does not claim that all lifetime Medium articles were discovered. Future runs import newly exposed RSS items, but cannot recover older articles that Medium does not expose through the authorized feed. The 12-hour scheduler runs inside the existing long-lived Express API process; for a serverless deployment, invoke the protected sync endpoint from the platform's scheduler instead of relying on an in-memory timer.
 
 ### Encrypted S3-compatible backups
 

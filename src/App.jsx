@@ -146,7 +146,9 @@ function AppWrapper() {
             <Route path="/cinematic-picks" element={<CinematicPicks />} />
             <Route path="/about" element={<About />} />
             <Route path="/blog" element={<Blog />} />
+            <Route path="/journal" element={<Blog />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
+            <Route path="/journal/:slug" element={<BlogPost />} />
             {FOOTER_INFO_ROUTES.map(({ path, slug }) => (
               <Route key={path} path={path} element={<FooterInfoPage slug={slug} />} />
             ))}

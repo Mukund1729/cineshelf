@@ -10,7 +10,7 @@ const NAV_LINKS = [
   { to: '/discover',       label: 'Discover' },
   { to: '/cinematic-picks', label: 'Picks' },
   { to: '/boxoffice',      label: 'Box Office' },
-  { to: '/blog',           label: 'Journal' },
+  { to: '/journal',        label: 'Journal' },
   { to: '/people',         label: 'People' },
 ];
 

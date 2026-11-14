@@ -98,7 +98,11 @@ export function parseMediumFeed(xml) {
   const channelMatch = xml.match(/<channel(?:\s[^>]*)?>([\s\S]*?)<\/channel\s*>/i);
   const channel = channelMatch ? channelMatch[1] : xml;
   const items = [...channel.matchAll(/<item(?:\s[^>]*)?>([\s\S]*?)<\/item\s*>/gi)];
-  const continuationAvailable = /<atom:link\b[^>]*\brel=["']next["']/i.test(channel);
+  const nextLinkTag = [...channel.matchAll(/<atom:link\b[^>]*>/gi)]
+    .map(match => match[0])
+    .find(tag => /\brel=["']next["']/i.test(tag)) || '';
+  const nextLinkHref = nextLinkTag.match(/\bhref=["']([^"']+)["']/i)?.[1];
+  const nextUrl = safeMediumUrl(decodeXml(nextLinkHref || ''));
   const articles = items.map(([, item]) => {
     const title = plainText(xmlValue(item, 'title'));
     const link = safeMediumUrl(xmlValue(item, 'link'));
@@ -110,6 +114,8 @@ export function parseMediumFeed(xml) {
     const descriptionHtml = sanitizeHtml(rawDescription, ARTICLE_SANITIZER_OPTIONS);
     const contentText = plainText(contentHtml);
     const descriptionText = plainText(descriptionHtml);
+    const coverImage = imageFromContent(rawContent)
+      || safeImageUrl(item.match(/<media:(?:content|thumbnail)\b[^>]*\burl=["']([^"']+)["']/i)?.[1] || '');
     const fullContentAvailable = Boolean(xmlValue(item, 'content:encoded'));
     const boundedContent = contentHtml.length <= MAX_ARTICLE_CONTENT_CHARS
       ? contentHtml
@@ -130,25 +136,27 @@ export function parseMediumFeed(xml) {
       subtitle: plainText(xmlValue(item, 'media:description')),
       excerpt,
       content: boundedContent || (excerpt ? `<p>${escapeHtml(excerpt)}</p>` : ''),
-      coverImage: imageFromContent(rawContent) || safeImageUrl(xmlValue(item, 'media:content')),
+      coverImage,
       categories: [...new Set(categories)],
       tags: [...new Set(categories)],
       publishedAt: publishedAt && !Number.isNaN(publishedAt.getTime()) ? publishedAt : null,
       readingTime: Math.max(1, Math.ceil(wordCount / 220)),
       contentAvailable: fullContentAvailable && contentHtml.length <= MAX_ARTICLE_CONTENT_CHARS,
-      missingMetadata: !xmlValue(item, 'media:description') || categories.length === 0 || !imageFromContent(rawContent),
+      missingMetadata: !xmlValue(item, 'media:description') || categories.length === 0 || !coverImage,
       valid: Boolean(title && sourceId && link),
     };
   });
 
-  return { articles, continuationAvailable };
+  return { articles, nextUrl };
 }
 
-async function fetchMediumFeed() {
+async function fetchMediumFeed(url = MEDIUM_RSS_URL) {
+  const feedUrl = safeMediumUrl(url);
+  if (!feedUrl) throw new Error('Medium RSS continuation URL is not an allowed Medium URL');
   let lastError;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const response = await fetch(MEDIUM_RSS_URL, {
+      const response = await fetch(feedUrl, {
         headers: { Accept: 'application/rss+xml, application/xml;q=0.9, */*;q=0.8' },
         signal: AbortSignal.timeout(20000),
       });
@@ -249,12 +257,26 @@ export async function syncMediumJournal() {
   };
 
   try {
-    const feed = await fetchMediumFeed();
-    const parsed = parseMediumFeed(feed);
-    report.totalDiscovered = parsed.articles.length;
-    report.continuationAvailable = parsed.continuationAvailable;
+    const articlesBySourceId = new Map();
+    const seenFeedUrls = new Set();
+    let feedUrl = MEDIUM_RSS_URL;
+    let nextUrl = '';
+    let pageCount = 0;
+    const maxFeedPages = 50;
+    while (feedUrl && pageCount < maxFeedPages && !seenFeedUrls.has(feedUrl)) {
+      seenFeedUrls.add(feedUrl);
+      const parsed = parseMediumFeed(await fetchMediumFeed(feedUrl));
+      for (const article of parsed.articles) {
+        if (article.sourceId) articlesBySourceId.set(article.sourceId, article);
+      }
+      nextUrl = parsed.nextUrl;
+      feedUrl = nextUrl;
+      pageCount += 1;
+    }
+    report.totalDiscovered = articlesBySourceId.size;
+    report.continuationAvailable = Boolean(feedUrl && pageCount >= maxFeedPages);
 
-    const validArticles = parsed.articles.filter(article => {
+    const validArticles = [...articlesBySourceId.values()].filter(article => {
       if (!article.valid) {
         report.skipped += 1;
         return false;
@@ -301,8 +323,8 @@ export async function syncMediumJournal() {
           status: report.failed ? 'failed' : 'succeeded',
           lastSuccessfulSyncAt: report.failed ? undefined : syncedAt,
           message: report.continuationAvailable
-            ? 'The feed advertises a continuation link; additional pages should be imported.'
-            : 'Imported the currently exposed RSS window. Medium did not provide a continuation link.',
+            ? `Pagination reached the safety limit of ${maxFeedPages} feed pages.`
+            : 'Imported all items available through the RSS feed; no continuation page remained.',
         },
         $unset: { leaseToken: 1, leaseUntil: 1 },
       }
