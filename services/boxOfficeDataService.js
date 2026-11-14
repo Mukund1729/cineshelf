@@ -637,7 +637,15 @@ async function fetchHistoryJson(cacheKey, path) {
       return response.data;
     } catch (error) {
       lastError = error;
-      if (error.response?.status && error.response.status < 500 && error.response.status !== 429) break;
+      if (error.response?.status && error.response.status < 500 && error.response.status !== 429) {
+        error.status = error.response.status;
+        if (error.response.status === 404) error.code = 'history_resource_not_found';
+        break;
+      }
+      if (error.response?.status === 429) {
+        error.status = 503;
+        error.code = 'history_provider_rate_limited';
+      }
       if (attempt < 2) await new Promise(resolve => setTimeout(resolve, 500 * (2 ** attempt)));
     }
   }

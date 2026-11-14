@@ -2,7 +2,10 @@ import { fetchTmdb } from '../services/tmdbService.js';
 import BoxOfficeDaily from '../models/BoxOfficeDaily.js';
 import BoxOfficeLifetime from '../models/BoxOfficeLifetime.js';
 import {
+  getBoxOfficeHistoryChart as fetchBoxOfficeHistoryChart,
   getBoxOfficeHistoryDay,
+  getBoxOfficeHistoryInternationalCountries,
+  getBoxOfficeHistoryMeta,
   getBoxOfficeHistoryMovie,
   getBoxOfficeHistoryRecords,
   getBoxOfficeSyncStatus,
@@ -399,6 +402,67 @@ export const getBoxOfficeDaily = async (req, res) => {
   }
 };
 
+export const getBoxOfficeHistoryMetaController = async (req, res) => {
+  try {
+    res.json({ success: true, data: await getBoxOfficeHistoryMeta() });
+  } catch (error) {
+    sendBoxOfficeError(res, error, 'history_meta_unavailable');
+  }
+};
+
+export const getBoxOfficeHistoryCountries = async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      source: 'box-office-history',
+      countries: await getBoxOfficeHistoryInternationalCountries(),
+    });
+  } catch (error) {
+    sendBoxOfficeError(res, error, 'history_countries_unavailable');
+  }
+};
+
+export const getBoxOfficeHistoryChart = async (req, res) => {
+  try {
+    const market = String(req.query.market || '').toLowerCase();
+    const period = String(req.query.period || '').toLowerCase();
+    const countryCode = String(req.query.country || '').toUpperCase();
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const pagination = getPagination(req.query);
+    if (!pagination) return res.status(400).json({ success: false, error: 'invalid_pagination' });
+    if (!isValidDate(date)) return res.status(400).json({ success: false, error: 'invalid_date' });
+    const allowedPeriods = {
+      us: new Set(['daily', 'weekend', 'weekly', 'yearly']),
+      international: new Set(['weekend', 'yearly', 'alltime']),
+      worldwide: new Set(['alltime']),
+    };
+    if (!allowedPeriods[market]) return res.status(400).json({ success: false, error: 'invalid_market' });
+    if (!allowedPeriods[market].has(period)) {
+      return res.status(400).json({ success: false, error: 'invalid_history_period' });
+    }
+    if (market === 'international' &&
+        (!/^[A-Z0-9]{2,3}$/.test(countryCode) || countryCode === 'IN' || countryCode === 'US')) {
+      return res.status(400).json({ success: false, error: 'invalid_country' });
+    }
+
+    const chart = await fetchBoxOfficeHistoryChart({ market, period, date, countryCode });
+    const start = (pagination.page - 1) * pagination.limit;
+    return res.json({
+      success: true,
+      ...chart,
+      rows: chart.rows.slice(start, start + pagination.limit),
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        total: chart.rows.length,
+        pages: Math.ceil(chart.rows.length / pagination.limit),
+      },
+    });
+  } catch (error) {
+    sendBoxOfficeError(res, error, 'history_chart_unavailable');
+  }
+};
+
 export const getBoxOfficeWorldwide = async (req, res) => {
   try {
     const { date, language } = req.query;
@@ -555,8 +619,8 @@ export const getBoxOfficeSources = (req, res) => {
         status: 'active-on-demand',
         url: 'https://www.boxofficehistory.com/api',
         authentication: 'No API key documented.',
-        coverage: 'Verified US daily charts, TMDB lookup, US movie weekend histories, and US opening-weekend records.',
-        limitation: 'Not an India-nett source. International chart endpoints were not enabled because their response routes could not be verified.',
+        coverage: 'Verified US daily/weekend/weekly/yearly charts, 100+ international market indexes, country weekend/yearly charts, movie day/weekend/week histories, and a historical worldwide snapshot.',
+        limitation: 'USD gross only; international availability varies by market. The worldwide all-time chart is a historical snapshot from October 2019, not a current total.',
       },
       {
         id: 'bfilmy',
@@ -647,7 +711,7 @@ export const getMovieBoxOfficeHistory = async (req, res) => {
         isEstimate: report.isEstimate,
       })),
       unitedStates: usHistory,
-      coverage: 'Only source-reported points are returned. The US provider supplies weekend history; missing daily values are not synthesized.',
+      coverage: 'Only source-reported points are returned. Daily, weekend, weekly, and international lifetime records are shown only when supplied by the provider; missing values are not synthesized.',
     });
   } catch (error) {
     sendBoxOfficeError(res, error, 'movie_history_unavailable');

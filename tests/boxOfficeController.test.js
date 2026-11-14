@@ -1,7 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import BoxOfficeLifetime from '../models/BoxOfficeLifetime.js';
-import { getBoxOfficeDaily, getBoxOfficeWorldwide } from '../controllers/boxOfficeController.js';
+import {
+  getBoxOfficeDaily,
+  getBoxOfficeHistoryChart,
+  getBoxOfficeWorldwide,
+} from '../controllers/boxOfficeController.js';
 
 function createResponse() {
   return {
@@ -87,4 +91,27 @@ test('daily worldwide reports reject an invalid page size', async () => {
 
   assert.equal(response.statusCode, 400);
   assert.equal(response.body.error, 'invalid_pagination');
+});
+
+test('history charts reject unsupported markets and invalid foreign territories', async () => {
+  const unsupportedMarket = createResponse();
+  await getBoxOfficeHistoryChart({
+    query: { market: 'india', period: 'daily', date: '2026-11-09' },
+  }, unsupportedMarket);
+  assert.equal(unsupportedMarket.statusCode, 400);
+  assert.equal(unsupportedMarket.body.error, 'invalid_market');
+
+  const indiaTerritory = createResponse();
+  await getBoxOfficeHistoryChart({
+    query: { market: 'international', period: 'weekend', country: 'IN', date: '2026-11-09' },
+  }, indiaTerritory);
+  assert.equal(indiaTerritory.statusCode, 400);
+  assert.equal(indiaTerritory.body.error, 'invalid_country');
+
+  const malformedDate = createResponse();
+  await getBoxOfficeHistoryChart({
+    query: { market: 'us', period: 'daily', date: '2026-02-30' },
+  }, malformedDate);
+  assert.equal(malformedDate.statusCode, 400);
+  assert.equal(malformedDate.body.error, 'invalid_date');
 });

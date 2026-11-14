@@ -6,6 +6,9 @@ import {
   getBoxOfficeByPerson,
   getBoxOfficeDaily,
   getBoxOfficeLastUpdated,
+  getBoxOfficeHistoryChart,
+  getBoxOfficeHistoryCountries,
+  getBoxOfficeHistoryMetaController,
   getBoxOfficeOverview,
   getBoxOfficeRecords,
   getBoxOfficeSources,
@@ -36,6 +39,9 @@ router.get('/yearly', getBoxOfficeYearly);
 router.get('/records', getBoxOfficeRecords);
 router.get('/sources', getBoxOfficeSources);
 router.get('/last-updated', getBoxOfficeLastUpdated);
+router.get('/history/meta', getBoxOfficeHistoryMetaController);
+router.get('/history/international/countries', getBoxOfficeHistoryCountries);
+router.get('/history/chart', getBoxOfficeHistoryChart);
 router.get('/worldwide', getBoxOfficeWorldwide);
 router.get('/india', getIndiaBoxOfficeReports);
 

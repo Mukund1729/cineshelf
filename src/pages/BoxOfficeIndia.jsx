@@ -47,69 +47,104 @@ function formatDate(value) {
 
 function reportAmount(row, market, period) {
   if (market === 'worldwide') return row.amount;
-  return period === 'daily' ? row.dailyCollection : row.totalReported;
+  return row.dailyCollection ?? row.totalReported;
 }
 
-function reportLabel(row, market, period) {
+function collectionLabel(market, period) {
   if (market === 'worldwide') return 'Lifetime worldwide gross';
-  if (market === 'us') return 'US domestic daily gross';
+  if (market === 'worldwideArchive') return 'Historical worldwide gross';
+  if (market === 'us') {
+    return {
+      daily: 'US daily gross',
+      weekend: 'US weekend gross',
+      weekly: 'US weekly gross',
+      yearly: 'US yearly gross',
+    }[period] || 'US gross';
+  }
+  if (market === 'international') {
+    return {
+      weekend: 'Weekend gross (USD)',
+      yearly: 'Yearly gross (USD)',
+      alltime: 'All-time gross (USD)',
+    }[period] || 'International gross';
+  }
   return period === 'daily' ? 'India nett (reported day)' : 'India nett (reported days only)';
 }
 
 function HistoryPanel({ history, movieTitle }) {
   const indiaRows = history.indiaDaily || [];
-  const weekends = history.unitedStates?.weekends || [];
+  const usHistory = history.unitedStates || {};
+  const usRows = usHistory.daily?.length
+    ? usHistory.daily
+    : usHistory.weekends?.length
+      ? usHistory.weekends
+      : usHistory.weeks || [];
   const chartRows = indiaRows.length
     ? indiaRows.map(row => ({
       date: row.date,
       daily: row.dailyCollection,
       cumulative: row.cumulativeCollection,
     }))
-    : weekends.map(row => ({
+    : usRows.map(row => ({
       date: row.date,
       daily: row.gross,
       cumulative: row.cumulativeGross,
     }));
   const currency = indiaRows.length ? 'INR' : history.unitedStates?.currency || 'USD';
+  const internationalRows = usHistory.international || [];
+  const isDaily = !indiaRows.length && Boolean(usHistory.daily?.length);
 
-  if (!chartRows.length) {
+  if (!chartRows.length && !internationalRows.length) {
     return <p style={{ color: 'var(--vc-slate)' }}>No day-wise or weekend history is available from the connected sources.</p>;
   }
 
   return (
     <div style={{ marginTop: '1rem' }}>
       <p style={{ color: 'var(--vc-slate)', fontSize: '0.8rem' }}>
-        Source-reported history for {movieTitle}. Missing dates are not filled; US values are weekend totals.
+        Source-reported history for {movieTitle}. Missing dates and territories are not filled; all Box Office History values are USD gross.
       </p>
-      <div style={{ width: '100%', height: 300 }}>
-        <ResponsiveContainer>
-          <LineChart data={chartRows} margin={{ top: 10, right: 12, bottom: 4, left: 12 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
-            <XAxis dataKey="date" stroke="#9aa5b7" tick={{ fontSize: 11 }} />
-            <YAxis
-              stroke="#9aa5b7"
-              tick={{ fontSize: 11 }}
-              tickFormatter={value => currency === 'INR' ? `₹${(value / 10_000_000).toFixed(0)}Cr` : `$${(value / 1_000_000).toFixed(0)}M`}
-            />
-            <Tooltip formatter={value => formatAmount(value, currency)} />
-            <Legend />
-            <Line type="monotone" dataKey="daily" name={indiaRows.length ? 'Daily India nett' : 'US weekend gross'} stroke="#d4af37" dot={false} />
-            <Line type="monotone" dataKey="cumulative" name="Cumulative" stroke="#5bc0be" dot={false} connectNulls={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-      <div className="vc-mobile-table-wrap" style={{ overflowX: 'auto' }}>
+      {(usHistory.lifetimeDomesticGross || usHistory.lifetimeInternationalGross || usHistory.lifetimeWorldwideGross) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginBottom: '1rem' }}>
+          {[
+            ['US domestic gross', usHistory.lifetimeDomesticGross],
+            ['International gross', usHistory.lifetimeInternationalGross],
+            ['Worldwide gross', usHistory.lifetimeWorldwideGross],
+          ].filter(([, amount]) => amount != null).map(([label, amount]) => (
+            <SummaryCard key={label} label={label} value={formatAmount(amount, 'USD')} />
+          ))}
+        </div>
+      )}
+      {chartRows.length > 0 && (
+        <>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer>
+              <LineChart data={chartRows} margin={{ top: 10, right: 12, bottom: 4, left: 12 }}>
+                <CartesianGrid stroke="rgba(255,255,255,0.08)" strokeDasharray="3 3" />
+                <XAxis dataKey="date" stroke="#9aa5b7" tick={{ fontSize: 11 }} />
+                <YAxis
+                  stroke="#9aa5b7"
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={value => currency === 'INR' ? `₹${(value / 10_000_000).toFixed(0)}Cr` : `$${(value / 1_000_000).toFixed(0)}M`}
+                />
+                <Tooltip formatter={value => formatAmount(value, currency)} />
+                <Legend />
+                <Line type="monotone" dataKey="daily" name={indiaRows.length ? 'Daily India nett' : isDaily ? 'US daily gross' : 'US chart gross'} stroke="#d4af37" dot={false} />
+                <Line type="monotone" dataKey="cumulative" name="Cumulative" stroke="#5bc0be" dot={false} connectNulls={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="vc-mobile-table-wrap" style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
           <thead>
             <tr style={{ color: 'var(--vc-gold)', textAlign: 'left' }}>
               <th style={{ padding: '0.65rem' }}>Reported date</th>
-              <th style={{ padding: '0.65rem', textAlign: 'right' }}>Daily / weekend</th>
+              <th style={{ padding: '0.65rem', textAlign: 'right' }}>Daily / period gross</th>
               <th style={{ padding: '0.65rem', textAlign: 'right' }}>Cumulative</th>
               <th style={{ padding: '0.65rem' }}>Source</th>
             </tr>
           </thead>
           <tbody>
-            {(indiaRows.length ? indiaRows : weekends).map((row, index) => (
+            {(indiaRows.length ? indiaRows : usRows).map((row, index) => (
               <tr key={`${row.date}-${index}`} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                 <td style={{ padding: '0.65rem' }}>{formatDate(row.date)}</td>
                 <td style={{ padding: '0.65rem', textAlign: 'right' }}>
@@ -123,7 +158,34 @@ function HistoryPanel({ history, movieTitle }) {
             ))}
           </tbody>
         </table>
-      </div>
+          </div>
+        </>
+      )}
+      {internationalRows.length > 0 && (
+        <div className="vc-mobile-table-wrap" style={{ overflowX: 'auto', marginTop: '1rem' }}>
+          <h4 style={{ color: 'var(--vc-gold-light)' }}>International market totals (USD)</h4>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+            <thead>
+              <tr style={{ color: 'var(--vc-gold)', textAlign: 'left' }}>
+                <th style={{ padding: '0.65rem' }}>Territory</th>
+                <th style={{ padding: '0.65rem', textAlign: 'right' }}>Lifetime gross</th>
+                <th style={{ padding: '0.65rem', textAlign: 'right' }}>Opening</th>
+                <th style={{ padding: '0.65rem' }}>Reported as of</th>
+              </tr>
+            </thead>
+            <tbody>
+              {internationalRows.map(row => (
+                <tr key={row.code} style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                  <td style={{ padding: '0.65rem' }}>{row.name || row.code}</td>
+                  <td style={{ padding: '0.65rem', textAlign: 'right' }}>{formatAmount(row.gross, 'USD')}</td>
+                  <td style={{ padding: '0.65rem', textAlign: 'right' }}>{formatAmount(row.openingGross, 'USD')}</td>
+                  <td style={{ padding: '0.65rem' }}>{formatDate(row.asOf)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -149,6 +211,9 @@ export default function BoxOfficeIndia() {
   const [overview, setOverview] = useState(null);
   const [market, setMarket] = useState('india');
   const [period, setPeriod] = useState('daily');
+  const [countryCode, setCountryCode] = useState('GB');
+  const [countries, setCountries] = useState([]);
+  const [coverage, setCoverage] = useState('');
   const [language, setLanguage] = useState('all');
   const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
   const [search, setSearch] = useState('');
@@ -186,9 +251,45 @@ export default function BoxOfficeIndia() {
 
   useEffect(() => {
     let active = true;
+    if (market !== 'us') return () => { active = false; };
+    axios.get('/api/boxoffice/history/meta')
+      .then(({ data }) => {
+        if (!active) return;
+        const latestDate = data.data?.latestDailyDate;
+        if (latestDate) setDate(latestDate);
+      })
+      .catch(err => {
+        if (active) setCoverage(err.response?.data?.error || 'US chart availability could not be loaded.');
+      });
+    return () => { active = false; };
+  }, [market]);
+
+  useEffect(() => {
+    let active = true;
+    if (market !== 'international') return () => { active = false; };
+    axios.get('/api/boxoffice/history/international/countries')
+      .then(({ data }) => {
+        if (!active) return;
+        const available = data.countries || [];
+        setCountries(available);
+        setCountryCode(current => (
+          available.some(country => country.code === current)
+            ? current
+            : available.find(country => country.code === 'GB')?.code || available[0]?.code || ''
+        ));
+      })
+      .catch(err => {
+        if (active) setError(err.response?.data?.error || 'International market list is unavailable.');
+      });
+    return () => { active = false; };
+  }, [market]);
+
+  useEffect(() => {
+    let active = true;
     async function loadRows() {
       setLoading(true);
       setError('');
+      setCoverage('');
       setRows([]);
       setPagination(null);
       try {
@@ -204,13 +305,30 @@ export default function BoxOfficeIndia() {
             pages: response.data.pages || 1,
             total: response.data.total || 0,
           });
+          setCoverage(response.data.coverage || '');
         } else if (market === 'us' && period === 'daily') {
-          response = await axios.get('/api/boxoffice/daily', {
-            params: { market: 'us', date, page, limit: 50 },
+          response = await axios.get('/api/boxoffice/history/chart', {
+            params: { market: 'us', period, date, page, limit: 50 },
           });
           if (!active) return;
           setRows(response.data.rows || []);
           setPagination(response.data.pagination || null);
+          setCoverage(response.data.coverage || '');
+        } else if (market === 'us' || market === 'international' || market === 'worldwideArchive') {
+          response = await axios.get('/api/boxoffice/history/chart', {
+            params: {
+              market: market === 'worldwideArchive' ? 'worldwide' : market,
+              period,
+              date,
+              country: market === 'international' ? countryCode : undefined,
+              page,
+              limit: 50,
+            },
+          });
+          if (!active) return;
+          setRows(response.data.rows || []);
+          setPagination(response.data.pagination || null);
+          setCoverage(response.data.coverage || '');
         } else if (market === 'worldwide' && period === 'daily') {
           response = await axios.get('/api/boxoffice/worldwide', {
             params: { date, page, limit: 50 },
@@ -222,6 +340,7 @@ export default function BoxOfficeIndia() {
             pages: response.data.pages || 1,
             total: response.data.total || 0,
           });
+          setCoverage(response.data.coverage || '');
         } else if (market === 'worldwide') {
           if (!active) return;
           setRows([]);
@@ -238,7 +357,7 @@ export default function BoxOfficeIndia() {
             pages: response.data.pages || 1,
             total: response.data.total || 0,
           });
-          if (response.data.coverage) setError(response.data.coverage);
+          setCoverage(response.data.coverage || '');
         }
       } catch (err) {
         if (!active) return;
@@ -249,7 +368,7 @@ export default function BoxOfficeIndia() {
     }
     loadRows();
     return () => { active = false; };
-  }, [market, period, language, date, page]);
+  }, [market, period, language, date, page, countryCode]);
 
   const filteredRows = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -299,6 +418,27 @@ export default function BoxOfficeIndia() {
 
   const todayIndia = overview?.todayIndia;
   const worldwide = overview?.latestWorldwide;
+  const periodOptions = {
+    india: [
+      ['daily', 'Daily'],
+      ['weekly', 'Weekly (reported days)'],
+      ['monthly', 'Monthly (reported days)'],
+    ],
+    us: [
+      ['daily', 'Daily'],
+      ['weekend', 'Weekend'],
+      ['weekly', 'Weekly'],
+      ['yearly', 'Yearly'],
+    ],
+    international: [
+      ['weekend', 'Weekend'],
+      ['yearly', 'Yearly'],
+      ['alltime', 'All-time (when available)'],
+    ],
+    worldwide: [['daily', 'Lifetime reports']],
+    worldwideArchive: [['alltime', 'Historical all-time snapshot']],
+  }[market] || [];
+  const coverageNote = coverage || (market === 'india' ? overview?.dataCoverage?.india : '');
 
   return (
     <section style={{ paddingTop: '1.5rem', color: 'var(--vc-cream)' }}>
@@ -338,25 +478,60 @@ export default function BoxOfficeIndia() {
       }}>
         <label style={{ display: 'grid', gap: 5, fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
           Market
-          <select className="vc-input" value={market} onChange={event => { setMarket(event.target.value); setPage(1); }}>
+          <select className="vc-input" value={market} onChange={event => {
+            const nextMarket = event.target.value;
+            setMarket(nextMarket);
+            setPeriod({
+              india: 'daily',
+              us: 'daily',
+              international: 'weekend',
+              worldwide: 'daily',
+              worldwideArchive: 'alltime',
+            }[nextMarket] || 'daily');
+            setPage(1);
+          }}>
             <option value="india">India</option>
             <option value="us">US domestic</option>
+            <option value="international">International markets (USD)</option>
             <option value="worldwide">Worldwide lifetime</option>
+            <option value="worldwideArchive">Worldwide all-time archive (2019)</option>
           </select>
         </label>
         <label style={{ display: 'grid', gap: 5, fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
           Period
           <select className="vc-input" value={period} onChange={event => { setPeriod(event.target.value); setPage(1); }}>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly (reported days)</option>
-            <option value="monthly">Monthly (reported days)</option>
+            {periodOptions.map(([value, label]) => (
+              <option
+                key={value}
+                value={value}
+                disabled={value === 'alltime' && market === 'international' && !countries.find(country => country.code === countryCode)?.alltime}
+              >
+                {label}
+              </option>
+            ))}
           </select>
         </label>
-        <label style={{ display: 'grid', gap: 5, fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
-          Report date
-          <input className="vc-input" type="date" value={date} onChange={event => { setDate(event.target.value); setPage(1); }} />
-        </label>
-        {market !== 'worldwide' && (
+        {market === 'international' && (
+          <label style={{ display: 'grid', gap: 5, fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
+            Country / territory
+            <select className="vc-input" value={countryCode} onChange={event => { setCountryCode(event.target.value); setPage(1); }}>
+              {countries.map(country => (
+                <option key={country.code} value={country.code}>{country.name} ({country.code})</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {period !== 'alltime' && market !== 'worldwideArchive' && (
+          <label style={{ display: 'grid', gap: 5, fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
+            {period === 'yearly' ? 'Chart year' : 'Chart date'}
+            <input className="vc-input" type={period === 'yearly' ? 'number' : 'date'} min={period === 'yearly' ? '1900' : undefined} max={period === 'yearly' ? '2100' : undefined} value={period === 'yearly' ? date.slice(0, 4) : date} onChange={event => {
+              const nextDate = period === 'yearly' ? `${event.target.value}-01-01` : event.target.value;
+              if (/^\d{4}-\d{2}-\d{2}$/.test(nextDate)) setDate(nextDate);
+              setPage(1);
+            }} />
+          </label>
+        )}
+        {market === 'india' && (
           <label style={{ display: 'grid', gap: 5, fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
             Language
             <select className="vc-input" value={language} onChange={event => setLanguage(event.target.value)}>
@@ -374,7 +549,7 @@ export default function BoxOfficeIndia() {
         />
       </div>
 
-      {overview?.dataCoverage?.india && (
+      {coverageNote && (
         <p style={{
           margin: '0 0 1rem',
           padding: '0.75rem 1rem',
@@ -384,7 +559,7 @@ export default function BoxOfficeIndia() {
           color: 'var(--vc-slate)',
           fontSize: '0.8rem',
         }}>
-          Coverage note: {overview.dataCoverage.india} All displayed figures keep their source, currency and estimate status.
+          Coverage note: {coverageNote} All displayed figures keep their source, currency and estimate status.
         </p>
       )}
 
@@ -411,7 +586,7 @@ export default function BoxOfficeIndia() {
                 <th style={{ padding: '0.8rem' }}>Language</th>
                 <th style={{ padding: '0.8rem' }}>Release</th>
                 <th style={{ padding: '0.8rem', textAlign: 'right' }}>
-                  {market === 'worldwide' ? 'Worldwide gross' : period === 'daily' ? 'Daily collection' : 'Reported total'}
+                  {collectionLabel(market, period)}
                 </th>
                 <th style={{ padding: '0.8rem', textAlign: 'right' }}>Cumulative</th>
                 <th style={{ padding: '0.8rem' }}>Source / status</th>
@@ -421,12 +596,12 @@ export default function BoxOfficeIndia() {
               {filteredRows.map((row, index) => {
                 const title = row.movieTitle || row.title;
                 const amount = reportAmount(row, market, period);
-                const currency = row.currency || 'INR';
+                const currency = row.currency || (market === 'india' ? 'INR' : 'USD');
                 const source = row.source || 'box-office-history';
                 const poster = row.posterPath ? tmdbImageUrl(row.posterPath, 'w92') : null;
-                const cumulative = market === 'worldwide'
+                const cumulative = market === 'worldwide' || market === 'worldwideArchive'
                   ? null
-                  : (period === 'daily' ? row.cumulativeCollection : row.cumulativeCollection);
+                  : row.cumulativeCollection;
                 return (
                   <React.Fragment key={row.reportKey || row._id || `${title}-${index}`}>
                     <tr style={{ borderTop: '1px solid rgba(255,255,255,0.05)' }}>
@@ -453,7 +628,7 @@ export default function BoxOfficeIndia() {
                       <td style={{ padding: '0.75rem', color: 'var(--vc-slate)' }}>
                         {LANGUAGE_NAMES[row.originalLanguage] || row.originalLanguage || 'Not reported'}
                       </td>
-                      <td style={{ padding: '0.75rem', color: 'var(--vc-slate)' }}>{row.releaseDate ? formatDate(row.releaseDate) : 'Not reported'}</td>
+                      <td style={{ padding: '0.75rem', color: 'var(--vc-slate)' }}>{row.releaseDate ? formatDate(row.releaseDate) : row.releaseLabel || row.releaseYear || 'Not reported'}</td>
                       <td style={{ padding: '0.75rem', textAlign: 'right', color: 'var(--vc-gold-light)', fontWeight: 700 }}>
                         {formatAmount(amount, currency)}
                         {row.sourceReportedValue && (

@@ -113,7 +113,7 @@ The Render free web service may sleep when idle. Existing user avatars are store
 
 ## Box Office ingestion and MongoDB storage
 
-The existing `/boxoffice` page uses source-attributed data only. The API automatically polls the Indian Box Office RSS on startup and every few hours; this runs inside the existing API service and does not require a separate Render worker. It provides selected daily briefs and lifetime India-nett/worldwide-gross reports, not a complete daily chart or full historical day-wise dataset. Those figures are publisher estimates. Box Office History is queried on demand for documented US daily charts, TMDB-ID lookup, US weekend history, and US opening records. It is not an India-nett provider. Other providers are not enabled unless their API access and reuse permissions can be verified.
+The existing `/boxoffice` page uses source-attributed data only. The API automatically polls the Indian Box Office RSS on startup and every few hours; this runs inside the existing API service and does not require a separate Render worker. It provides selected daily briefs and lifetime India-nett/worldwide-gross reports, not a complete daily chart or full historical day-wise dataset. Those figures are publisher estimates. Box Office History is queried on demand for US daily/weekend/weekly/yearly charts, international weekend/yearly charts, TMDB-ID movie histories, and the provider's historical worldwide snapshot. International and US figures remain USD gross and are never merged with India nett. No archive-wide import is performed: older charts and movie histories are fetched only when requested, and large indexes are kept in a bounded in-process cache rather than MongoDB. Other providers are not enabled unless their API access and reuse permissions can be verified.
 
 The scheduler interval defaults to four hours and can be set from 3 to 6 hours with `BOX_OFFICE_SYNC_INTERVAL_HOURS`. The MongoDB sync lease prevents overlapping imports across API instances or an optional standalone worker. If you need a separate process instead of the API scheduler, run:
 
@@ -122,12 +122,17 @@ npm run server
 npm run worker:boxoffice
 ```
 
-`BOX_OFFICE_SYNC_INTERVAL_HOURS` defaults to 4 and must be between 3 and 6. The worker retries provider requests and records its last successful synchronization. Older US/movie history is fetched only when requested and cached for `BOX_OFFICE_CACHE_TTL_SECONDS` (default 24 hours). RSS reports expire after `BOX_OFFICE_REPORT_TTL_DAYS` (default 30 days); report counts are capped by `BOX_OFFICE_MAX_DAILY_REPORTS` and `BOX_OFFICE_MAX_LIFETIME_REPORTS`. Missing dates and unavailable figures are never synthesized. TMDB matching uses the server-only `TMDB_READ_ACCESS_TOKEN`; unmatched or ambiguous titles remain unmatched.
+`BOX_OFFICE_SYNC_INTERVAL_HOURS` defaults to 4 and must be between 3 and 6. The worker retries provider requests and records its last successful synchronization. Provider charts and movie history are fetched only on demand and cached for `BOX_OFFICE_CACHE_TTL_SECONDS` (default 1 hour); MongoDB cache writes remain size- and storage-gated. RSS reports expire after `BOX_OFFICE_REPORT_TTL_DAYS` (default 30 days); report counts are capped by `BOX_OFFICE_MAX_DAILY_REPORTS` and `BOX_OFFICE_MAX_LIFETIME_REPORTS`. Missing dates and unavailable figures are never synthesized. TMDB matching uses the server-only `TMDB_READ_ACCESS_TOKEN`; unmatched or ambiguous titles remain unmatched.
 
 Available endpoints include:
 
 - `GET /api/boxoffice/overview`
 - `GET /api/boxoffice/daily?date=YYYY-MM-DD&market=india|us`
+- `GET /api/boxoffice/history/meta`
+- `GET /api/boxoffice/history/international/countries`
+- `GET /api/boxoffice/history/chart?market=us&period=daily|weekend|weekly|yearly&date=YYYY-MM-DD`
+- `GET /api/boxoffice/history/chart?market=international&country=GB&period=weekend|yearly|alltime&date=YYYY-MM-DD`
+- `GET /api/boxoffice/history/chart?market=worldwide&period=alltime` (historical snapshot as of 2019)
 - `GET /api/boxoffice/india?date=YYYY-MM-DD&period=daily|weekly|monthly`
 - `GET /api/boxoffice/worldwide?date=YYYY-MM-DD`
 - `GET /api/boxoffice/weekly?date=YYYY-MM-DD`
@@ -137,6 +142,8 @@ Available endpoints include:
 - `GET /api/boxoffice/movie/:tmdbId/history`
 - `GET /api/boxoffice/sources`
 - `GET /api/boxoffice/last-updated`
+
+The international market list and chart endpoints use the documented static JSON index. Market/date resolution uses provider indexes; if a date is newer than the latest available chart, the nearest preceding chart is returned with its actual covered dates. The provider reports gross values in USD; availability varies by territory. The archived all-time worldwide chart is explicitly historical (October 2019), not current. API credentials are not required or exposed to the browser.
 
 Only Box Office reports/cache use TTL indexes. Permanent users, reviews, watchlists, and chat messages do not. MongoDB storage checks use `dbStats`; the API logs threshold warnings at 60%, 75%, 85%, and 90% of `MONGO_STORAGE_LIMIT_BYTES` (default 512 MiB). `MONGO_STORAGE_BLOCK_AT_PERCENT` (default 85) pauses non-essential Box Office cache writes only. Admins can read the current snapshot at `GET /api/admin/storage`.
 
