@@ -21,6 +21,7 @@ import {
 const OTP_LIFETIME_MS = 5 * 60 * 1000;
 const OTP_RESEND_DELAY_MS = 60 * 1000;
 const MAX_OTP_ATTEMPTS = 5;
+const REQUIRE_SIGNUP_EMAIL_VERIFICATION = process.env.REQUIRE_SIGNUP_EMAIL_VERIFICATION === 'true';
 const OAUTH_STATE_COOKIE = 'vc_google_state';
 const OAUTH_STATE_TTL_SECONDS = 10 * 60;
 
@@ -295,7 +296,13 @@ export const signup = async (req, res) => {
 
     let user;
     try {
-      user = await User.create({ name, username, email, password, isVerified: false });
+      user = await User.create({
+        name,
+        username,
+        email,
+        password,
+        isVerified: !REQUIRE_SIGNUP_EMAIL_VERIFICATION,
+      });
     } catch (error) {
       if (error.code === 11000) {
         const duplicateEmail = await User.exists({ email })
@@ -314,6 +321,13 @@ export const signup = async (req, res) => {
         });
       }
       throw error;
+    }
+
+    if (!REQUIRE_SIGNUP_EMAIL_VERIFICATION) {
+      user.lastActive = new Date();
+      await user.save();
+      await ensureStarterWatchlist(user);
+      return authenticateUser(req, res, user, 'Account created successfully');
     }
 
     try {
@@ -355,10 +369,15 @@ export const login = async (req, res) => {
     const passwordMatches = user?.password
       ? await bcrypt.compare(password, user.password)
       : false;
-    if (!user || !passwordMatches || !user.isVerified) {
+    if (!user || !passwordMatches || (REQUIRE_SIGNUP_EMAIL_VERIFICATION && !user.isVerified)) {
       return res.status(401).json({ success: false, message: 'Email or password is incorrect. Verify your email or use email sign-in.' });
     }
 
+    if (!user.isVerified) {
+      user.isVerified = true;
+      clearLegacyVerification(user);
+      await AuthOtp.deleteMany({ email, purpose: 'verification' });
+    }
     user.lastActive = new Date();
     await user.save();
     return authenticateUser(req, res, user, 'Welcome back');

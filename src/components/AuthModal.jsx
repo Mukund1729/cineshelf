@@ -128,8 +128,12 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
           email: form.email,
           password: form.password,
         });
-        beginOtp(response.data.email || form.email, response.data.otpPurpose || 'verification',
-          response.data.message || 'Check your email for a verification code.');
+        if (response.data.user) {
+          finishAuthentication(response.data, response.data.message || 'Account created successfully.');
+        } else {
+          beginOtp(response.data.email || form.email, response.data.otpPurpose || 'verification',
+            response.data.message || 'Check your email for a verification code.');
+        }
       } else {
         const response = await axios.post('/api/auth/login', {
           email: form.email,
