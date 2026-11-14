@@ -19,20 +19,23 @@ import auth from '../middleware/auth.js';
 
 const router = express.Router();
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
-const verificationLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false });
+const signupLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false });
+const otpSendLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false });
+const otpVerifyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false });
+const passwordResetLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false });
 
-router.post('/signup', verificationLimiter, signup);
-router.post('/verify-email', verificationLimiter, verifyEmail);
-router.post('/verify-otp', verificationLimiter, verifyOtp);
-router.post('/resend-verification', verificationLimiter, resendVerificationCode);
-router.post('/send-otp', verificationLimiter, sendOtp);
+router.post('/signup', signupLimiter, signup);
+router.post('/verify-email', otpVerifyLimiter, verifyEmail);
+router.post('/verify-otp', otpVerifyLimiter, verifyOtp);
+router.post('/resend-verification', otpSendLimiter, resendVerificationCode);
+router.post('/send-otp', otpSendLimiter, sendOtp);
 router.post('/login', loginLimiter, login);
 router.post('/google', loginLimiter, googleLogin);
 router.get('/google', googleAuthStart);
 router.get('/google/callback', googleAuthCallback);
 router.get('/me', auth, getMe);
-router.post('/forgot-password', verificationLimiter, forgotPassword);
-router.post('/reset-password', verificationLimiter, resetPassword);
+router.post('/forgot-password', passwordResetLimiter, forgotPassword);
+router.post('/reset-password', passwordResetLimiter, resetPassword);
 router.post('/logout', logout);
 
 export default router;
