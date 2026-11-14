@@ -267,7 +267,27 @@ export const signup = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Password must be 8 to 72 bytes long.' });
     }
     if (await User.exists({ email })) {
-      return res.status(409).json({ success: false, message: 'Could not create an account with those details.' });
+      try {
+        const sent = await issueOtp(email, 'login');
+        if (!sent) {
+          return res.status(429).json({
+            success: false,
+            message: 'Wait one minute before requesting another code.',
+          });
+        }
+        return res.json({
+          success: true,
+          email,
+          otpPurpose: 'login',
+          message: 'An account may already use this email. A sign-in code has been sent if it can receive one.',
+        });
+      } catch (error) {
+        console.error('[Auth] Existing-account sign-in email failed:', error.message);
+        const message = error.message.startsWith('Email service is not configured:')
+          ? error.message
+          : 'Could not send a sign-in code. Try again later.';
+        return res.status(503).json({ success: false, message });
+      }
     }
 
     const username = await createUsername(email, req.body?.username);
@@ -276,7 +296,11 @@ export const signup = async (req, res) => {
       user = await User.create({ name, username, email, password, isVerified: false });
     } catch (error) {
       if (error.code === 11000) {
-        return res.status(409).json({ success: false, message: 'Could not create an account with those details.' });
+        return res.status(409).json({
+          success: false,
+          code: 'USERNAME_TAKEN',
+          message: 'That username is already in use. Choose another one.',
+        });
       }
       throw error;
     }
@@ -399,6 +423,7 @@ export const verifyOtp = async (req, res) => {
         message: 'Enter your name to finish creating your account.',
       });
     }
+    const newUsername = user ? null : await createUsername(email, req.body?.username);
 
     const consumed = await AuthOtp.findOneAndDelete({
       _id: otp._id,
@@ -410,9 +435,8 @@ export const verifyOtp = async (req, res) => {
 
     let created = false;
     if (!user) {
-      const username = await createUsername(email);
       try {
-        user = await User.create({ name, username, email, isVerified: true });
+        user = await User.create({ name, username: newUsername, email, isVerified: true });
         created = true;
       } catch (error) {
         if (error.code !== 11000) throw error;
@@ -432,6 +456,9 @@ export const verifyOtp = async (req, res) => {
     }
     return authenticateUser(req, res, user, 'Email verified. You are signed in.');
   } catch (error) {
+    if (error.status) {
+      return res.status(error.status).json({ success: false, message: error.message });
+    }
     console.error('[Auth] Code verification failed:', error.message);
     return res.status(500).json({ success: false, message: 'Could not verify the code. Try again later.' });
   }

@@ -59,7 +59,7 @@ function OtpInputs({ value, onChange, disabled = false, label = 'Six-digit code'
 }
 
 const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => {
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' });
+  const [form, setForm] = useState({ name: '', username: '', email: '', password: '', confirm: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialError);
   const [success, setSuccess] = useState('');
@@ -122,10 +122,11 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
         }
         const response = await axios.post('/api/auth/signup', {
           name: form.name,
+          username: form.username,
           email: form.email,
           password: form.password,
         });
-        beginOtp(response.data.email || form.email, 'verification',
+        beginOtp(response.data.email || form.email, response.data.otpPurpose || 'verification',
           response.data.message || 'Check your email for a verification code.');
       } else {
         const response = await axios.post('/api/auth/login', {
@@ -169,6 +170,7 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
         code: otpCode,
         purpose: otpFlow,
         ...(otpName ? { name: otpName } : {}),
+        ...(form.username ? { username: form.username } : {}),
       });
       finishAuthentication(response.data, response.data.message || 'You are now signed in.');
     } catch (requestError) {
@@ -390,6 +392,22 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
               required
               minLength={2}
               maxLength={80}
+              className={fieldClass}
+            />
+          )}
+          {isSignup && (
+            <input
+              type="text"
+              name="username"
+              autoComplete="username"
+              placeholder="Username"
+              value={form.username}
+              onChange={handleChange}
+              required
+              minLength={3}
+              maxLength={30}
+              pattern="[a-zA-Z0-9._-]{3,30}"
+              title="Use 3 to 30 letters, numbers, dots, or hyphens."
               className={fieldClass}
             />
           )}
