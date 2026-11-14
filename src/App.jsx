@@ -50,6 +50,7 @@ const TVShows         = lazy(() => import('./pages/TVShows'));
 const TopMovies       = lazy(() => import('./pages/TopMovies'));
 const About           = lazy(() => import('./pages/About'));
 const Blog            = lazy(() => import('./pages/Blog'));
+const BlogEditor      = lazy(() => import('./pages/BlogEditor'));
 const BlogPost        = lazy(() => import('./pages/BlogPost'));
 const Discover        = lazy(() => import('./pages/Discover'));
 const GenrePage       = lazy(() => import('./pages/GenrePage'));
@@ -147,6 +148,8 @@ function AppWrapper() {
             <Route path="/about" element={<About />} />
             <Route path="/blog" element={<Blog />} />
             <Route path="/journal" element={<Blog />} />
+            <Route path="/journal/write" element={<BlogEditor />} />
+            <Route path="/blog/write" element={<BlogEditor />} />
             <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/journal/:slug" element={<BlogPost />} />
             {FOOTER_INFO_ROUTES.map(({ path, slug }) => (

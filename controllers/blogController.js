@@ -87,6 +87,82 @@ export const getAdminPosts = async (req, res) => {
   }
 };
 
+export const publishSubmittedPost = async (req, res) => {
+  try {
+    const post = await BlogPost.findOneAndUpdate(
+      { _id: req.params.id, source: 'local', published: false },
+      { $set: { published: true, publishedAt: new Date() } },
+      { new: true, runValidators: true }
+    ).populate('author', 'username name avatar');
+
+    if (!post) return res.status(404).json({ success: false, error: 'Pending submission not found' });
+    res.json({ success: true, data: post, message: 'Submission published' });
+  } catch (error) {
+    console.error('[Blog] Publishing submission failed:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to publish submission' });
+  }
+};
+
+async function savePost(req, res, { published, allowCustomPublicationDate }) {
+  try {
+    const body = req.body || {};
+    const title = typeof body.title === 'string' ? body.title.trim() : '';
+    const content = typeof body.content === 'string'
+      ? sanitizeHtml(body.content.trim(), ARTICLE_SANITIZER_OPTIONS)
+      : '';
+    const slug = slugify(typeof body.slug === 'string' && body.slug.trim()
+      ? body.slug
+      : title);
+    if (!title || !slug || !content) {
+      return res.status(400).json({ success: false, error: 'Title and article content are required' });
+    }
+
+    const category = ['review', 'feature', 'editorial', 'list', 'interview', 'news', 'essay'].includes(body.category)
+      ? body.category
+      : 'essay';
+    const tags = normalizeTags(body.tags);
+    const requestedDate = allowCustomPublicationDate && body.publishedAt
+      ? new Date(body.publishedAt)
+      : new Date();
+    if (Number.isNaN(requestedDate.getTime())) {
+      return res.status(400).json({ success: false, error: 'Publication date is invalid' });
+    }
+
+    const post = new BlogPost({
+      title,
+      slug,
+      content,
+      excerpt: typeof body.excerpt === 'string' && body.excerpt.trim()
+        ? body.excerpt.trim().slice(0, 1000)
+        : sanitizeHtml(content, { allowedTags: [], allowedAttributes: {} }).slice(0, 200),
+      author: req.user.id,
+      category,
+      categories: [category, ...tags],
+      coverImage: typeof body.coverImage === 'string' ? body.coverImage.trim() : '',
+      tags,
+      source: 'local',
+      published,
+      publishedAt: published ? requestedDate : undefined,
+    });
+    await post.save();
+    await post.populate('author', 'username name avatar');
+    res.status(201).json({
+      success: true,
+      data: post,
+      message: published ? 'Post created' : 'Submission sent for admin review',
+    });
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({ success: false, error: 'Slug already exists' });
+    }
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ success: false, error: error.message });
+    }
+    console.error('[Blog] Save failed:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to save post' });
+  }
+}
+
 // GET /api/blog/:slug — Single post by slug
 export const getPostBySlug = async (req, res) => {
   try {
@@ -104,60 +180,15 @@ export const getPostBySlug = async (req, res) => {
 };
 
 // POST /api/blog — Create post (admin only)
-export const createPost = async (req, res) => {
-  try {
-    const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
-    const content = typeof req.body.content === 'string'
-      ? sanitizeHtml(req.body.content.trim(), ARTICLE_SANITIZER_OPTIONS)
-      : '';
-    const slug = slugify(typeof req.body.slug === 'string' && req.body.slug.trim()
-      ? req.body.slug
-      : title);
-    if (!title || !slug || !content) {
-      return res.status(400).json({ success: false, error: 'Title and article content are required' });
-    }
+export const createPost = (req, res) => savePost(req, res, {
+  published: req.body?.published !== false,
+  allowCustomPublicationDate: true,
+});
 
-    const category = ['review', 'feature', 'editorial', 'list', 'interview', 'news', 'essay'].includes(req.body.category)
-      ? req.body.category
-      : 'essay';
-    const tags = normalizeTags(req.body.tags);
-    const published = req.body.published !== false;
-    const publishedAt = req.body.publishedAt ? new Date(req.body.publishedAt) : new Date();
-    if (Number.isNaN(publishedAt.getTime())) {
-      return res.status(400).json({ success: false, error: 'Publication date is invalid' });
-    }
-
-    const post = new BlogPost({
-      title,
-      slug,
-      content,
-      excerpt: typeof req.body.excerpt === 'string' && req.body.excerpt.trim()
-        ? req.body.excerpt.trim().slice(0, 1000)
-        : sanitizeHtml(content, { allowedTags: [], allowedAttributes: {} }).slice(0, 200),
-      author: req.user.id,
-      authorName: 'Mukund Mangal',
-      category: category || 'feature',
-      categories: [category, ...tags],
-      coverImage: typeof req.body.coverImage === 'string' ? req.body.coverImage.trim() : '',
-      tags,
-      source: 'local',
-      published,
-      publishedAt: published ? publishedAt : undefined,
-    });
-    await post.save();
-    await post.populate('author', 'username name avatar');
-    res.status(201).json({ success: true, data: post, message: 'Post created' });
-  } catch (err) {
-    if (err.code === 11000) {
-      return res.status(409).json({ success: false, error: 'Slug already exists' });
-    }
-    if (err.name === 'ValidationError') {
-      return res.status(400).json({ success: false, error: err.message });
-    }
-    console.error('[Blog] Create failed:', err.message);
-    res.status(500).json({ success: false, error: 'Failed to create post' });
-  }
-};
+export const submitPost = (req, res) => savePost(req, res, {
+  published: false,
+  allowCustomPublicationDate: false,
+});
 
 // PUT /api/blog/:id — Update post (admin only)
 export const updatePost = async (req, res) => {

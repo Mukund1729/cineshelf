@@ -63,7 +63,8 @@ function ArticleCard({ article, featured = false }) {
         )}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginTop: 'auto' }}>
           <span style={{ color: 'var(--vc-slate-dark)', fontSize: '0.78rem' }}>
-            {article.readingTime ? `${article.readingTime} min read` : 'Mukund Mangal'}
+            {article.author?.name || article.author?.username || article.authorName || 'Mukund Mangal'}
+            {article.readingTime ? ` · ${article.readingTime} min read` : ''}
           </span>
           <Link to={`/journal/${article.slug}`} className="vc-btn vc-btn-ghost" style={{ whiteSpace: 'nowrap' }}>
             Read essay →
@@ -157,9 +158,12 @@ export default function Blog() {
               <span className="vc-section-label">The archive</span>
               <h2 style={{ margin: '0.35rem 0 0', fontFamily: 'Playfair Display, serif', fontSize: '2rem' }}>Words, ideas and everything in between.</h2>
             </div>
-            <span style={{ color: 'var(--vc-slate)', fontSize: '0.85rem' }}>
-              {pagination.total} {pagination.total === 1 ? 'article' : 'articles'}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--vc-slate)', fontSize: '0.85rem' }}>
+                {pagination.total} {pagination.total === 1 ? 'article' : 'articles'}
+              </span>
+              <Link to="/journal/write" className="vc-btn vc-btn-gold">Write an article</Link>
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '0.7rem', flexWrap: 'wrap', marginBottom: '2rem' }}>

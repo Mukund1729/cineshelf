@@ -36,6 +36,7 @@ export async function getJournalPosts(req, res) {
 
     const [posts, total] = await Promise.all([
       BlogPost.find(query)
+        .populate('author', 'username name avatar')
         .sort({ publishedAt: sort, _id: sort })
         .skip((page - 1) * limit)
         .limit(limit)
