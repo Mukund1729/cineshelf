@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { hasAuthSession } from '../api/session';
 
 const getCurrentUserId = () => {
   try {
@@ -68,7 +69,7 @@ export default function ReviewDetail() {
 
     setFriendNotice('');
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!hasAuthSession()) {
       setRelation('signed-out');
       return undefined;
     }
@@ -98,7 +99,7 @@ export default function ReviewDetail() {
     const userId = review?.user?._id;
     const token = localStorage.getItem('token');
     if (!userId) return;
-    if (!token) {
+    if (!hasAuthSession()) {
       setRelation('signed-out');
       window.dispatchEvent(new CustomEvent('open-auth-modal'));
       return;
@@ -121,7 +122,7 @@ export default function ReviewDetail() {
 
   const toggleLike = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!hasAuthSession()) {
       window.dispatchEvent(new CustomEvent('open-auth-modal'));
       return;
     }
@@ -144,7 +145,7 @@ export default function ReviewDetail() {
   const submitComment = async event => {
     event.preventDefault();
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!hasAuthSession()) {
       window.dispatchEvent(new CustomEvent('open-auth-modal'));
       return;
     }

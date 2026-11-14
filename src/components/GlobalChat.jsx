@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
 import Chat from './Chat';
 import { apiUrl } from '../api/config';
+import { hasAuthSession } from '../api/session';
 import './GlobalChat.css';
 
 function FriendAvatar({ friend }) {
@@ -34,7 +35,7 @@ export default function GlobalChat() {
 
   useEffect(() => {
     let active = true;
-    if (!open || !localStorage.getItem('token')) return undefined;
+    if (!open || !hasAuthSession()) return undefined;
 
     const loadFriends = async () => {
       setLoading(true);
@@ -119,7 +120,7 @@ export default function GlobalChat() {
             </button>
           </header>
 
-          {!localStorage.getItem('token') ? (
+          {!hasAuthSession() ? (
             <div className="vc-messages-empty">
               <p>Sign in to chat with your friends.</p>
               <button

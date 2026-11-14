@@ -10,8 +10,16 @@ import './LoadFonts';
 
 // Configure axios base URL for API calls
 axios.defaults.baseURL = API_BASE_URL;
+axios.defaults.withCredentials = true;
 
-axios.interceptors.response.use(undefined, async error => {
+axios.interceptors.response.use(response => {
+  const headers = response.config?.headers;
+  const authorization = headers?.Authorization || headers?.authorization;
+  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+    localStorage.removeItem('token');
+  }
+  return response;
+}, async error => {
   const config = error.config;
   const requestUrl = config?.url || '';
   const isBackendApi = /^\/?api\//.test(requestUrl)

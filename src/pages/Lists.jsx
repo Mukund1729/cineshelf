@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { hasAuthSession } from '../api/session';
 
 function ListCard({ list, onSelect, selected }) {
   return (
@@ -89,7 +90,7 @@ export default function Lists() {
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchLists = async () => {
-    if (!token) { setError('Please sign in.'); setLoading(false); return; }
+    if (!hasAuthSession()) { setError('Please sign in.'); setLoading(false); return; }
     try {
       const res = await axios.get('/api/lists', { headers });
       const data = res.data?.data || [];

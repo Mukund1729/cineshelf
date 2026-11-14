@@ -1,18 +1,28 @@
 import jwt from 'jsonwebtoken';
-
+import {
+  readCookie,
+  SESSION_COOKIE_NAME,
+  setSessionCookie,
+} from '../services/authSession.js';
 
 const auth = (req, res, next) => {
+  const cookieToken = readCookie(req, SESSION_COOKIE_NAME);
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'No token, authorization denied' });
+  const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const token = cookieToken || bearerToken;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Authentication required' });
   }
-  const token = authHeader.split(' ')[1];
+
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: decoded.userId }; // Fixed: use userId
+    if (!decoded.userId) throw new Error('Invalid session payload');
+    req.user = { id: decoded.userId };
+    if (!cookieToken && bearerToken) setSessionCookie(req, res, bearerToken);
     next();
-  } catch (err) {
-    res.status(401).json({ error: 'Token is not valid' });
+  } catch {
+    return res.status(401).json({ error: 'Session is not valid' });
   }
 };
 

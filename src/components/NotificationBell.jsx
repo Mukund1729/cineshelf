@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { hasAuthSession } from '../api/session';
 
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
@@ -12,7 +13,7 @@ export default function NotificationBell() {
 
   const refreshNotifications = useCallback(async () => {
     const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!hasAuthSession()) return;
     try {
       const response = await axios.get('/api/notifications', {
         headers: { Authorization: `Bearer ${token}` },

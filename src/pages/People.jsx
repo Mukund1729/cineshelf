@@ -4,6 +4,7 @@ import axios from 'axios';
 import Navbar from '../components/Navbar';
 import Chat from '../components/Chat';
 import { apiUrl } from '../api/config';
+import { hasAuthSession } from '../api/session';
 
 function FriendCard({ person, onRemove, onRequest, isFriend, isPending, onChat }) {
   const profilePath = `/people/${person._id}`;
@@ -109,7 +110,7 @@ export default function People() {
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchData = async () => {
-    if (!token) { setError('Please sign in.'); setLoading(false); return; }
+    if (!hasAuthSession()) { setError('Please sign in.'); setLoading(false); return; }
     setLoading(true);
     try {
       const [friendsRes, requestsRes] = await Promise.all([

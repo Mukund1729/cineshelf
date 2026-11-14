@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { hasAuthSession } from '../api/session';
 
 const getLocalDate = () => {
   const date = new Date();
@@ -41,7 +42,7 @@ export default function Diary() {
   const headers = { Authorization: `Bearer ${token}` };
 
   const loadEntries = async () => {
-    if (!token) {
+    if (!hasAuthSession()) {
       setError('Please sign in to keep your movie diary.');
       setLoading(false);
       return;
@@ -183,7 +184,7 @@ export default function Diary() {
           ) : error && !entries.length ? (
             <div style={{ padding: '1.5rem', borderRadius: 12, background: 'var(--vc-bg-card)' }}>
               <p role="alert" style={{ color: 'var(--vc-slate)' }}>{error}</p>
-              {!token ? (
+              {!hasAuthSession() ? (
                 <button className="vc-btn vc-btn-primary" onClick={() => window.dispatchEvent(new CustomEvent('open-auth-modal'))}>Sign in</button>
               ) : (
                 <button className="vc-btn vc-btn-outline" onClick={loadEntries}>Try again</button>

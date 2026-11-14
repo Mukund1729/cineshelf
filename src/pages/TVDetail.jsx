@@ -6,6 +6,7 @@ import { searchMovies, searchPeople, tmdbClient, tmdbImageUrl } from '../api/tmd
 import CastList from '../components/CastList';
 import EpisodeList from '../components/EpisodeList';
 import Navbar from '../components/Navbar';
+import { hasAuthSession } from '../api/session';
 
 const getTodayDate = () => {
   const date = new Date();
@@ -173,7 +174,7 @@ export default function TVDetail() {
       return;
     }
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!hasAuthSession()) {
       setReviewError('Please sign in to submit a review.');
       return;
     }
@@ -212,7 +213,7 @@ export default function TVDetail() {
 
   const handleDiaryLog = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!hasAuthSession()) {
       setDiaryError('Please sign in to log this show.');
       return;
     }
@@ -251,7 +252,7 @@ export default function TVDetail() {
 
   const handleAddToWatchlist = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!hasAuthSession()) {
       setWatchlistNotice('Please sign in to add to your watchlist.');
       return;
     }

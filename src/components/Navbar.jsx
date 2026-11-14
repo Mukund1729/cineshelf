@@ -48,25 +48,23 @@ export default function Navbar() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    if (token) {
-      axios.get('/api/user/profile', {
-        headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true,
+    axios.get('/api/auth/me', {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      withCredentials: true,
+    })
+      .then(res => {
+        const nextUser = res.data?.data;
+        if (!nextUser) return;
+        setUser(nextUser);
+        localStorage.setItem('user', JSON.stringify(nextUser));
       })
-        .then(res => {
-          const responseData = res.data?.data || res.data?.user || res.data;
-          const nextUser = responseData?.user || responseData;
-          setUser(nextUser);
-          localStorage.setItem('user', JSON.stringify(nextUser));
-        })
-        .catch(err => {
-          if (err.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            setUser(null);
-          }
-        });
-    }
+      .catch(err => {
+        if (err.response?.status === 401 || err.response?.status === 404) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setUser(null);
+        }
+      });
   }, [location.pathname]);
 
   useEffect(() => {
@@ -100,8 +98,16 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await axios.post('/api/auth/logout');
+    } catch (error) {
+      console.error('[Auth] Sign-out request failed:', error.message);
+      window.alert('Could not sign out. Please check your connection and try again.');
+      return;
+    }
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
     setUserMenuOpen(false);
     navigate('/');

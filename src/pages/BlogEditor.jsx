@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { hasAuthSession } from '../api/session';
 
 const INITIAL_FORM = {
   title: '',
@@ -30,7 +31,7 @@ export default function BlogEditor() {
   const headers = { Authorization: `Bearer ${token}` };
 
   useEffect(() => {
-    if (!token) {
+    if (!hasAuthSession()) {
       setCheckingUser(false);
       return;
     }

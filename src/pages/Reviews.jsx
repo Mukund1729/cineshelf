@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
 import { apiUrl } from '../api/config';
+import { hasAuthSession } from '../api/session';
 
 const STARS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
@@ -98,7 +99,7 @@ export default function Reviews() {
   const headers = { Authorization: `Bearer ${token}`, withCredentials: true };
 
   const fetchReviews = () => {
-    if (!token) { setError('Please sign in to view your reviews.'); setLoading(false); return; }
+    if (!hasAuthSession()) { setError('Please sign in to view your reviews.'); setLoading(false); return; }
     setLoading(true);
     setError(null);
     Promise.all([
@@ -195,7 +196,7 @@ export default function Reviews() {
           ) : error ? (
             <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--vc-slate)' }}>
               <p style={{ marginBottom: '1.5rem' }}>{error}</p>
-              {!token ? (
+              {!hasAuthSession() ? (
                 <button className="vc-btn vc-btn-primary" onClick={() => window.dispatchEvent(new CustomEvent('open-auth-modal'))}>Sign In</button>
               ) : (
                 <button className="vc-btn vc-btn-outline" onClick={fetchReviews}>Retry</button>

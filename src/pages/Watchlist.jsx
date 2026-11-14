@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import { hasAuthSession } from '../api/session';
 
 export default function Watchlist() {
   const [movies, setMovies] = useState([]);
@@ -20,7 +21,7 @@ export default function Watchlist() {
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchWatchlist = () => {
-    if (!token) { setError('Please sign in to view your watchlist.'); setLoading(false); return; }
+    if (!hasAuthSession()) { setError('Please sign in to view your watchlist.'); setLoading(false); return; }
     setLoading(true);
     axios.get('/api/watchlist', { headers })
       .then(res => {
@@ -119,7 +120,7 @@ export default function Watchlist() {
               </p>
             )}
           </div>
-          {token && (
+          {hasAuthSession() && (
             <button
               className={`vc-btn ${showAdd ? 'vc-btn-ghost' : 'vc-btn-primary'}`}
               onClick={() => { setShowAdd(v => !v); setSelectedMovie(null); setSearch(''); setSearchResults([]); }}

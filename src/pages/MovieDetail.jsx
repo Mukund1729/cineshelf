@@ -6,6 +6,7 @@ import BoxOfficeChart from "../components/BoxOfficeChart";
 import RatingStars from "../components/RatingStars";
 // import ReviewForm from "../components/ReviewForm";
 import axios from 'axios';
+import { hasAuthSession } from '../api/session';
 import TrailerEmbed from '../components/TrailerEmbed';
 import JustWatch from 'justwatch-api';
 import SearchBar from "../components/SearchBar";
@@ -123,7 +124,7 @@ const MovieDetail = () => {
   // Add to Watchlist handler
   const handleAddToWatchlist = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!hasAuthSession()) {
       setWatchlistToast('Please sign in to add to watchlist.');
       return;
     }
@@ -217,7 +218,7 @@ const MovieDetail = () => {
       return;
     }
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!hasAuthSession()) {
       setReviewError('Please sign in to submit a review.');
       return;
     }
@@ -259,7 +260,7 @@ const MovieDetail = () => {
 
   const handleDiaryLog = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
+    if (!hasAuthSession()) {
       setDiaryError('Please sign in to log this movie.');
       return;
     }

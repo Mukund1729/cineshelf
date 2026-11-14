@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Link, useParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { apiUrl } from '../api/config';
+import { hasAuthSession } from '../api/session';
 
 const posterUrl = poster => {
   if (!poster) return '';
@@ -67,7 +68,7 @@ export default function PeopleProfile() {
     let active = true;
     const fetchProfile = async () => {
       const token = localStorage.getItem('token');
-      if (!token) {
+      if (!hasAuthSession()) {
         setError('Please sign in to view community profiles.');
         setLoading(false);
         return;

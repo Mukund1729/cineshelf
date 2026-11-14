@@ -9,14 +9,26 @@ import GlobalChat from './components/GlobalChat';
 function GlobalAuthModal() {
   const [open, setOpen] = useState(false);
   const [type, setType] = useState('login');
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     const handler = (e) => {
       setType(e.detail?.type || 'login');
+      setAuthError('');
       setOpen(true);
     };
     window.addEventListener('open-auth-modal', handler);
     return () => window.removeEventListener('open-auth-modal', handler);
+  }, []);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get('auth') !== 'google-error') return;
+    setType('login');
+    setAuthError('Google sign-in did not complete. Please try again.');
+    setOpen(true);
+    url.searchParams.delete('auth');
+    window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
   }, []);
 
   if (!open) return null;
@@ -28,7 +40,8 @@ function GlobalAuthModal() {
     >
       <AuthModal
         type={type}
-        onClose={() => setOpen(false)}
+        initialError={authError}
+        onClose={() => { setOpen(false); setAuthError(''); }}
         onSwitch={(t) => setType(t)}
       />
     </div>

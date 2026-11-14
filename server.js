@@ -51,6 +51,7 @@ if (!Number.isFinite(BOX_OFFICE_SYNC_INTERVAL_HOURS)
 }
 
 const app = express();
+app.set('trust proxy', 1);
 
 const allowedOrigins = new Set([
   'http://localhost:5173',
@@ -60,15 +61,28 @@ const allowedOrigins = new Set([
     .split(',')
     .map(origin => origin.trim())
     .filter(Boolean),
-]);
+].map(origin => origin.replace(/\/+$/, '')));
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.has(origin)) return callback(null, true);
-    return callback(new Error(`CORS origin not allowed: ${origin}`));
+    if (!origin || allowedOrigins.has(origin.replace(/\/+$/, ''))) return callback(null, true);
+    return callback(null, false);
   },
   credentials: true,
 }));
+
+app.use((req, res, next) => {
+  const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(req.method);
+  const usesCookieSession = Boolean(req.headers.cookie?.split(';')
+    .some(cookie => cookie.trim().startsWith('vc_session=')));
+  if (isMutation && (req.path.startsWith('/api/auth/') || usesCookieSession)) {
+    const origin = req.get('Origin');
+    if (!origin || !allowedOrigins.has(origin.replace(/\/+$/, ''))) {
+      return res.status(403).json({ success: false, message: 'Request origin is not allowed.' });
+    }
+  }
+  return next();
+});
 
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));

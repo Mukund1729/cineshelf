@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { apiUrl } from '../api/config';
 import { tmdbImageUrl } from '../api/tmdb';
+import { hasAuthSession } from '../api/session';
 
 const Profile = () => {
   const [profile, setProfile] = useState(null);
@@ -34,7 +35,7 @@ const Profile = () => {
   const fetchProfileData = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
+      if (!hasAuthSession()) {
         setError('Please login to view your profile');
         setLoading(false);
         return;
@@ -150,7 +151,7 @@ const Profile = () => {
   const handleSaveProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
+      if (!hasAuthSession()) {
         setError('No authentication token found. Please login again.');
         return;
       }
