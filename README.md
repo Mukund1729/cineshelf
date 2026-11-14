@@ -65,7 +65,7 @@ A modern, cinematic movie discovery platform built with React, Node.js, and Mong
    # Allowed frontend origins
    CORS_ORIGINS=http://localhost:5173,http://localhost:5174
 
-   # Leave blank for local Vite proxy; use the Render API origin in production
+   # Leave blank for local Vite and Vercel same-origin /api proxy
    VITE_API_BASE_URL=
    
    # OpenRouter API (for AI features)
@@ -101,8 +101,9 @@ A modern, cinematic movie discovery platform built with React, Node.js, and Mong
 The frontend is a Vite SPA deployed to Vercel; the Express API and MongoDB remain separate services. `vercel.json` configures the Vite build and client-side routes, while `render.yaml` describes the Node API service.
 
 1. Create a MongoDB Atlas database and allow connections from your API host.
-2. Import this repository into Render and create the service from `render.yaml`. Set `MONGO_URI`, a strong random `JWT_SECRET`, and `TMDB_READ_ACCESS_TOKEN` in the Render dashboard. Set `CORS_ORIGINS` to the exact comma-separated frontend origins. `OPENROUTER_API_KEY` remains a server-side setting for AI features.
-3. Import the same repository into Vercel. Set `VITE_API_BASE_URL` to the Render service origin (for example `https://cineshelf-api.onrender.com`, without a trailing slash). Do not set or expose a TMDB credential in Vercel. Add the API URL to Production and Preview environments as needed, then redeploy.
+2. Import this repository into Render and create the service from `render.yaml`. Set `MONGO_URI`, a strong random `JWT_SECRET`, and `TMDB_READ_ACCESS_TOKEN` in the Render dashboard. Set `CORS_ORIGINS` to the exact comma-separated frontend origins and `FRONTEND_URL` to the production frontend origin. `RESEND_API_KEY`, `EMAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_CALLBACK_URL` are backend-only Render variables; never expose these in Vercel.
+3. Configure the Google OAuth web client with this exact authorized redirect URI: `https://cineshelf-eight.vercel.app/api/auth/google/callback`. Set `GOOGLE_CALLBACK_URL` in Render to that same URL, character for character. The Vercel `/api` rewrite proxies this callback to Render so the session cookie belongs to the frontend origin.
+4. Import the same repository into Vercel. Production API requests use the same-origin `/api` rewrite to Render, so leave `VITE_API_BASE_URL` unset in Vercel. Do not set or expose any backend secret or TMDB credential in Vercel.
 4. Verify `/health`, `/api/tmdb/movie/popular`, and a `/api/tmdb/image/w500/<poster-filename>` URL on Render, then test data and image loading from Vercel.
 
 All browser TMDB requests use the Express proxy. The server sends `TMDB_READ_ACCESS_TOKEN` as a Bearer token to fixed TMDB API/image origins, validates endpoint/query parameters, and applies request limits. API responses use a bounded in-memory cache and in-flight request deduplication (per server process); image responses use long-lived cache headers. For multi-instance scale, put a CDN in front of the image route or add a shared cache rather than relying on per-process memory.
