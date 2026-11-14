@@ -62,6 +62,7 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
   const [form, setForm] = useState({ name: '', username: '', email: '', password: '', confirm: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialError);
+  const [emailAlreadyRegistered, setEmailAlreadyRegistered] = useState(false);
   const [success, setSuccess] = useState('');
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState('');
@@ -96,6 +97,7 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
   const handleChange = event => {
     setForm({ ...form, [event.target.name]: event.target.value });
     setError('');
+    setEmailAlreadyRegistered(false);
   };
 
   const beginOtp = (email, purpose, message) => {
@@ -136,6 +138,9 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
         finishAuthentication(response.data, 'Sign-in successful.');
       }
     } catch (requestError) {
+      if (requestError.response?.data?.code === 'EMAIL_ALREADY_REGISTERED') {
+        setEmailAlreadyRegistered(true);
+      }
       if (requestError.response?.data?.verificationRequired) {
         beginOtp(requestError.response.data.email || form.email, 'verification', '');
       }
@@ -385,6 +390,19 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
           {isSignup ? 'Create your account' : 'Welcome back'}
         </h2>
         {renderMessages()}
+        {emailAlreadyRegistered && (
+          <button
+            type="button"
+            onClick={() => {
+              setEmailAlreadyRegistered(false);
+              setError('');
+              onSwitch('login');
+            }}
+            className="mb-4 text-cyan-400 hover:underline text-sm"
+          >
+            Go to sign in
+          </button>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           {isSignup && (
             <input

@@ -259,43 +259,54 @@ export const signup = async (req, res) => {
   try {
     const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
     const email = normalizeEmail(req.body?.email);
+    const username = typeof req.body?.username === 'string' ? req.body.username.trim() : '';
     const { password } = req.body || {};
     if (name.length < 2 || name.length > 80 || !isValidEmail(email)) {
       return res.status(400).json({ success: false, message: 'Enter your name and a valid email address.' });
     }
+    if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username must be 3 to 30 letters, numbers, dots, or hyphens.',
+      });
+    }
     if (!validPassword(password)) {
       return res.status(400).json({ success: false, message: 'Password must be 8 to 72 bytes long.' });
     }
-    if (await User.exists({ email })) {
-      try {
-        const sent = await issueOtp(email, 'login');
-        if (!sent) {
-          return res.status(429).json({
-            success: false,
-            message: 'Wait one minute before requesting another code.',
-          });
-        }
-        return res.json({
-          success: true,
-          email,
-          otpPurpose: 'login',
-          message: 'An account may already use this email. A sign-in code has been sent if it can receive one.',
-        });
-      } catch (error) {
-        console.error('[Auth] Existing-account sign-in email failed:', error.message);
-        const message = error.message.startsWith('Email service is not configured:')
-          ? error.message
-          : 'Could not send a sign-in code. Try again later.';
-        return res.status(503).json({ success: false, message });
-      }
+    const emailExists = await User.exists({ email })
+      .collation({ locale: 'en', strength: 2 });
+    if (emailExists) {
+      return res.status(409).json({
+        success: false,
+        code: 'EMAIL_ALREADY_REGISTERED',
+        message: 'This email is already registered. Sign in or use email OTP.',
+      });
     }
 
-    const username = await createUsername(email, req.body?.username);
+    const usernameExists = await User.exists({ username })
+      .collation({ locale: 'en', strength: 2 });
+    if (usernameExists) {
+      return res.status(409).json({
+        success: false,
+        code: 'USERNAME_TAKEN',
+        message: 'That username is already in use. Choose another one.',
+      });
+    }
+
     let user;
     try {
       user = await User.create({ name, username, email, password, isVerified: false });
     } catch (error) {
       if (error.code === 11000) {
+        const duplicateEmail = await User.exists({ email })
+          .collation({ locale: 'en', strength: 2 });
+        if (duplicateEmail) {
+          return res.status(409).json({
+            success: false,
+            code: 'EMAIL_ALREADY_REGISTERED',
+            message: 'This email is already registered. Sign in or use email OTP.',
+          });
+        }
         return res.status(409).json({
           success: false,
           code: 'USERNAME_TAKEN',
