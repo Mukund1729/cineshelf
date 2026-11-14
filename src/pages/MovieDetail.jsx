@@ -32,6 +32,8 @@ const CREW_SECTIONS = [
 const MovieDetail = () => {
   // Always get id and navigate from params/hooks first so they're available for all hooks
   const { id } = useParams();
+  const [showTrailer, setShowTrailer] = useState(false);
+  useEffect(() => setShowTrailer(false), [id]);
   // Add to Watchlist state
   const [addingToWatchlist, setAddingToWatchlist] = useState(false);
   const [watchlistToast, setWatchlistToast] = useState('');
@@ -441,6 +443,7 @@ const MovieDetail = () => {
       people: (movie?.credits?.crew || []).filter(credit => jobs.includes(credit.job)),
     }))
     .filter(section => section.people.length > 0);
+  const trailer = movie?.videos?.results?.find(video => video.site === 'YouTube' && video.type === 'Trailer');
 
   return (
     <div
@@ -625,17 +628,18 @@ const MovieDetail = () => {
                     Watch Full Film on YouTube
                   </a>
                 )}
-                {movie.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer') && (
-                  <a
-                    href={`https://www.youtube.com/watch?v=${movie.videos.results.find(v => v.site === 'YouTube' && v.type === 'Trailer').key}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                {trailer && (
+                  <button
+                    type="button"
+                    onClick={() => setShowTrailer(current => !current)}
+                    aria-expanded={showTrailer}
+                    aria-controls="movie-trailer-player"
                     className="flex items-center gap-2 px-3 py-2 mt-3 bg-red-600 hover:bg-red-700 text-white rounded-full shadow text-sm font-bold transition"
-                    title="Watch Trailer on YouTube"
+                    title={showTrailer ? 'Hide trailer' : 'Play trailer'}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M21.8 8.001a2.752 2.752 0 0 0-1.936-1.947C18.003 5.5 12 5.5 12 5.5s-6.003 0-7.864.554A2.752 2.752 0 0 0 2.2 8.001 28.434 28.434 0 0 0 2 12a28.434 28.434 0 0 0 .2 3.999 2.752 2.752 0 0 0 1.936 1.947C5.997 18.5 12 18.5 12 18.5s6.003 0 7.864-.554A2.752 2.752 0 0 0 21.8 15.999 28.434 28.434 0 0 0 22 12a28.434 28.434 0 0 0-.2-3.999zM10 15.5v-7l6 3.5-6 3.5z"/></svg>
-                    Trailer
-                  </a>
+                    {showTrailer ? 'Hide Trailer' : 'Play Trailer'}
+                  </button>
                 )}
               </div>
             </div>
@@ -730,6 +734,11 @@ const MovieDetail = () => {
               )}
               {/* ...existing code... (Cast section removed from here) */}
             </div>
+          </div>
+        )}
+        {movie && trailer && showTrailer && (
+          <div id="movie-trailer-player" className="w-full max-w-4xl mx-auto mt-6">
+            <TrailerEmbed trailerUrl={trailer.key} movieTitle={movie.title} />
           </div>
         )}
         {/* Top Cast Section (separate, aesthetic card) */}
