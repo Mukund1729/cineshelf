@@ -92,7 +92,7 @@ async function createUsername(email, requestedUsername) {
   if (requestedUsername !== undefined) {
     if (typeof requestedUsername !== 'string'
       || !/^[a-zA-Z0-9._-]{3,30}$/.test(requestedUsername.trim())) {
-      throw Object.assign(new Error('Enter a username containing 3 to 30 letters, numbers, dots, or hyphens.'), {
+      throw Object.assign(new Error('Enter a username containing 3 to 30 letters, numbers, dots, underscores, or hyphens.'), {
         status: 400,
       });
     }
@@ -267,7 +267,7 @@ export const signup = async (req, res) => {
     if (!/^[a-zA-Z0-9._-]{3,30}$/.test(username)) {
       return res.status(400).json({
         success: false,
-        message: 'Username must be 3 to 30 letters, numbers, dots, or hyphens.',
+        message: 'Username must be 3 to 30 letters, numbers, dots, underscores, or hyphens.',
       });
     }
     if (!validPassword(password)) {

@@ -429,8 +429,8 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
               required
               minLength={3}
               maxLength={30}
-              pattern="[a-zA-Z0-9._-]{3,30}"
-              title="Use 3 to 30 letters, numbers, dots, or hyphens."
+              pattern="[a-zA-Z0-9._\-]{3,30}"
+              title="Use 3 to 30 letters, numbers, dots, underscores, or hyphens."
               className={fieldClass}
             />
           )}
