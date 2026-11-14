@@ -20,7 +20,7 @@ export async function getJournalPosts(req, res) {
     const search = typeof req.query.search === 'string' ? req.query.search.trim().slice(0, 100) : '';
     const category = typeof req.query.category === 'string' ? req.query.category.trim().slice(0, 60) : '';
     const sort = req.query.sort === 'oldest' ? 1 : -1;
-    const query = { source: 'medium', published: true };
+    const query = { published: true, source: { $in: ['local', 'medium'] } };
 
     if (search) {
       const matcher = new RegExp(escapeRegex(search), 'i');
@@ -58,15 +58,15 @@ export async function getJournalPosts(req, res) {
 export async function getJournalArticle(req, res) {
   try {
     const post = await BlogPost.findOneAndUpdate(
-      { slug: req.params.slug, source: 'medium', published: true },
+      { slug: req.params.slug, published: true, source: { $in: ['local', 'medium'] } },
       { $inc: { views: 1 } },
       { new: true }
     ).populate('author', 'username name avatar').lean();
 
     if (!post) return res.status(404).json({ success: false, error: 'Journal article not found' });
     const relatedQuery = {
-      source: 'medium',
       published: true,
+      source: { $in: ['local', 'medium'] },
       _id: { $ne: post._id },
     };
     if (post.categories?.length) relatedQuery.categories = { $in: post.categories };
@@ -95,7 +95,7 @@ export async function getJournalSitemap(req, res) {
     res.write('<?xml version="1.0" encoding="UTF-8"?>');
     res.write('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
     res.write(`<url><loc>${xmlEscape(`${siteUrl}/journal`)}</loc></url>`);
-    const cursor = BlogPost.find({ source: 'medium', published: true })
+    const cursor = BlogPost.find({ source: { $in: ['local', 'medium'] }, published: true })
       .select('slug publishedAt')
       .sort({ publishedAt: -1 })
       .lean()

@@ -72,6 +72,7 @@ function imageFromContent(html) {
 
 function plainText(html) {
   return sanitizeHtml(html || '', { allowedTags: [], allowedAttributes: {} })
+    .replace(/&amp;/g, '&')
     .replace(/\s+/g, ' ')
     .trim();
 }

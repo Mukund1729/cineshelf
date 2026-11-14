@@ -15,6 +15,21 @@ export default function AdminDashboard() {
   const [journalLoading, setJournalLoading] = useState(false);
   const [journalError, setJournalError] = useState('');
   const [journalSyncing, setJournalSyncing] = useState(false);
+  const [journalPosts, setJournalPosts] = useState([]);
+  const [journalPostsLoading, setJournalPostsLoading] = useState(false);
+  const [postSaving, setPostSaving] = useState(false);
+  const [postError, setPostError] = useState('');
+  const [postForm, setPostForm] = useState({
+    title: '',
+    slug: '',
+    excerpt: '',
+    category: 'essay',
+    coverImage: '',
+    tags: '',
+    publishedAt: new Date().toISOString().slice(0, 10),
+    content: '',
+    published: true,
+  });
   const navigate = useNavigate();
 
   const token = localStorage.getItem('token');
@@ -26,7 +41,10 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (tab === 'journal') fetchJournalStatus();
+    if (tab === 'journal') {
+      fetchJournalStatus();
+      fetchJournalPosts();
+    }
   }, [tab]);
 
   const fetchAdminData = async () => {
@@ -60,6 +78,50 @@ export default function AdminDashboard() {
       setJournalError(requestError.response?.data?.error || 'Failed to load Journal sync status.');
     } finally {
       setJournalLoading(false);
+    }
+  };
+
+  const fetchJournalPosts = async () => {
+    setJournalPostsLoading(true);
+    setPostError('');
+    try {
+      const response = await axios.get('/api/blog/admin/posts', { params: { page: 1, limit: 30 }, headers });
+      setJournalPosts(response.data?.data || []);
+    } catch (requestError) {
+      setPostError(requestError.response?.data?.error || 'Failed to load your published posts.');
+    } finally {
+      setJournalPostsLoading(false);
+    }
+  };
+
+  const handleCreateJournalPost = async (event) => {
+    event.preventDefault();
+    setPostSaving(true);
+    setPostError('');
+    try {
+      const response = await axios.post('/api/blog', {
+        ...postForm,
+        publishedAt: postForm.publishedAt || undefined,
+        tags: postForm.tags,
+      }, { headers });
+      const post = response.data?.data;
+      setPostForm({
+        title: '',
+        slug: '',
+        excerpt: '',
+        category: 'essay',
+        coverImage: '',
+        tags: '',
+        publishedAt: new Date().toISOString().slice(0, 10),
+        content: '',
+        published: true,
+      });
+      showToast(post?.published ? 'Article published to THE JOURNAL.' : 'Draft saved.');
+      await fetchJournalPosts();
+    } catch (requestError) {
+      setPostError(requestError.response?.data?.error || 'Failed to save article.');
+    } finally {
+      setPostSaving(false);
     }
   };
 
@@ -282,11 +344,11 @@ export default function AdminDashboard() {
               <section>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
                   <div>
-                    <span className="vc-section-label">Medium · Mukund Mangal</span>
-                    <h2 style={{ margin: '0.35rem 0', fontFamily: 'Playfair Display, serif' }}>THE JOURNAL sync</h2>
+                    <span className="vc-section-label">MongoDB · Medium · Mukund Mangal</span>
+                    <h2 style={{ margin: '0.35rem 0', fontFamily: 'Playfair Display, serif' }}>THE JOURNAL</h2>
                     <p style={{ maxWidth: 700, color: 'var(--vc-slate)', lineHeight: 1.65 }}>
-                      The public RSS feed currently exposes a limited recent window, not the complete lifetime archive.
-                      Sync imports only the articles actually present in that feed; it does not bypass Medium access restrictions.
+                      New Medium stories are synced from RSS hourly. You can also publish directly to MongoDB below.
+                      The public RSS feed only exposes its latest 10 stories, so it cannot backfill older Medium articles.
                     </p>
                   </div>
                   <button className="vc-btn vc-btn-gold" onClick={handleJournalSync} disabled={journalSyncing || journalLoading}>
@@ -328,6 +390,97 @@ export default function AdminDashboard() {
                     <a href="/journal" className="vc-btn vc-btn-outline" style={{ display: 'inline-flex', marginTop: '1rem' }}>View THE JOURNAL →</a>
                   </>
                 )}
+
+                <div style={{ marginTop: '3rem', paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
+                  <span className="vc-section-label">MongoDB publishing</span>
+                  <h3 style={{ margin: '0.35rem 0 1rem', fontFamily: 'Playfair Display, serif' }}>Write an article</h3>
+                  <p style={{ maxWidth: 760, color: 'var(--vc-slate)', lineHeight: 1.65 }}>
+                    Save a post here to publish it in the same Journal archive. To bring in older Medium articles, paste their article text here and set the original publication date.
+                  </p>
+
+                  {postError && (
+                    <p role="alert" style={{ padding: '0.9rem 1rem', border: '1px solid rgba(255,100,100,.25)', borderRadius: 10, color: '#ffc8c8' }}>
+                      {postError}
+                    </p>
+                  )}
+
+                  <form onSubmit={handleCreateJournalPost} style={{ display: 'grid', gap: '1rem', maxWidth: 850, marginTop: '1.25rem' }}>
+                    <label style={{ display: 'grid', gap: '.4rem', color: 'var(--vc-slate)' }}>
+                      Title *
+                      <input className="vc-input" required maxLength={200} value={postForm.title}
+                        onChange={event => setPostForm(previous => ({ ...previous, title: event.target.value }))} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '.4rem', color: 'var(--vc-slate)' }}>
+                      URL slug (optional)
+                      <input className="vc-input" maxLength={100} placeholder="Generated from title if left blank" value={postForm.slug}
+                        onChange={event => setPostForm(previous => ({ ...previous, slug: event.target.value }))} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '.4rem', color: 'var(--vc-slate)' }}>
+                      Excerpt
+                      <textarea className="vc-input" rows={2} maxLength={1000} value={postForm.excerpt}
+                        onChange={event => setPostForm(previous => ({ ...previous, excerpt: event.target.value }))} />
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                      <label style={{ display: 'grid', gap: '.4rem', color: 'var(--vc-slate)' }}>
+                        Category
+                        <select className="vc-input" value={postForm.category}
+                          onChange={event => setPostForm(previous => ({ ...previous, category: event.target.value }))}>
+                          {['essay', 'editorial', 'review', 'feature', 'list', 'interview', 'news'].map(category => (
+                            <option key={category} value={category}>{category}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={{ display: 'grid', gap: '.4rem', color: 'var(--vc-slate)' }}>
+                        Original publication date
+                        <input className="vc-input" type="date" value={postForm.publishedAt}
+                          onChange={event => setPostForm(previous => ({ ...previous, publishedAt: event.target.value }))} />
+                      </label>
+                    </div>
+                    <label style={{ display: 'grid', gap: '.4rem', color: 'var(--vc-slate)' }}>
+                      Cover image URL
+                      <input className="vc-input" type="url" placeholder="https://…" value={postForm.coverImage}
+                        onChange={event => setPostForm(previous => ({ ...previous, coverImage: event.target.value }))} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '.4rem', color: 'var(--vc-slate)' }}>
+                      Tags (comma-separated)
+                      <input className="vc-input" placeholder="cinema, storytelling" value={postForm.tags}
+                        onChange={event => setPostForm(previous => ({ ...previous, tags: event.target.value }))} />
+                    </label>
+                    <label style={{ display: 'grid', gap: '.4rem', color: 'var(--vc-slate)' }}>
+                      Article content *
+                      <textarea className="vc-input" required rows={14} value={postForm.content}
+                        onChange={event => setPostForm(previous => ({ ...previous, content: event.target.value }))} />
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '.6rem', color: 'var(--vc-slate)' }}>
+                      <input type="checkbox" checked={postForm.published}
+                        onChange={event => setPostForm(previous => ({ ...previous, published: event.target.checked }))} />
+                      Publish immediately
+                    </label>
+                    <div>
+                      <button className="vc-btn vc-btn-gold" type="submit" disabled={postSaving}>
+                        {postSaving ? 'Saving…' : postForm.published ? 'Publish to Journal' : 'Save draft'}
+                      </button>
+                    </div>
+                  </form>
+
+                  <div style={{ marginTop: '2.5rem' }}>
+                    <h3 style={{ fontFamily: 'Playfair Display, serif' }}>Recent MongoDB articles</h3>
+                    {journalPostsLoading ? (
+                      <div className="vc-skeleton" style={{ height: 80, borderRadius: 12 }} />
+                    ) : journalPosts.length ? (
+                      <ul style={{ display: 'grid', gap: '.65rem', padding: 0, listStyle: 'none' }}>
+                        {journalPosts.map(post => (
+                          <li key={post._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', padding: '.9rem 1rem', background: 'var(--vc-bg-card)', borderRadius: 10 }}>
+                            <span>{post.title} {!post.published && <span className="vc-badge vc-badge-slate">Draft</span>}</span>
+                            {post.published && <Link to={`/journal/${post.slug}`} className="vc-btn vc-btn-ghost">View →</Link>}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p style={{ color: 'var(--vc-slate)' }}>No MongoDB-authored articles yet.</p>
+                    )}
+                  </div>
+                </div>
               </section>
             )}
           </>

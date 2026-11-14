@@ -192,7 +192,7 @@ connectDB()
   }
 
   function startMediumJournalSynchronization() {
-    const intervalMs = 12 * 60 * 60 * 1000;
+    const intervalMs = 60 * 60 * 1000;
     let timer;
     let running = false;
 

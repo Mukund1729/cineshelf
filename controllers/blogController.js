@@ -1,4 +1,36 @@
 import BlogPost from '../models/BlogPost.js';
+import sanitizeHtml from 'sanitize-html';
+
+const ARTICLE_SANITIZER_OPTIONS = {
+  allowedTags: [
+    'a', 'blockquote', 'br', 'code', 'em', 'figcaption', 'figure', 'h1', 'h2', 'h3',
+    'hr', 'img', 'li', 'ol', 'p', 'pre', 's', 'strong', 'sub', 'sup', 'u', 'ul',
+  ],
+  allowedAttributes: {
+    a: ['href', 'title'],
+    img: ['src', 'alt', 'title', 'width', 'height'],
+  },
+  allowedSchemes: ['https', 'http', 'mailto'],
+  allowedSchemesByTag: { img: ['https'] },
+  transformTags: {
+    a: sanitizeHtml.simpleTransform('a', { rel: 'nofollow noopener noreferrer' }),
+  },
+};
+
+function slugify(value) {
+  return value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 100);
+}
+
+function normalizeTags(value) {
+  const tags = Array.isArray(value) ? value : typeof value === 'string' ? value.split(',') : [];
+  return [...new Set(tags.map(tag => String(tag).trim().slice(0, 60)).filter(Boolean))].slice(0, 20);
+}
 
 // GET /api/blog — All published posts
 export const getPosts = async (req, res) => {
@@ -28,6 +60,33 @@ export const getPosts = async (req, res) => {
   }
 };
 
+export const getAdminPosts = async (req, res) => {
+  try {
+    const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(req.query.limit, 10) || 30));
+    const query = { source: 'local' };
+    const [posts, total] = await Promise.all([
+      BlogPost.find(query)
+        .populate('author', 'username name avatar')
+        .sort({ updatedAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .select('-content')
+        .lean(),
+      BlogPost.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      data: posts,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    console.error('[Blog] Admin list failed:', error.message);
+    res.status(500).json({ success: false, error: 'Failed to fetch admin posts' });
+  }
+};
+
 // GET /api/blog/:slug — Single post by slug
 export const getPostBySlug = async (req, res) => {
   try {
@@ -47,22 +106,43 @@ export const getPostBySlug = async (req, res) => {
 // POST /api/blog — Create post (admin only)
 export const createPost = async (req, res) => {
   try {
-    const { title, slug, content, excerpt, category, coverImage, tags, published } = req.body;
+    const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    const content = typeof req.body.content === 'string'
+      ? sanitizeHtml(req.body.content.trim(), ARTICLE_SANITIZER_OPTIONS)
+      : '';
+    const slug = slugify(typeof req.body.slug === 'string' && req.body.slug.trim()
+      ? req.body.slug
+      : title);
     if (!title || !slug || !content) {
-      return res.status(400).json({ success: false, error: 'Title, slug, and content are required' });
+      return res.status(400).json({ success: false, error: 'Title and article content are required' });
+    }
+
+    const category = ['review', 'feature', 'editorial', 'list', 'interview', 'news', 'essay'].includes(req.body.category)
+      ? req.body.category
+      : 'essay';
+    const tags = normalizeTags(req.body.tags);
+    const published = req.body.published !== false;
+    const publishedAt = req.body.publishedAt ? new Date(req.body.publishedAt) : new Date();
+    if (Number.isNaN(publishedAt.getTime())) {
+      return res.status(400).json({ success: false, error: 'Publication date is invalid' });
     }
 
     const post = new BlogPost({
       title,
-      slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+      slug,
       content,
-      excerpt: excerpt || content.substring(0, 200),
+      excerpt: typeof req.body.excerpt === 'string' && req.body.excerpt.trim()
+        ? req.body.excerpt.trim().slice(0, 1000)
+        : sanitizeHtml(content, { allowedTags: [], allowedAttributes: {} }).slice(0, 200),
       author: req.user.id,
+      authorName: 'Mukund Mangal',
       category: category || 'feature',
-      coverImage: coverImage || '',
-      tags: tags || [],
-      published: published || false,
-      publishedAt: published ? new Date() : undefined,
+      categories: [category, ...tags],
+      coverImage: typeof req.body.coverImage === 'string' ? req.body.coverImage.trim() : '',
+      tags,
+      source: 'local',
+      published,
+      publishedAt: published ? publishedAt : undefined,
     });
     await post.save();
     await post.populate('author', 'username name avatar');
@@ -71,6 +151,10 @@ export const createPost = async (req, res) => {
     if (err.code === 11000) {
       return res.status(409).json({ success: false, error: 'Slug already exists' });
     }
+    if (err.name === 'ValidationError') {
+      return res.status(400).json({ success: false, error: err.message });
+    }
+    console.error('[Blog] Create failed:', err.message);
     res.status(500).json({ success: false, error: 'Failed to create post' });
   }
 };
