@@ -21,6 +21,14 @@ const getTodayDate = () => {
   return date.toISOString().slice(0, 10);
 };
 
+const CREW_SECTIONS = [
+  { label: 'Directed by', jobs: ['Director'] },
+  { label: 'Written by', jobs: ['Writer', 'Screenplay'] },
+  { label: 'Produced by', jobs: ['Producer'] },
+  { label: 'Director of Photography', jobs: ['Director of Photography'] },
+  { label: 'Music by', jobs: ['Original Music Composer', 'Music Composer', 'Music'] },
+];
+
 const MovieDetail = () => {
   // Always get id and navigate from params/hooks first so they're available for all hooks
   const { id } = useParams();
@@ -427,6 +435,13 @@ const MovieDetail = () => {
     };
     fetchRecsAndActorMovies();
   }, [movie]);
+  const crewSections = CREW_SECTIONS
+    .map(({ label, jobs }) => ({
+      label,
+      people: (movie?.credits?.crew || []).filter(credit => jobs.includes(credit.job)),
+    }))
+    .filter(section => section.people.length > 0);
+
   return (
     <div
       className="movie-detail-page relative min-h-screen w-full"
@@ -683,44 +698,20 @@ const MovieDetail = () => {
               <section className="mb-4">
                 <h3 className="text-xs text-cyan-400 uppercase tracking-wider border-b border-gray-700 mb-1 pb-0.5 font-semibold">Crew</h3>
                 <div className="flex flex-col gap-1">
-                  {movie.credits?.crew?.filter(c => c.job === 'Director').length > 0 && (
-                    <span className="text-sm md:text-base">
-                      <span className="text-cyan-300 font-semibold">Directed by</span>{' '}
-                      {movie.credits.crew.filter(c => c.job === 'Director').map((d, idx, arr) => (
-                        <React.Fragment key={d.id}>
+                  {crewSections.map(({ label, people }) => (
+                    <span className="text-sm md:text-base" key={label}>
+                      <span className="text-cyan-300 font-semibold">{label}</span>{' '}
+                      {people.map((person, index) => (
+                        <React.Fragment key={`${person.id}-${person.job}-${index}`}>
                           <Link
-                            to={`/person/${d.id}`}
+                            to={`/person/${person.id}`}
                             className="text-cyan-200 hover:text-pink-400 underline font-semibold transition-colors"
                           >
-                            {d.name}
+                            {person.name}
                           </Link>
-                          {idx < arr.length - 1 && ', '}
+                          {index < people.length - 1 && ', '}
                         </React.Fragment>
                       ))}
-                    </span>
-                  )}
-                  {movie.credits?.crew?.filter(c => c.job === 'Writer' || c.job === 'Screenplay').length > 0 && (
-                    <span className="text-sm md:text-base">
-                      <span className="text-cyan-300 font-semibold">Written by</span>{' '}
-                      {movie.credits.crew.filter(c => c.job === 'Writer' || c.job === 'Screenplay').map((w, idx, arr) => (
-                        <React.Fragment key={w.id}>
-                          <Link
-                            to={`/person/${w.id}`}
-                            className="text-cyan-200 hover:text-pink-400 underline font-semibold transition-colors"
-                          >
-                            {w.name}
-                          </Link>
-                          {idx < arr.length - 1 && ', '}
-                        </React.Fragment>
-                      ))}
-                    </span>
-                  )}
-                  {movie.credits?.crew?.filter(c => !['Director', 'Writer', 'Screenplay'].includes(c.job)).map((credit, index) => (
-                    <span className="text-sm md:text-base" key={`${credit.id}-${credit.job}-${index}`}>
-                      <span className="text-cyan-300 font-semibold">{credit.job}</span>{' '}
-                      <Link to={`/person/${credit.id}`} className="text-cyan-200 hover:text-pink-400 underline font-semibold transition-colors">
-                        {credit.name}
-                      </Link>
                     </span>
                   ))}
                 </div>
