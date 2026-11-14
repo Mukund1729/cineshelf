@@ -1,5 +1,7 @@
 import FilmPerson from '../models/FilmPerson.js';
 import Movie from '../models/Movie.js';
+import User from '../models/User.js';
+import Watchlist from '../models/Watchlist.js';
 import {
   getOriginalWatchlistEntries,
   mergeMissingOriginalWatchlistMovies,
@@ -19,6 +21,12 @@ function toMovieSummary(movie) {
     release_date: null,
     poster_path: movie.posterPath,
     backdrop_path: movie.backdropPath,
+    tagline: movie.tagline || '',
+    runtimeSeconds: movie.runtimeSeconds || null,
+    runtimeLabel: movie.runtimeSeconds == null
+      ? null
+      : `${Math.floor(movie.runtimeSeconds / 60)} min ${movie.runtimeSeconds % 60} sec`,
+    watchUrl: movie.watchUrl || null,
     vote_average: null,
     genres: [],
   };
@@ -142,7 +150,7 @@ export async function seedOriginalFilms() {
 
 export async function listOriginalFilms() {
   const movies = await Movie.find({ source: 'original' })
-    .select('tmdbId slug title overview releaseYear posterPath backdropPath')
+    .select('tmdbId slug title overview releaseYear posterPath backdropPath tagline runtimeSeconds watchUrl')
     .sort({ releaseYear: -1, title: 1 })
     .lean();
   return movies.map(toMovieSummary);
@@ -250,6 +258,54 @@ export async function getOriginalFilmPerson(slug) {
     filmography,
     professions: person.professions || [],
   };
+}
+
+export async function migrateOriginalWatchlists({ batchSize = 100, concurrency = 20 } = {}) {
+  const users = User.find({ originalWatchlistSeedVersion: { $ne: 1 } })
+    .select('_id')
+    .lean()
+    .cursor({ batchSize });
+  let processed = 0;
+  let added = 0;
+  let failures = 0;
+  let batch = [];
+
+  const migrateUser = async user => {
+    try {
+      const watchlist = await Watchlist.findOne({ user: user._id });
+      if (watchlist) {
+        const missing = mergeMissingOriginalWatchlistMovies(watchlist.movies);
+        if (missing.length) {
+          watchlist.movies.push(...missing);
+          await watchlist.save();
+          added += missing.length;
+        }
+      } else {
+        const entries = getOriginalWatchlistEntries();
+        await Watchlist.create({ user: user._id, movies: entries });
+        added += entries.length;
+      }
+      await User.updateOne(
+        { _id: user._id, originalWatchlistSeedVersion: { $ne: 1 } },
+        { $set: { originalWatchlistSeedVersion: 1 } }
+      );
+      processed += 1;
+    } catch (error) {
+      failures += 1;
+      console.error(`[Original watchlist migration] User ${user._id} failed:`, error.message);
+    }
+  };
+
+  for await (const user of users) {
+    batch.push(user);
+    if (batch.length >= concurrency) {
+      await Promise.all(batch.map(migrateUser));
+      batch = [];
+    }
+  }
+  if (batch.length) await Promise.all(batch.map(migrateUser));
+
+  return { processed, added, failures };
 }
 
 export { getOriginalWatchlistEntries, mergeMissingOriginalWatchlistMovies };

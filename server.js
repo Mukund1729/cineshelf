@@ -20,13 +20,15 @@ import notificationRoutes from './routes/notifications.js';
 import exportRoutes from './routes/export.js';
 import adminRoutes from './routes/admin.js';
 import blogRoutes from './routes/blog.js';
+import journalRoutes from './routes/journal.js';
 import tmdbRoutes from './routes/tmdb.js';
 import originalFilmRoutes from './routes/originalFilms.js';
 import gptRoute from './src/api/gpt.js';
 import connectDB from './db.js';
 import { monitorDatabaseStorage } from './services/storageMonitor.js';
 import { syncIndianBoxOfficeFeed } from './services/boxOfficeDataService.js';
-import { seedOriginalFilms } from './services/originalFilmService.js';
+import { migrateOriginalWatchlists, seedOriginalFilms } from './services/originalFilmService.js';
+import { syncMediumJournal } from './services/mediumJournalService.js';
 
 dotenv.config();
 
@@ -87,6 +89,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/export', exportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/blog', blogRoutes);
+app.use('/api/journal', journalRoutes);
 app.use('/api/tmdb', tmdbRoutes);
 app.use('/api/original-films', originalFilmRoutes);
 
@@ -124,6 +127,8 @@ connectDB()
       console.log(`🚀 Visual.Cineaste API listening on port ${PORT}`);
       startStorageMonitoring();
       startBoxOfficeSynchronization();
+      startOriginalWatchlistMigration();
+      startMediumJournalSynchronization();
     });
   })
   .catch((err) => {
@@ -162,6 +167,50 @@ connectDB()
         }
       } catch (error) {
         console.error('[Box Office API] RSS sync failed:', error.code || error.message);
+      } finally {
+        running = false;
+        timer = setTimeout(syncAndSchedule, intervalMs);
+        timer.unref();
+      }
+    }
+
+    void syncAndSchedule();
+  }
+
+  function startOriginalWatchlistMigration() {
+    setImmediate(async () => {
+      try {
+        const result = await migrateOriginalWatchlists();
+        console.log(
+          `[Original watchlist migration] Processed ${result.processed} users; ` +
+          `added ${result.added} entries; ${result.failures} failures.`
+        );
+      } catch (error) {
+        console.error('[Original watchlist migration] Failed:', error.message);
+      }
+    });
+  }
+
+  function startMediumJournalSynchronization() {
+    const intervalMs = 12 * 60 * 60 * 1000;
+    let timer;
+    let running = false;
+
+    async function syncAndSchedule() {
+      if (running) return;
+      running = true;
+      try {
+        const result = await syncMediumJournal();
+        if (result.skipped) {
+          console.log('[Journal] Sync skipped; another process holds the synchronization lease.');
+        } else {
+          console.log(
+            `[Journal] RSS sync completed: ${result.imported} imported, ${result.updated} updated, ` +
+            `${result.duplicates} unchanged, ${result.failed} failed.`
+          );
+        }
+      } catch (error) {
+        console.error('[Journal] RSS sync failed:', error.message);
       } finally {
         running = false;
         timer = setTimeout(syncAndSchedule, intervalMs);

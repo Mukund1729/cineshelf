@@ -177,7 +177,7 @@ export default function ReviewDetail() {
   };
 
   const moviePath = review
-    ? `/${review.mediaType === 'tv' ? 'tv' : 'movie'}/${review.tmdbId}`
+    ? `/${review.mediaType === 'tv' ? 'tv' : 'movie'}/${review.source === 'original' ? review.originalId : review.tmdbId}`
     : '/';
   const authorName = review?.user?.name
     || (review?.user?.username ? `@${review.user.username}` : 'CineShelf member');

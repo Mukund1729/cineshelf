@@ -487,18 +487,24 @@ const MovieDetail = () => {
                   <div className="text-center text-gray-400 py-6">No results found.</div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    {searchResults.filter(r => r.poster_path || r.profile_path).map(result => (
+                    {searchResults.filter(r => r.poster_path || r.profile_path || r.source === 'original').map(result => (
                       <Link
                         key={result.id}
                         to={result.media_type === 'person' ? `/person/${result.id}` : result.media_type === 'movie' ? `/movie/${result.id}` : `/tv/${result.id}`}
                         className="flex items-center gap-3 bg-[#181c24] rounded-lg overflow-hidden shadow hover:scale-105 transition-transform duration-200 p-2"
                         onClick={() => { setIsSearching(false); setShowSearchBar(false); setSearchQuery(''); setSearchResults([]); }}
                       >
-                        <img
-                          src={tmdbImageUrl(result.poster_path || result.profile_path, 'w92')}
-                          alt={result.title || result.name}
-                          className="w-10 h-14 object-cover rounded"
-                        />
+                        {result.poster_path || result.profile_path ? (
+                          <img
+                            src={tmdbImageUrl(result.poster_path || result.profile_path, 'w92')}
+                            alt={result.title || result.name}
+                            className="w-10 h-14 object-cover rounded"
+                          />
+                        ) : (
+                          <span aria-hidden="true" className="grid h-14 w-10 place-items-center rounded bg-cyan-900/40 text-cyan-200">
+                            {(result.name || '?').slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
                         <div className="flex-1">
                           <div className="text-white font-semibold text-sm truncate">{result.title || result.name}</div>
                           {result.vote_average && (
@@ -668,6 +674,9 @@ const MovieDetail = () => {
                 <blockquote className="mb-5 border-l-2 border-cyan-500 pl-4 text-sm italic text-gray-200">
                   “{movie.quote}”
                 </blockquote>
+              )}
+              {movie.copyrightNotice && (
+                <p className="mb-5 text-xs text-gray-400">{movie.copyrightNotice}</p>
               )}
               {/* Crew Info */}
               <section className="mb-4">

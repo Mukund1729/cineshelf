@@ -360,14 +360,20 @@ export default function TVDetail() {
                 ) : searchError ? (
                   <p role="alert" className="py-5 text-center text-red-400">{searchError}</p>
                 ) : searchResults.length ? (
-                  searchResults.filter(result => result.poster_path || result.profile_path).map(result => (
+                  searchResults.filter(result => result.poster_path || result.profile_path || result.source === 'original').map(result => (
                     <Link
                       key={`${result.media_type}-${result.id}`}
                       to={result.media_type === 'person' ? `/person/${result.id}` : `/movie/${result.id}`}
                       onClick={() => { setShowSearchBar(false); setSearchQuery(''); }}
                       className="flex items-center gap-3 rounded-lg p-2 hover:bg-white/5"
                     >
-                      <img src={tmdbImageUrl(result.poster_path || result.profile_path, 'w92')} alt="" className="h-14 w-10 rounded object-cover" />
+                      {result.poster_path || result.profile_path ? (
+                        <img src={tmdbImageUrl(result.poster_path || result.profile_path, 'w92')} alt="" className="h-14 w-10 rounded object-cover" />
+                      ) : (
+                        <span aria-hidden="true" className="grid h-14 w-10 place-items-center rounded bg-cyan-900/40 text-cyan-200">
+                          {(result.name || '?').slice(0, 1).toUpperCase()}
+                        </span>
+                      )}
                       <span className="truncate text-sm text-white">{result.title || result.name}</span>
                     </Link>
                   ))
