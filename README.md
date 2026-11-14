@@ -113,9 +113,9 @@ The Render free web service may sleep when idle. Existing user avatars are store
 
 ## Box Office ingestion and MongoDB storage
 
-The existing `/boxoffice` page uses source-attributed data only. The Indian Box Office RSS is polled by a separate worker; it provides selected daily briefs and lifetime India-nett/worldwide-gross reports, not a complete daily chart or full historical day-wise dataset. Those figures are publisher estimates. Box Office History is queried on demand for documented US daily charts, TMDB-ID lookup, US weekend history, and US opening records. It is not an India-nett provider. Other providers are not enabled unless their API access and reuse permissions can be verified.
+The existing `/boxoffice` page uses source-attributed data only. The API automatically polls the Indian Box Office RSS on startup and every few hours; this runs inside the existing API service and does not require a separate Render worker. It provides selected daily briefs and lifetime India-nett/worldwide-gross reports, not a complete daily chart or full historical day-wise dataset. Those figures are publisher estimates. Box Office History is queried on demand for documented US daily charts, TMDB-ID lookup, US weekend history, and US opening records. It is not an India-nett provider. Other providers are not enabled unless their API access and reuse permissions can be verified.
 
-Run the API and the Box Office worker as separate processes:
+The scheduler interval defaults to four hours and can be set from 3 to 6 hours with `BOX_OFFICE_SYNC_INTERVAL_HOURS`. The MongoDB sync lease prevents overlapping imports across API instances or an optional standalone worker. If you need a separate process instead of the API scheduler, run:
 
 ```bash
 npm run server

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import axios from 'axios';
 import BoxOfficeCache from '../models/BoxOfficeCache.js';
 import BoxOfficeDaily from '../models/BoxOfficeDaily.js';
@@ -19,6 +20,7 @@ const MAX_LIFETIME_REPORTS = 300;
 const MAX_TMDB_LOOKUPS_PER_SYNC = 30;
 const DEFAULT_CACHE_TTL_SECONDS = 24 * 60 * 60;
 const DEFAULT_REPORT_TTL_DAYS = 30;
+const SYNC_LEASE_MS = 30 * 60 * 1000;
 const inFlight = new Map();
 
 function envInteger(name, fallback, min, max) {
@@ -349,6 +351,43 @@ async function syncState(provider, successful, reportsImported, error) {
   await BoxOfficeSyncState.updateOne({ provider }, { $set: update }, { upsert: true });
 }
 
+async function acquireSyncLease(owner) {
+  const now = new Date();
+  try {
+    const lease = await BoxOfficeSyncState.findOneAndUpdate(
+      {
+        provider: INDIA_PROVIDER,
+        $or: [
+          { lockExpiresAt: { $lte: now } },
+          { lockExpiresAt: null },
+        ],
+      },
+      {
+        $set: {
+          lockOwner: owner,
+          lockExpiresAt: new Date(now.getTime() + SYNC_LEASE_MS),
+        },
+        $setOnInsert: {
+          provider: INDIA_PROVIDER,
+          lastAttemptAt: now,
+        },
+      },
+      { upsert: true, new: true }
+    );
+    return lease?.lockOwner === owner;
+  } catch (error) {
+    if (error.code === 11000) return false;
+    throw error;
+  }
+}
+
+async function releaseSyncLease(owner) {
+  await BoxOfficeSyncState.updateOne(
+    { provider: INDIA_PROVIDER, lockOwner: owner },
+    { $unset: { lockOwner: 1, lockExpiresAt: 1 } }
+  );
+}
+
 async function fetchIndianFeed() {
   let lastError;
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -372,6 +411,11 @@ async function fetchIndianFeed() {
 }
 
 export async function syncIndianBoxOfficeFeed() {
+  const owner = randomUUID();
+  if (!await acquireSyncLease(owner)) {
+    return { dailyReports: 0, lifetimeReports: 0, skipped: true };
+  }
+
   try {
     const parsed = parseIndianBoxOfficeFeed(await fetchIndianFeed());
     const titles = [...new Set([...parsed.dailyReports, ...parsed.lifetimeReports].map(report => report.movieTitle))];
@@ -469,6 +513,12 @@ export async function syncIndianBoxOfficeFeed() {
   } catch (error) {
     await syncState(INDIA_PROVIDER, false, 0, error);
     throw error;
+  } finally {
+    try {
+      await releaseSyncLease(owner);
+    } catch (error) {
+      console.error('[Box Office] Could not release RSS sync lease:', error.message);
+    }
   }
 }
 

@@ -24,6 +24,7 @@ import tmdbRoutes from './routes/tmdb.js';
 import gptRoute from './src/api/gpt.js';
 import connectDB from './db.js';
 import { monitorDatabaseStorage } from './services/storageMonitor.js';
+import { syncIndianBoxOfficeFeed } from './services/boxOfficeDataService.js';
 
 dotenv.config();
 
@@ -38,6 +39,12 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your_jwt_secret_here'
 }
 
 const PORT = process.env.PORT || 5000;
+const BOX_OFFICE_SYNC_INTERVAL_HOURS = Number(process.env.BOX_OFFICE_SYNC_INTERVAL_HOURS || 4);
+if (!Number.isFinite(BOX_OFFICE_SYNC_INTERVAL_HOURS)
+  || BOX_OFFICE_SYNC_INTERVAL_HOURS < 3
+  || BOX_OFFICE_SYNC_INTERVAL_HOURS > 6) {
+  throw new Error('BOX_OFFICE_SYNC_INTERVAL_HOURS must be between 3 and 6.');
+}
 
 const app = express();
 
@@ -111,6 +118,7 @@ connectDB()
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Visual.Cineaste API listening on port ${PORT}`);
       startStorageMonitoring();
+      startBoxOfficeSynchronization();
     });
   })
   .catch((err) => {
@@ -127,4 +135,34 @@ connectDB()
     checkStorage();
     const interval = setInterval(checkStorage, 6 * 60 * 60 * 1000);
     interval.unref();
+  }
+
+  function startBoxOfficeSynchronization() {
+    const intervalMs = BOX_OFFICE_SYNC_INTERVAL_HOURS * 60 * 60 * 1000;
+    let timer;
+    let running = false;
+
+    async function syncAndSchedule() {
+      if (running) return;
+      running = true;
+      try {
+        const result = await syncIndianBoxOfficeFeed();
+        if (result.skipped) {
+          console.log('[Box Office API] RSS sync skipped; another process holds the sync lease.');
+        } else {
+          console.log(
+            `[Box Office API] RSS sync completed: ${result.dailyReports} daily and ` +
+            `${result.lifetimeReports} lifetime reports.`
+          );
+        }
+      } catch (error) {
+        console.error('[Box Office API] RSS sync failed:', error.code || error.message);
+      } finally {
+        running = false;
+        timer = setTimeout(syncAndSchedule, intervalMs);
+        timer.unref();
+      }
+    }
+
+    void syncAndSchedule();
   }

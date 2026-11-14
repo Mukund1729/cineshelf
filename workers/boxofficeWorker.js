@@ -20,10 +20,14 @@ async function syncOnce() {
   running = true;
   try {
     const result = await syncIndianBoxOfficeFeed();
-    console.log(
-      `[Box Office worker] RSS sync completed: ${result.dailyReports} daily and ` +
-      `${result.lifetimeReports} lifetime reports.`
-    );
+    if (result.skipped) {
+      console.log('[Box Office worker] RSS sync skipped; another process holds the sync lease.');
+    } else {
+      console.log(
+        `[Box Office worker] RSS sync completed: ${result.dailyReports} daily and ` +
+        `${result.lifetimeReports} lifetime reports.`
+      );
+    }
   } catch (error) {
     console.error('[Box Office worker] RSS sync failed:', error.code || error.message);
   } finally {
