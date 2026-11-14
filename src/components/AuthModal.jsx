@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google';
 import BrandLogo from './BrandLogo';
+
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '', username: '' });
@@ -12,7 +15,21 @@ const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [resetStep, setResetStep] = useState(1); // 1: email, 2: token, 3: new password
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [resendingCode, setResendingCode] = useState(false);
   const isSignup = type === 'signup';
+
+  const finishAuthentication = (responseData, message) => {
+    localStorage.setItem('token', responseData.token);
+    localStorage.setItem('user', JSON.stringify(responseData.user));
+    setSuccess(message);
+    setTimeout(() => {
+      onClose();
+      window.location.reload();
+    }, 1000);
+  };
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -37,28 +54,70 @@ const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
           email: form.email,
           password: form.password
         });
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        setSuccess('Sign up successful! Welcome to visual.cineaste');
-        setTimeout(() => {
-          onClose();
-          window.location.reload();
-        }, 1500);
+        setVerificationEmail(response.data.email || form.email);
+        setVerificationStep(true);
+        setSuccess(response.data.message || 'Check your email for a verification code.');
       } else {
         const response = await axios.post('/api/auth/login', {
           email: form.email,
           password: form.password
         });
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        setSuccess('Login successful! Welcome back to visual.cineaste');
-        setTimeout(() => {
-    onClose();
-          window.location.reload();
-        }, 1500);
+        finishAuthentication(response.data, 'Login successful! Welcome back to visual.cineaste');
       }
     } catch (err) {
+      if (err.response?.data?.verificationRequired) {
+        setVerificationEmail(err.response.data.email || form.email);
+        setVerificationStep(true);
+      }
       setError(err.response?.data?.message || 'An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async (event) => {
+    event.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.post('/api/auth/verify-email', {
+        email: verificationEmail,
+        code: verificationCode,
+      });
+      finishAuthentication(response.data, 'Email verified. You are now signed in.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not verify the code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    setResendingCode(true);
+    setError('');
+    setSuccess('');
+    try {
+      const response = await axios.post('/api/auth/resend-verification', { email: verificationEmail });
+      setSuccess(response.data?.message || 'A new verification code has been sent.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not send a new verification code.');
+    } finally {
+      setResendingCode(false);
+    }
+  };
+
+  const handleGoogleSuccess = async ({ credential }) => {
+    if (!credential) {
+      setError('Google did not return a sign-in credential.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    try {
+      const response = await axios.post('/api/auth/google', { credential });
+      finishAuthentication(response.data, 'Google sign-in successful.');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Google sign-in failed.');
     } finally {
       setLoading(false);
     }
@@ -103,6 +162,43 @@ const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
     setError('');
     setSuccess('');
   };
+
+  if (verificationStep) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
+        <div className="bg-gray-900 p-6 sm:p-8 rounded-lg shadow-lg w-full max-w-sm relative">
+          <button onClick={() => { setVerificationStep(false); setError(''); setSuccess(''); }} className="absolute top-2 right-2 text-gray-400 hover:text-white text-xl" aria-label="Back">×</button>
+          <h2 className="text-2xl font-bold mb-3 text-center text-cyan-400">Verify your email</h2>
+          <p className="text-sm text-gray-300 mb-4 text-center">
+            Enter the six-digit code sent to <strong>{verificationEmail}</strong>. It expires in 10 minutes.
+          </p>
+          {error && <div className="mb-4 p-3 bg-red-600 text-white rounded text-sm">{error}</div>}
+          {success && <div className="mb-4 p-3 bg-green-700 text-white rounded text-sm">{success}</div>}
+          <form onSubmit={handleVerifyEmail} className="space-y-4">
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              autoComplete="one-time-code"
+              aria-label="Six-digit email verification code"
+              placeholder="000000"
+              value={verificationCode}
+              onChange={event => setVerificationCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              required
+              className="w-full px-4 py-3 rounded bg-gray-800 text-white text-center text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            />
+            <button type="submit" disabled={loading || verificationCode.length !== 6} className="w-full py-2 rounded font-semibold bg-cyan-500 text-white disabled:bg-gray-600">
+              {loading ? 'Verifying…' : 'Verify email'}
+            </button>
+          </form>
+          <button type="button" onClick={handleResendVerification} disabled={resendingCode} className="text-cyan-400 hover:underline text-sm mt-4 disabled:text-gray-500">
+            {resendingCode ? 'Sending…' : 'Resend code'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (showForgotPassword) {
     return (
@@ -158,6 +254,20 @@ const AuthModal = ({ type = 'login', onClose, onSwitch }) => {
           )}
           <button type="submit" disabled={loading} className={`w-full py-2 rounded font-semibold transition ${loading ? 'bg-gray-600 text-gray-300 cursor-not-allowed' : 'bg-cyan-500 text-white hover:bg-cyan-600'}`}>{loading ? (<span className="flex items-center justify-center"><svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>{isSignup ? 'Creating Account...' : 'Logging In...'}</span>) : (isSignup ? 'Sign Up' : 'Login')}</button>
         </form>
+        <div className="my-4 flex items-center gap-3 text-gray-500 text-xs">
+          <span className="h-px flex-1 bg-gray-700" />
+          <span>OR</span>
+          <span className="h-px flex-1 bg-gray-700" />
+        </div>
+        {GOOGLE_CLIENT_ID ? (
+          <div className="flex justify-center">
+            <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+              <GoogleLogin onSuccess={handleGoogleSuccess} onError={() => setError('Google sign-in failed. Please try again.')} />
+            </GoogleOAuthProvider>
+          </div>
+        ) : (
+          <p className="text-center text-gray-500 text-xs">Google sign-in is not configured yet.</p>
+        )}
         <div className="mt-4 text-center space-y-2">
           {!isSignup && (
             <button onClick={() => setShowForgotPassword(true)} className="text-cyan-400 hover:underline text-sm block">Forgot Password?</button>

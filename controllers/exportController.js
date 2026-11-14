@@ -9,7 +9,9 @@ export const exportUserData = async (req, res) => {
     const userId = req.user.id;
     
     // Fetch all user data
-    const user = await User.findById(userId).select('-password');
+    const user = await User.findById(userId).select(
+      '-password -googleId -emailVerificationCodeHash -emailVerificationExpiresAt -emailVerificationSentAt -emailVerificationAttempts -resetPasswordToken -resetPasswordExpires'
+    );
     const watchlist = await Watchlist.find({ user: userId });
     const reviews = await Review.find({ user: userId });
     const lists = await List.find({ user: userId });

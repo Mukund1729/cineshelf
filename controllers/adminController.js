@@ -20,7 +20,9 @@ export const getAllUsers = async (req, res) => {
       ];
     }
     const [users, total] = await Promise.all([
-      User.find(query).select('-password').skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),
+      User.find(query).select(
+        '-password -googleId -emailVerificationCodeHash -emailVerificationExpiresAt -emailVerificationSentAt -emailVerificationAttempts -resetPasswordToken -resetPasswordExpires'
+      ).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 }),
       User.countDocuments(query),
     ]);
     res.json({ success: true, data: users, pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) } });
@@ -32,7 +34,9 @@ export const getAllUsers = async (req, res) => {
 // GET /api/admin/users/:id
 export const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id).select(
+      '-password -googleId -emailVerificationCodeHash -emailVerificationExpiresAt -emailVerificationSentAt -emailVerificationAttempts -resetPasswordToken -resetPasswordExpires'
+    );
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
     res.json({ success: true, data: user });
   } catch (err) {
@@ -49,7 +53,9 @@ export const updateUser = async (req, res) => {
       req.params.id,
       { $set: { username, email, isAdmin, isVerified } },
       { new: true, runValidators: true }
-    ).select('-password');
+    ).select(
+      '-password -googleId -emailVerificationCodeHash -emailVerificationExpiresAt -emailVerificationSentAt -emailVerificationAttempts -resetPasswordToken -resetPasswordExpires'
+    );
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
     res.json({ success: true, data: user, message: 'User updated' });
   } catch (err) {

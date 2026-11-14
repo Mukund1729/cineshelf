@@ -5,7 +5,9 @@ import bcrypt from 'bcryptjs';
 // Get current user profile — returns consistent { success, data: user } format
 export const getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('-password -resetPasswordToken -resetPasswordExpires');
+    const user = await User.findById(req.user.id).select(
+      '-password -googleId -emailVerificationCodeHash -emailVerificationExpiresAt -emailVerificationSentAt -emailVerificationAttempts -resetPasswordToken -resetPasswordExpires'
+    );
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
     res.json({ success: true, data: user });
   } catch (err) {
@@ -32,7 +34,9 @@ export const updateProfile = async (req, res) => {
       req.user.id,
       { $set: updateData },
       { new: true, runValidators: true }
-    ).select('-password -resetPasswordToken -resetPasswordExpires');
+    ).select(
+      '-password -googleId -emailVerificationCodeHash -emailVerificationExpiresAt -emailVerificationSentAt -emailVerificationAttempts -resetPasswordToken -resetPasswordExpires'
+    );
 
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
     res.json({ success: true, data: user, message: 'Profile updated' });
@@ -117,7 +121,9 @@ export const uploadAvatar = async (req, res) => {
       req.user.id,
       { $set: { avatar: avatarUrl } },
       { new: true, runValidators: true }
-    ).select('-password');
+    ).select(
+      '-password -googleId -emailVerificationCodeHash -emailVerificationExpiresAt -emailVerificationSentAt -emailVerificationAttempts -resetPasswordToken -resetPasswordExpires'
+    );
 
     if (!user) return res.status(404).json({ success: false, error: 'User not found' });
     res.json({ success: true, data: { user, avatarUrl } });
