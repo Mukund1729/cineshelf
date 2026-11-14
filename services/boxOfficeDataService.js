@@ -684,9 +684,197 @@ export async function getBoxOfficeHistoryDay(date) {
         sourceUrl: `${BOX_OFFICE_HISTORY_API}/days/${date}.json`,
         sourceId: row.id || null,
         dayNumber: row.day ?? null,
-        isEstimate: false,
-        verificationStatus: 'provider-reported',
+        isEstimate: row.estimated === true,
+        verificationStatus: row.estimated === true ? 'provider-estimate' : 'provider-reported',
       })).filter(row => row.title && Number.isFinite(row.dailyCollection) && row.dailyCollection >= 0),
+    };
+  });
+}
+
+function validHistoryDate(date) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date || '') && dateOnly(date) === date;
+}
+
+function chooseHistoryEntry(entries, date, startKey, endKey) {
+  const onDate = entries.find(entry => entry[startKey] <= date && date <= entry[endKey]);
+  if (onDate) return onDate;
+  return entries.filter(entry => entry[endKey] < date).at(-1) || null;
+}
+
+function normalizeHistoryChartRows(rows, sourceUrl, period, year) {
+  return rows.map((row, index) => {
+    const rawAmount = row.gross ?? row.total ?? row.worldwide ?? row.domestic;
+    const rawCumulative = row.toDate ?? (period === 'yearly' ? null : row.total);
+    const amount = Number(rawAmount);
+    const cumulative = rawCumulative == null ? null : Number(rawCumulative);
+    return {
+      rank: row.rank ?? index + 1,
+      title: row.title,
+      releaseYear: row.year ?? year ?? null,
+      releaseDate: row.releaseDate || row.openDate || null,
+      releaseLabel: row.release || null,
+      dailyCollection: amount,
+      cumulativeCollection: Number.isFinite(cumulative) ? cumulative : null,
+      currency: 'USD',
+      source: HISTORY_PROVIDER,
+      sourceUrl,
+      sourceId: row.id || null,
+      collectionType: period === 'alltime' ? 'worldwide_gross' : 'gross',
+      isEstimate: row.estimated === true,
+      verificationStatus: row.estimated === true ? 'provider-estimate' : 'provider-reported',
+    };
+  }).filter(row => row.title && Number.isFinite(row.dailyCollection) && row.dailyCollection >= 0);
+}
+
+function historyChartError(code, message, status = 404) {
+  const error = new Error(message);
+  error.status = status;
+  error.code = code;
+  return error;
+}
+
+export async function getBoxOfficeHistoryMeta() {
+  const [meta, days] = await Promise.all([
+    fetchHistoryJson('history:meta', 'meta.json'),
+    fetchHistoryJson('history:index:days', 'index/days.json'),
+  ]);
+  if (!Array.isArray(days) || !meta?.builtAt) {
+    throw historyChartError('history_meta_unavailable', 'Box Office History metadata is unavailable.', 502);
+  }
+  return {
+    source: HISTORY_PROVIDER,
+    sourceUrl: `${BOX_OFFICE_HISTORY_API}/meta.json`,
+    builtAt: meta.builtAt,
+    counts: {
+      movies: meta.movies,
+      days: meta.days,
+      weekends: meta.weekends,
+      weeks: meta.weeks,
+      internationalPlaces: meta.intl?.places,
+    },
+    latestDailyDate: days.at(-1)?.d || null,
+    latestWeekendDate: meta.lastWeekend || null,
+  };
+}
+
+export async function getBoxOfficeHistoryInternationalCountries() {
+  const data = await fetchHistoryJson('history:intl:index', 'intl/index.json');
+  if (!Array.isArray(data)) {
+    throw historyChartError('history_countries_unavailable', 'International market index is unavailable.', 502);
+  }
+  return data
+    .filter(country => country.code !== 'IN' && country.code !== 'US'
+      && (country.weekends > 0 || country.years > 0 || country.alltime))
+    .map(country => ({
+      code: country.code,
+      name: country.name,
+      weekends: country.weekends,
+      years: country.years,
+      alltime: country.alltime === true,
+      firstDate: country.first || null,
+      latestDate: country.last || null,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getBoxOfficeHistoryChart({ market, period, date, countryCode }) {
+  if (!validHistoryDate(date)) {
+    throw historyChartError('invalid_date', 'A valid date in YYYY-MM-DD format is required.', 400);
+  }
+
+  return withInFlight(`history-chart:${market}:${period}:${countryCode || ''}:${date}`, async () => {
+    let path;
+    let selectedDate = date;
+    let chartMarket = market;
+    let territory = 'US';
+    let countryName = null;
+    let year = Number(date.slice(0, 4));
+    let coverage;
+
+    if (market === 'us') {
+      if (period === 'daily') {
+        const index = await fetchHistoryJson('history:index:days', 'index/days.json');
+        const entry = index.find(item => item.d === date) || index.filter(item => item.d < date).at(-1);
+        if (!entry) throw historyChartError('history_chart_unavailable', 'No US daily chart is available on or before that date.');
+        selectedDate = entry.d;
+        path = `days/${entry.d}.json`;
+        coverage = `US domestic daily gross for ${selectedDate}.`;
+      } else if (period === 'weekend' || period === 'weekly') {
+        const indexPath = period === 'weekend' ? 'index/weekends.json' : 'index/weeks.json';
+        const indexKey = period === 'weekend' ? 'weekends' : 'weeks';
+        const index = await fetchHistoryJson(`history:index:${indexKey}`, indexPath);
+        const entry = chooseHistoryEntry(index, date, 's', 'e');
+        if (!entry) throw historyChartError('history_chart_unavailable', `No US ${period} chart is available on or before that date.`);
+        selectedDate = entry.s;
+        year = entry.y || Number(entry.s.slice(0, 4));
+        path = `${indexKey}/${entry.k}.json`;
+        coverage = `US domestic ${period} gross for ${entry.s} through ${entry.e}.`;
+      } else if (period === 'yearly') {
+        path = `years/${year}.json`;
+        coverage = `US domestic annual gross chart for ${year}; the current year may be incomplete.`;
+      } else {
+        throw historyChartError('invalid_history_period', 'US market supports daily, weekend, weekly, or yearly charts.', 400);
+      }
+    } else if (market === 'international') {
+      if (!/^[A-Z0-9]{2,3}$/.test(countryCode || '')) {
+        throw historyChartError('invalid_country', 'A valid international market code is required.', 400);
+      }
+      const country = await fetchHistoryJson(`history:intl:${countryCode}`, `intl/${countryCode}/index.json`);
+      if (country.code !== countryCode) {
+        throw historyChartError('history_country_unavailable', 'The selected international market is unavailable.');
+      }
+      territory = countryCode;
+      countryName = country.name;
+      if (period === 'weekend') {
+        const entry = chooseHistoryEntry(country.weekends || [], date, 's', 'e');
+        if (!entry) throw historyChartError('history_chart_unavailable', `No ${countryName} weekend chart is available on or before that date.`);
+        selectedDate = entry.s;
+        path = `intl/${countryCode}/weekends/${entry.k}.json`;
+        coverage = `${countryName} reported weekend gross for ${entry.s} through ${entry.e}; values are in USD.`;
+      } else if (period === 'yearly') {
+        const yearEntry = (country.years || []).find(item => Number(item.y) === year);
+        if (!yearEntry) throw historyChartError('history_chart_unavailable', `No ${countryName} annual chart is available for ${year}.`);
+        path = `intl/${countryCode}/years/${year}.json`;
+        coverage = `${countryName} reported annual gross for ${year}; values are in USD.`;
+      } else if (period === 'alltime') {
+        if (country.alltime !== true) {
+          throw historyChartError('history_chart_unavailable', `No all-time ${countryName} chart is available.`);
+        }
+        path = `intl/${countryCode}/alltime.json`;
+        coverage = `${countryName} all-time chart as published by the provider; values are in USD.`;
+      } else {
+        throw historyChartError('invalid_history_period', 'International markets support weekend, yearly, or all-time charts.', 400);
+      }
+    } else if (market === 'worldwide' && period === 'alltime') {
+      chartMarket = 'worldwide';
+      territory = 'WW';
+      path = 'alltime/worldwide.json';
+      coverage = 'Historical worldwide gross snapshot as of October 2019; not a current lifetime chart.';
+    } else {
+      throw historyChartError('invalid_market', 'Supported history markets are US, international, and worldwide archive.', 400);
+    }
+
+    const data = await fetchHistoryJson(`history:chart:${market}:${countryCode || ''}:${path}`, path);
+    if (!Array.isArray(data.rows)) {
+      throw historyChartError('history_chart_unavailable', 'The provider has no chart for this market and period.');
+    }
+    if (data.start) selectedDate = data.start;
+    return {
+      market: chartMarket,
+      territory,
+      country: countryName,
+      period,
+      date: selectedDate,
+      startDate: data.start || selectedDate,
+      endDate: data.end || selectedDate,
+      year: data.year || year,
+      asOf: data.asOf || null,
+      currency: 'USD',
+      source: HISTORY_PROVIDER,
+      sourceUrl: `${BOX_OFFICE_HISTORY_API}/${path}`,
+      providerSources: Array.isArray(data.sources) ? data.sources : [],
+      coverage,
+      rows: normalizeHistoryChartRows(data.rows, `${BOX_OFFICE_HISTORY_API}/${path}`, period, year),
     };
   });
 }
@@ -707,12 +895,35 @@ export async function getBoxOfficeHistoryMovie(tmdbId) {
       throw error;
     }
     const movie = await fetchHistoryJson(`history:movie:${lookup.id}`, `movies/${encodeURIComponent(lookup.id)}.json`);
-    if (!Array.isArray(movie.weekends)) {
-      const error = new Error('Box Office History has no weekend history for this movie.');
-      error.status = 404;
-      error.code = 'history_movie_unavailable';
-      throw error;
+    if (![movie.daily, movie.weekends, movie.weeks].some(Array.isArray) && !movie.intl) {
+      throw historyChartError('history_movie_unavailable', 'Box Office History has no chart history for this movie.');
     }
+    const sourceUrl = `${BOX_OFFICE_HISTORY_API}/movies/${encodeURIComponent(lookup.id)}.json`;
+    const mapMovieRows = (rows, amountField = 'gross') => (Array.isArray(rows) ? rows : [])
+      .map(row => ({
+        date: row.date || row.start || null,
+        label: row.label || null,
+        week: row.week ?? null,
+        gross: Number(row[amountField]),
+        cumulativeGross: Number.isFinite(Number(row.toDate)) ? Number(row.toDate) : null,
+        currency: 'USD',
+        source: HISTORY_PROVIDER,
+        sourceUrl,
+        isEstimate: row.estimated === true,
+        verificationStatus: row.estimated === true ? 'provider-estimate' : 'provider-reported',
+      }))
+      .filter(row => row.date && Number.isFinite(row.gross) && row.gross >= 0);
+    const international = (movie.intl?.countries || []).map(country => ({
+      code: country.code,
+      name: country.country,
+      gross: Number.isFinite(Number(country.total)) ? Number(country.total) : null,
+      openingGross: Number.isFinite(Number(country.opening)) ? Number(country.opening) : null,
+      releaseDate: country.releaseDate || null,
+      asOf: country.asOf || null,
+      currency: 'USD',
+      source: HISTORY_PROVIDER,
+      sourceUrl,
+    }));
     return {
       tmdbId,
       title: movie.title || lookup.title,
@@ -721,18 +932,14 @@ export async function getBoxOfficeHistoryMovie(tmdbId) {
       territory: 'US',
       currency: 'USD',
       source: HISTORY_PROVIDER,
-      sourceUrl: `${BOX_OFFICE_HISTORY_API}/movies/${encodeURIComponent(lookup.id)}.json`,
-      lifetimeDomesticGross: Number(lookup.domestic) || null,
-      weekends: movie.weekends.map(row => ({
-        date: row.start,
-        label: row.label,
-        week: row.week ?? null,
-        gross: Number(row.gross),
-        cumulativeGross: Number.isFinite(Number(row.toDate)) ? Number(row.toDate) : null,
-        currency: 'USD',
-        isEstimate: false,
-        verificationStatus: 'provider-reported',
-      })).filter(row => row.date && Number.isFinite(row.gross) && row.gross >= 0),
+      sourceUrl,
+      lifetimeDomesticGross: Number(movie.domestic ?? lookup.domestic) || null,
+      lifetimeInternationalGross: Number(movie.foreign) || null,
+      lifetimeWorldwideGross: Number(movie.worldwide ?? lookup.worldwide) || null,
+      daily: mapMovieRows(movie.daily),
+      weekends: mapMovieRows(movie.weekends),
+      weeks: mapMovieRows(movie.weeks),
+      international,
     };
   });
 }
