@@ -71,6 +71,12 @@ function dateOnly(value) {
   return date.toISOString().slice(0, 10);
 }
 
+function finiteAmount(value) {
+  if (value == null || value === '') return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : null;
+}
+
 function sourcePath(url) {
   try {
     const parsed = new URL(url);
@@ -685,8 +691,8 @@ export async function getBoxOfficeHistoryDay(date) {
       rows: data.rows.map(row => ({
         rank: row.rank ?? null,
         title: row.title,
-        dailyCollection: Number(row.gross),
-        cumulativeCollection: Number.isFinite(Number(row.toDate)) ? Number(row.toDate) : null,
+        dailyCollection: finiteAmount(row.gross),
+        cumulativeCollection: finiteAmount(row.toDate),
         currency: 'USD',
         source: HISTORY_PROVIDER,
         sourceUrl: `${BOX_OFFICE_HISTORY_API}/days/${date}.json`,
@@ -694,7 +700,7 @@ export async function getBoxOfficeHistoryDay(date) {
         dayNumber: row.day ?? null,
         isEstimate: row.estimated === true,
         verificationStatus: row.estimated === true ? 'provider-estimate' : 'provider-reported',
-      })).filter(row => row.title && Number.isFinite(row.dailyCollection) && row.dailyCollection >= 0),
+      })).filter(row => row.title && row.dailyCollection !== null && row.dailyCollection >= 0),
     };
   });
 }
@@ -709,20 +715,20 @@ function chooseHistoryEntry(entries, date, startKey, endKey) {
   return entries.filter(entry => entry[endKey] < date).at(-1) || null;
 }
 
-function normalizeHistoryChartRows(rows, sourceUrl, period, year) {
+function normalizeHistoryChartRows(rows, sourceUrl, period) {
   return rows.map((row, index) => {
     const rawAmount = row.gross ?? row.total ?? row.worldwide ?? row.domestic;
     const rawCumulative = row.toDate ?? (period === 'yearly' ? null : row.total);
-    const amount = Number(rawAmount);
-    const cumulative = rawCumulative == null ? null : Number(rawCumulative);
+    const amount = finiteAmount(rawAmount);
+    const cumulative = finiteAmount(rawCumulative);
     return {
       rank: row.rank ?? index + 1,
       title: row.title,
-      releaseYear: row.year ?? year ?? null,
+      releaseYear: row.year ?? null,
       releaseDate: row.releaseDate || row.openDate || null,
       releaseLabel: row.release || null,
       dailyCollection: amount,
-      cumulativeCollection: Number.isFinite(cumulative) ? cumulative : null,
+      cumulativeCollection: cumulative,
       currency: 'USD',
       source: HISTORY_PROVIDER,
       sourceUrl,
@@ -731,7 +737,7 @@ function normalizeHistoryChartRows(rows, sourceUrl, period, year) {
       isEstimate: row.estimated === true,
       verificationStatus: row.estimated === true ? 'provider-estimate' : 'provider-reported',
     };
-  }).filter(row => row.title && Number.isFinite(row.dailyCollection) && row.dailyCollection >= 0);
+  }).filter(row => row.title && row.dailyCollection !== null && row.dailyCollection >= 0);
 }
 
 function historyChartError(code, message, status = 404) {
@@ -882,7 +888,7 @@ export async function getBoxOfficeHistoryChart({ market, period, date, countryCo
       sourceUrl: `${BOX_OFFICE_HISTORY_API}/${path}`,
       providerSources: Array.isArray(data.sources) ? data.sources : [],
       coverage,
-      rows: normalizeHistoryChartRows(data.rows, `${BOX_OFFICE_HISTORY_API}/${path}`, period, year),
+      rows: normalizeHistoryChartRows(data.rows, `${BOX_OFFICE_HISTORY_API}/${path}`, period),
     };
   });
 }
@@ -912,20 +918,20 @@ export async function getBoxOfficeHistoryMovie(tmdbId) {
         date: row.date || row.start || null,
         label: row.label || null,
         week: row.week ?? null,
-        gross: Number(row[amountField]),
-        cumulativeGross: Number.isFinite(Number(row.toDate)) ? Number(row.toDate) : null,
+        gross: finiteAmount(row[amountField]),
+        cumulativeGross: finiteAmount(row.toDate),
         currency: 'USD',
         source: HISTORY_PROVIDER,
         sourceUrl,
         isEstimate: row.estimated === true,
         verificationStatus: row.estimated === true ? 'provider-estimate' : 'provider-reported',
       }))
-      .filter(row => row.date && Number.isFinite(row.gross) && row.gross >= 0);
+      .filter(row => row.date && row.gross !== null && row.gross >= 0);
     const international = (movie.intl?.countries || []).map(country => ({
       code: country.code,
       name: country.country,
-      gross: Number.isFinite(Number(country.total)) ? Number(country.total) : null,
-      openingGross: Number.isFinite(Number(country.opening)) ? Number(country.opening) : null,
+      gross: finiteAmount(country.total),
+      openingGross: finiteAmount(country.opening),
       releaseDate: country.releaseDate || null,
       asOf: country.asOf || null,
       currency: 'USD',
@@ -941,9 +947,9 @@ export async function getBoxOfficeHistoryMovie(tmdbId) {
       currency: 'USD',
       source: HISTORY_PROVIDER,
       sourceUrl,
-      lifetimeDomesticGross: Number(movie.domestic ?? lookup.domestic) || null,
-      lifetimeInternationalGross: Number(movie.foreign) || null,
-      lifetimeWorldwideGross: Number(movie.worldwide ?? lookup.worldwide) || null,
+      lifetimeDomesticGross: finiteAmount(movie.domestic ?? lookup.domestic),
+      lifetimeInternationalGross: finiteAmount(movie.foreign),
+      lifetimeWorldwideGross: finiteAmount(movie.worldwide ?? lookup.worldwide),
       daily: mapMovieRows(movie.daily),
       weekends: mapMovieRows(movie.weekends),
       weeks: mapMovieRows(movie.weeks),
