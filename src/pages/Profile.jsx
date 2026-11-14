@@ -661,7 +661,7 @@ const Profile = () => {
                 <div className="flex justify-between items-start gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-3">
-                      <Link to={`/${review.mediaType === 'tv' ? 'tv' : 'movie'}/${review.tmdbId}`} className="text-white font-bold text-lg hover:text-cyan-300">
+                      <Link to={`/${review.mediaType === 'tv' ? 'tv' : 'movie'}/${review.source === 'original' ? review.originalId : review.tmdbId}`} className="text-white font-bold text-lg hover:text-cyan-300">
                         {review.title || 'Untitled'}
                       </Link>
                       {review.rating !== undefined && review.rating !== null && (
@@ -701,7 +701,7 @@ const Profile = () => {
               <div key={entry._id} className="flex items-center gap-4 rounded-xl bg-slate-700/30 p-4">
                 {entry.poster && <img src={tmdbImageUrl(entry.poster, 'w92')} alt="" className="h-16 w-11 rounded object-cover" />}
                 <div className="min-w-0 flex-1">
-                  <Link to={`/${entry.mediaType === 'tv' ? 'tv' : 'movie'}/${entry.tmdbId}`} className="font-semibold text-white hover:text-cyan-300">
+                  <Link to={`/${entry.mediaType === 'tv' ? 'tv' : 'movie'}/${entry.source === 'original' ? entry.originalId : entry.tmdbId}`} className="font-semibold text-white hover:text-cyan-300">
                     {entry.title}
                   </Link>
                   <p className="mt-1 text-xs text-gray-400">

@@ -9,6 +9,7 @@ const IMAGE_SIZES = new Set([
 export function tmdbImageUrl(path: string | null | undefined, size = 'original'): string {
   const placeholder = '/placeholder-movie.jpg';
   if (!path) return placeholder;
+  if (/^\/original-films\/[A-Za-z0-9_-]+\.(?:jpg|jpeg|png|webp)$/i.test(path)) return path;
   if (/^\/api\/tmdb\/image\//.test(path) || /^\/uploads\//.test(path)) return apiUrl(path);
   if (/^data:image\//i.test(path)) return path;
   if (/^https?:\/\//i.test(path) && !/^https?:\/\/image\.tmdb\.org\//i.test(path)) return path;

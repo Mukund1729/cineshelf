@@ -5,6 +5,8 @@ const { Schema } = mongoose;
 const ReviewSchema = new Schema({
   user:      { type: Schema.Types.ObjectId, ref: 'User', required: true },
   tmdbId:    { type: Number, required: true },
+  source:    { type: String, enum: ['tmdb', 'original'], default: 'tmdb' },
+  originalId: { type: String },
   title:     { type: String },
   poster:    { type: String },
   overview:  { type: String },

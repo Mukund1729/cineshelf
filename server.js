@@ -21,10 +21,12 @@ import exportRoutes from './routes/export.js';
 import adminRoutes from './routes/admin.js';
 import blogRoutes from './routes/blog.js';
 import tmdbRoutes from './routes/tmdb.js';
+import originalFilmRoutes from './routes/originalFilms.js';
 import gptRoute from './src/api/gpt.js';
 import connectDB from './db.js';
 import { monitorDatabaseStorage } from './services/storageMonitor.js';
 import { syncIndianBoxOfficeFeed } from './services/boxOfficeDataService.js';
+import { seedOriginalFilms } from './services/originalFilmService.js';
 
 dotenv.config();
 
@@ -86,6 +88,7 @@ app.use('/api/export', exportRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/tmdb', tmdbRoutes);
+app.use('/api/original-films', originalFilmRoutes);
 
 // Rate limiting for AI endpoint
 const gptLimiter = rateLimit({
@@ -113,8 +116,10 @@ app.use((err, req, res, next) => {
 
 // Connect to MongoDB and start server
 connectDB()
-  .then(() => {
+  .then(async () => {
     console.log('✅ MongoDB connected');
+    const seeded = await seedOriginalFilms();
+    console.log(`[Original films] Seeded ${seeded.movies} movies and ${seeded.people} people.`);
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Visual.Cineaste API listening on port ${PORT}`);
       startStorageMonitoring();

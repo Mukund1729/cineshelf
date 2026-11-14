@@ -20,7 +20,7 @@ function PosterCard({ movie, size = 'normal' }) {
   const [hovered, setHovered] = useState(false);
   const isMovie = !movie.first_air_date;
   const title = movie.title || movie.name || 'Untitled';
-  const year  = (movie.release_date || movie.first_air_date || '').slice(0, 4);
+  const year  = (movie.release_date || movie.first_air_date || movie.releaseYear || '').toString().slice(0, 4);
   const img   = IMG(movie.poster_path, 'w342');
   const rating = movie.vote_average?.toFixed(1);
   const to = isMovie ? `/movie/${movie.id}` : `/tv/${movie.id}`;
@@ -387,6 +387,7 @@ export default function HomePage() {
   const [popular,    setPopular]    = useState([]);
   const [topRated,   setTopRated]   = useState([]);
   const [popularTV,  setPopularTV]  = useState([]);
+  const [originalFilms, setOriginalFilms] = useState([]);
   const [searchQ,    setSearchQ]    = useState('');
   const [searching,  setSearching]  = useState(false);
   const [searchRes,  setSearchRes]  = useState([]);
@@ -395,6 +396,10 @@ export default function HomePage() {
 
   // Fetch all discovery sections through the backend proxy.
   useEffect(() => {
+    axios.get('/api/original-films')
+      .then(response => setOriginalFilms(response.data?.results || []))
+      .catch(error => console.error('[HomePage] Original film catalog failed:', error.message));
+
     const fetchAll = async () => {
       try {
         const [tRes, pRes, trRes, tvRes] = await Promise.all([
@@ -422,13 +427,29 @@ export default function HomePage() {
     if (debounce.current) clearTimeout(debounce.current);
     if (!searchQ.trim()) { setSearchRes([]); setSearching(false); return; }
     setSearching(true);
+    let active = true;
     debounce.current = setTimeout(async () => {
-      try {
-        const data = await tmdbGet('/search/multi', { query: searchQ, page: 1 });
-        setSearchRes(data.results || []);
-      } catch { setSearchRes([]); }
+      const [tmdbResult, originalResult] = await Promise.allSettled([
+        tmdbGet('/search/multi', { query: searchQ, page: 1 }),
+        axios.get('/api/original-films/search', { params: { query: searchQ } }),
+      ]);
+      if (!active) return;
+      const tmdbItems = tmdbResult.status === 'fulfilled' ? tmdbResult.value.results || [] : [];
+      const originals = originalResult.status === 'fulfilled' ? originalResult.value.data : {};
+      if (!tmdbItems.length && !originals.results?.length && !originals.people?.length) {
+        setSearchRes([]);
+        return;
+      }
+      setSearchRes([
+        ...(originals.results || []).map(result => ({ ...result, media_type: 'movie' })),
+        ...(originals.people || []),
+        ...tmdbItems,
+      ]);
     }, 350);
-    return () => clearTimeout(debounce.current);
+    return () => {
+      active = false;
+      clearTimeout(debounce.current);
+    };
   }, [searchQ]);
 
 
@@ -529,15 +550,16 @@ export default function HomePage() {
                 boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
                 maxHeight: 400, overflowY: 'auto',
               }}>
-                {searchRes.filter(r => r.media_type !== 'person').slice(0, 10).map(r => {
+                {searchRes.slice(0, 10).map(r => {
                   const isTV   = r.media_type === 'tv';
+                  const isPerson = r.media_type === 'person';
                   const title  = r.title || r.name || '';
-                  const year   = (r.release_date || r.first_air_date || '').slice(0, 4);
-                  const poster = r.poster_path ? IMG(r.poster_path, 'w92') : null;
+                  const year   = (r.release_date || r.first_air_date || r.releaseYear || '').toString().slice(0, 4);
+                  const poster = r.poster_path || r.profile_path ? IMG(r.poster_path || r.profile_path, 'w92') : null;
                   return (
                     <Link
-                      key={r.id}
-                      to={isTV ? `/tv/${r.id}` : `/movie/${r.id}`}
+                      key={`${r.media_type || 'movie'}-${r.id}`}
+                      to={isPerson ? `/person/${r.id}` : isTV ? `/tv/${r.id}` : `/movie/${r.id}`}
                       onClick={() => { setSearchQ(''); setSearchRes([]); }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: '0.75rem',
@@ -553,7 +575,7 @@ export default function HomePage() {
                       }
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.875rem', color: 'var(--vc-cream)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-                        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year}{isTV ? ' · TV' : ' · Film'}</div>
+                        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year || (isPerson ? 'Person' : '')}{isPerson ? ' · Person' : isTV ? ' · TV' : ' · Film'}</div>
                       </div>
                       {r.vote_average > 0 && <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-gold)', fontWeight: 700, flexShrink: 0 }}>★ {r.vote_average.toFixed(1)}</span>}
                     </Link>
@@ -617,6 +639,12 @@ export default function HomePage() {
       <div style={{ paddingTop: '4rem' }}>
         <Strip title="Trending This Week" label="🔥 Live" items={trending} linkTo="/trending" size="normal" />
       </div>
+
+      {originalFilms.length > 0 && (
+        <div style={{ paddingTop: '1rem' }}>
+          <Strip title="Original Short Films" label="🎥 Visual Cineaste" items={originalFilms} size="normal" />
+        </div>
+      )}
 
       {/* ── NOW PLAYING (editorial grid) ──────────────────────── */}
       <section style={{ paddingBottom: '4rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>

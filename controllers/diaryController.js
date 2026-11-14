@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import DiaryEntry from '../models/DiaryEntry.js';
+import Movie from '../models/Movie.js';
 
 const parseWatchedAt = value => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -24,6 +25,8 @@ export const createDiaryEntry = async (req, res) => {
   try {
     const {
       tmdbId,
+      source = 'tmdb',
+      originalId,
       title,
       poster = '',
       mediaType = 'movie',
@@ -38,8 +41,17 @@ export const createDiaryEntry = async (req, res) => {
       ? undefined
       : Number(rating);
 
-    if (!Number.isInteger(parsedTmdbId) || parsedTmdbId <= 0) {
+    if (!Number.isSafeInteger(parsedTmdbId)
+      || (source === 'tmdb' && parsedTmdbId <= 0)
+      || (source !== 'tmdb' && source !== 'original')) {
       return res.status(400).json({ success: false, error: 'A valid movie or show is required.' });
+    }
+    if (source === 'original' && (
+      mediaType !== 'movie'
+      || !/^[a-z0-9-]{1,80}$/.test(originalId || '')
+      || !(await Movie.exists({ tmdbId: parsedTmdbId, source: 'original', slug: originalId }))
+    )) {
+      return res.status(400).json({ success: false, error: 'A valid original film is required.' });
     }
     if (typeof title !== 'string' || !title.trim()) {
       return res.status(400).json({ success: false, error: 'Title is required.' });
@@ -61,6 +73,8 @@ export const createDiaryEntry = async (req, res) => {
       title: title.trim(),
       poster: typeof poster === 'string' ? poster.slice(0, 500) : '',
       mediaType,
+      source,
+      originalId: source === 'original' ? originalId : undefined,
       watchedAt: parsedDate,
     };
     if (parsedRating !== undefined) update.rating = parsedRating;

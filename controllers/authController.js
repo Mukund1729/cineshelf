@@ -1,4 +1,6 @@
 import User from '../models/User.js';
+import Watchlist from '../models/Watchlist.js';
+import { getOriginalWatchlistEntries } from '../services/originalFilmService.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -15,6 +17,24 @@ export const signup = async (req, res) => {
     if (usernameExists) return res.status(409).json({ success: false, message: 'Username already taken' });
 
     const user = await User.create({ name, username, email, password });
+    try {
+      await Watchlist.create({
+        user: user._id,
+        movies: getOriginalWatchlistEntries(),
+      });
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { originalWatchlistSeedVersion: 1 } }
+      );
+    } catch (watchlistError) {
+      console.error('[Signup] Original-film watchlist initialization failed:', watchlistError.message);
+      return res.status(500).json({
+        success: false,
+        accountCreated: true,
+        message: 'Your account was created, but the starter watchlist could not be initialized. Sign in and contact support to complete setup.',
+        error: 'watchlist_initialization_failed',
+      });
+    }
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
     const userObj = {

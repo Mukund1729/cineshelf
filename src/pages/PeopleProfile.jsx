@@ -12,7 +12,8 @@ const posterUrl = poster => {
 
 function MediaCard({ item, review }) {
   const mediaType = item.mediaType === 'tv' ? 'tv' : 'movie';
-  const itemLink = item.tmdbId ? `/${mediaType}/${item.tmdbId}` : null;
+  const mediaId = item.source === 'original' ? item.originalId : item.tmdbId;
+  const itemLink = mediaId ? `/${mediaType}/${mediaId}` : null;
   const title = item.title || 'Untitled';
   const poster = posterUrl(item.poster || item.posterUrl || item.poster_path);
 

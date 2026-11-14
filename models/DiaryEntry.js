@@ -3,6 +3,8 @@ import mongoose from 'mongoose';
 const diaryEntrySchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   tmdbId: { type: Number, required: true },
+  source: { type: String, enum: ['tmdb', 'original'], default: 'tmdb' },
+  originalId: { type: String },
   title: { type: String, required: true, trim: true },
   poster: { type: String, default: '' },
   mediaType: { type: String, enum: ['movie', 'tv'], default: 'movie' },

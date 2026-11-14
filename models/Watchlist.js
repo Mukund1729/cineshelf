@@ -7,6 +7,8 @@ const WatchlistSchema = new Schema({
   movies: [
     {
       tmdbId: { type: Number, required: true },
+      source: { type: String, enum: ['tmdb', 'original'], default: 'tmdb' },
+      originalId: { type: String },
       title: String,
       poster: String,
       posterUrl: String, // Alternative field name

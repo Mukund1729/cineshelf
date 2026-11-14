@@ -1,4 +1,5 @@
 import Watchlist from '../models/Watchlist.js';
+import Movie from '../models/Movie.js';
 
 export const getWatchlist = async (req, res) => {
   try {
@@ -20,9 +21,28 @@ export const addToWatchlist = async (req, res) => {
     
     // Check whether this movie or TV show is already saved.
     const mediaType = req.body.mediaType || 'movie';
+    if (req.body.source && !['tmdb', 'original'].includes(req.body.source)) {
+      return res.status(400).json({ error: 'Invalid movie source.' });
+    }
+    const source = req.body.source === 'original' ? 'original' : 'tmdb';
     const tmdbId = Number(req.body.tmdbId || req.body.id);
+    const originalId = source === 'original' ? String(req.body.originalId || '') : undefined;
+    if (!Number.isSafeInteger(tmdbId) || (source === 'tmdb' && tmdbId <= 0)
+      || (source === 'original' && mediaType !== 'movie')) {
+      return res.status(400).json({ error: 'Invalid movie ID.' });
+    }
+    if (source === 'original') {
+      const originalMovie = await Movie.findOne({
+        tmdbId,
+        source: 'original',
+        slug: originalId,
+      }).select('_id').lean();
+      if (!originalMovie) return res.status(404).json({ error: 'Original film not found.' });
+    }
     const existingMovie = watchlist.movies.find(m => (
-      m.tmdbId === tmdbId && (m.mediaType || 'movie') === mediaType
+      source === 'original'
+        ? m.tmdbId === tmdbId || (m.source === 'original' && m.originalId === originalId)
+        : m.tmdbId === tmdbId && (m.mediaType || 'movie') === mediaType
     ));
     if (existingMovie) {
       return res.status(400).json({
@@ -33,6 +53,8 @@ export const addToWatchlist = async (req, res) => {
     // Normalize movie/TV show data to match schema
     const movieData = {
       tmdbId,
+      source,
+      ...(originalId ? { originalId } : {}),
       title: req.body.title || req.body.name, // Handle both movie.title and TV show.name
       poster: req.body.poster || req.body.posterUrl || req.body.poster_path,
       posterUrl: req.body.posterUrl || req.body.poster_path || req.body.poster,
@@ -58,7 +80,19 @@ export const removeFromWatchlist = async (req, res) => {
   try {
     const watchlist = await Watchlist.findOne({ user: req.user.id });
     if (!watchlist) return res.status(404).json({ error: 'Watchlist not found' });
-    watchlist.movies = watchlist.movies.filter(m => m.tmdbId != req.params.tmdbId);
+    const key = String(req.params.tmdbId);
+    const original = key.match(/^original-([a-z0-9-]{1,80})$/);
+    if (original) {
+      watchlist.movies = watchlist.movies.filter(movie => !(
+        movie.source === 'original' && movie.originalId === original[1]
+      ));
+    } else {
+      const tmdbId = Number(key);
+      if (!Number.isSafeInteger(tmdbId)) {
+        return res.status(400).json({ error: 'Invalid movie ID.' });
+      }
+      watchlist.movies = watchlist.movies.filter(movie => movie.tmdbId !== tmdbId);
+    }
     await watchlist.save();
     res.json(watchlist);
   } catch (err) {

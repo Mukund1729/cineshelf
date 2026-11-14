@@ -40,8 +40,15 @@ export default function Watchlist() {
   useEffect(() => {
     if (search.trim().length < 2) { setSearchResults([]); return; }
     const timer = setTimeout(() => {
-      axios.get('/api/tmdb/search', { params: { query: search, type: 'multi', page: 1 } })
-        .then(res => setSearchResults((res.data?.results || []).filter(m => m.media_type !== 'person').slice(0, 8)))
+      Promise.all([
+        axios.get('/api/tmdb/search', { params: { query: search, type: 'multi', page: 1 } }),
+        axios.get('/api/original-films/search', { params: { query: search } })
+          .catch(() => ({ data: { results: [] } })),
+      ])
+        .then(([tmdbResponse, originalResponse]) => setSearchResults([
+          ...(originalResponse.data?.results || []),
+          ...(tmdbResponse.data?.results || []).filter(movie => movie.media_type !== 'person'),
+        ].slice(0, 8)))
         .catch(() => setSearchResults([]));
     }, 350);
     return () => clearTimeout(timer);
@@ -53,11 +60,13 @@ export default function Watchlist() {
     setSaving(true);
     try {
       await axios.post('/api/watchlist', {
-        tmdbId: selectedMovie.id,
+        tmdbId: selectedMovie.tmdbId ?? selectedMovie.id,
+        source: selectedMovie.source || 'tmdb',
+        ...(selectedMovie.source === 'original' ? { originalId: selectedMovie.originalId || selectedMovie.id } : {}),
         title: selectedMovie.title || selectedMovie.name,
         poster: selectedMovie.poster_path ? tmdbImageUrl(selectedMovie.poster_path, 'w500') : '',
         overview: selectedMovie.overview || '',
-        releaseDate: selectedMovie.release_date || selectedMovie.first_air_date || '',
+        releaseDate: selectedMovie.release_date || selectedMovie.first_air_date || (selectedMovie.releaseYear ? String(selectedMovie.releaseYear) : ''),
         voteAverage: selectedMovie.vote_average || 0,
         mediaType: selectedMovie.media_type || 'movie',
       }, { headers });
@@ -74,10 +83,16 @@ export default function Watchlist() {
     }
   };
 
-  const removeMovie = async (tmdbId) => {
+  const removeMovie = async (movie) => {
+    const tmdbId = movie.tmdbId || movie.id;
+    const removeKey = movie.source === 'original'
+      ? `original-${movie.originalId || movie.id}`
+      : tmdbId;
     try {
-      await axios.delete(`/api/watchlist/${tmdbId}`, { headers });
-      setMovies(prev => prev.filter(m => (m.tmdbId || m.id) !== tmdbId));
+      await axios.delete(`/api/watchlist/${removeKey}`, { headers });
+      setMovies(prev => prev.filter(item => movie.source === 'original'
+        ? (item.originalId || item.id) !== (movie.originalId || movie.id)
+        : (item.tmdbId || item.id) !== tmdbId));
       showToast('Removed from watchlist.');
     } catch {
       showToast('Failed to remove.');
@@ -159,7 +174,7 @@ export default function Watchlist() {
                           {m.title || m.name}
                         </div>
                         <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-slate)' }}>
-                          {(m.release_date || m.first_air_date || '').slice(0, 4)}
+                          {(m.release_date || m.first_air_date || m.releaseYear || '').toString().slice(0, 4)}
                           {m.vote_average > 0 ? ` · ★ ${m.vote_average.toFixed(1)}` : ''}
                         </div>
                       </div>
@@ -181,7 +196,7 @@ export default function Watchlist() {
                     {selectedMovie.title || selectedMovie.name}
                   </div>
                   <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
-                    {(selectedMovie.release_date || selectedMovie.first_air_date || '').slice(0, 4)}
+                    {(selectedMovie.release_date || selectedMovie.first_air_date || selectedMovie.releaseYear || '').toString().slice(0, 4)}
                   </div>
                 </div>
                 <button
@@ -229,12 +244,13 @@ export default function Watchlist() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '1rem' }}>
             {movies.map(movie => {
               const id = movie.tmdbId || movie.id;
+              const routeId = movie.source === 'original' ? movie.originalId || movie.id : id;
               const poster = movie.poster || movie.posterUrl || '';
               const title = movie.title || 'Unknown';
               const year = movie.releaseDate ? movie.releaseDate.slice(0, 4) : '';
               return (
                 <div key={id} style={{ position: 'relative' }}>
-                  <Link to={`/movie/${id}`} style={{ textDecoration: 'none', display: 'block' }}>
+                  <Link to={`/movie/${routeId}`} style={{ textDecoration: 'none', display: 'block' }}>
                     <div className="vc-poster-card" style={{ aspectRatio: '2/3' }}>
                       {poster ? (
                         <img src={tmdbImageUrl(poster, 'w300')} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -251,7 +267,7 @@ export default function Watchlist() {
                   </Link>
                   {/* Remove button */}
                   <button
-                    onClick={() => removeMovie(id)}
+                    onClick={() => removeMovie(movie)}
                     title="Remove from watchlist"
                     style={{
                       position: 'absolute', top: 6, right: 6,

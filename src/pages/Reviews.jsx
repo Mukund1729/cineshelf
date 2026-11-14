@@ -21,7 +21,7 @@ function ReviewCard({ review, onDelete, onEdit }) {
       onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'}
       onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'}
     >
-      <Link to={`/movie/${review.tmdbId}`} style={{ textDecoration: 'none', display: 'flex', gap: '1rem', padding: '1rem' }}>
+      <Link to={`/movie/${review.source === 'original' ? review.originalId : review.tmdbId}`} style={{ textDecoration: 'none', display: 'flex', gap: '1rem', padding: '1rem' }}>
         <div style={{ flexShrink: 0 }}>
           {img ? (
             <img

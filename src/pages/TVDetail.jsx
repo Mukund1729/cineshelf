@@ -112,12 +112,17 @@ export default function TVDetail() {
     setSearchLoading(true);
     debounceRef.current = window.setTimeout(async () => {
       try {
-        const [movies, people] = await Promise.all([
+        const [movies, people, originals] = await Promise.all([
           searchMovies(searchQuery),
           searchPeople(searchQuery),
+          axios.get('/api/original-films/search', { params: { query: searchQuery } })
+            .then(response => response.data)
+            .catch(() => ({ results: [], people: [] })),
         ]);
         if (active) {
           setSearchResults([
+            ...(originals?.results || []).map(result => ({ ...result, media_type: 'movie' })),
+            ...(originals?.people || []),
             ...(movies?.results || []).map(result => ({ ...result, media_type: 'movie' })),
             ...(people?.results || []).map(result => ({ ...result, media_type: 'person' })),
           ]);

@@ -41,6 +41,7 @@ const userSchema = new mongoose.Schema({
       poster:  { type: String },
     }
   ],
+  originalWatchlistSeedVersion: { type: Number, default: 0 },
   isAdmin:     { type: Boolean, default: false },
   isVerified:  { type: Boolean, default: false },
   lastActive:  { type: Date, default: Date.now },

@@ -147,6 +147,12 @@ The international market list and chart endpoints use the documented static JSON
 
 Only Box Office reports/cache use TTL indexes. Permanent users, reviews, watchlists, and chat messages do not. MongoDB storage checks use `dbStats`; the API logs threshold warnings at 60%, 75%, 85%, and 90% of `MONGO_STORAGE_LIMIT_BYTES` (default 512 MiB). `MONGO_STORAGE_BLOCK_AT_PERCENT` (default 85) pauses non-essential Box Office cache writes only. Admins can read the current snapshot at `GET /api/admin/storage`.
 
+## First-party short films
+
+`Ardha` and `Hasrat` are stored as first-party movie records, with poster files served from `public/original-films/` rather than stored in MongoDB. Their details, clickable cast/crew profiles, director biography, exact runtimes, YouTube film links, reviews, ratings, diary entries, and watchlist controls use the existing movie experience. The catalog endpoints are `GET /api/original-films`, `GET /api/original-films/search?query=...`, `GET /api/original-films/:slug`, and `GET /api/original-films/people/:slug`.
+
+The API seeds the two film/person records idempotently at startup. New accounts receive both films in their watchlist once at signup; to add them to existing accounts, first confirm the API points at the intended MongoDB database, then run `npm run migrate:original-watchlists` once. The migration adds only missing entries, preserves existing watchlist data, and marks processed users so login never re-adds films a user later removes.
+
 ### Encrypted S3-compatible backups
 
 MongoDB backups are encrypted locally with AES-256-GCM before upload. The backup process requires MongoDB Database Tools (`mongodump`) and AWS CLI v2. Configure `MONGO_URI`, `S3_BUCKET`, `S3_PREFIX`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_DEFAULT_REGION`, and a 32-byte Base64 `BACKUP_ENCRYPTION_KEY`; set `S3_ENDPOINT_URL` for R2/B2/other compatible services. Keep all credentials and the encryption key in the deployment secret store, not in source control.

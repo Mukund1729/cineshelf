@@ -75,13 +75,17 @@ export default function Diary() {
       setSearching(true);
       setSearchError('');
       try {
-        const response = await axios.get('/api/tmdb/search', {
-          params: { query, type: 'multi', page: 1 },
-        });
+        const [response, originalResponse] = await Promise.all([
+          axios.get('/api/tmdb/search', { params: { query, type: 'multi', page: 1 } }),
+          axios.get('/api/original-films/search', { params: { query } })
+            .catch(() => ({ data: { results: [] } })),
+        ]);
         if (active) {
-          setResults((response.data?.results || [])
-            .filter(item => item.media_type === 'movie' || item.media_type === 'tv')
-            .slice(0, 8));
+          setResults([
+            ...(originalResponse.data?.results || []).map(item => ({ ...item, media_type: 'movie' })),
+            ...(response.data?.results || [])
+              .filter(item => item.media_type === 'movie' || item.media_type === 'tv'),
+          ].slice(0, 8));
         }
       } catch {
         if (active) {
@@ -117,7 +121,9 @@ export default function Diary() {
     try {
       const mediaType = selectedMovie.media_type === 'tv' ? 'tv' : 'movie';
       const response = await axios.post('/api/diary', {
-        tmdbId: selectedMovie.id,
+        tmdbId: selectedMovie.tmdbId ?? selectedMovie.id,
+        source: selectedMovie.source || 'tmdb',
+        ...(selectedMovie.source === 'original' ? { originalId: selectedMovie.originalId || selectedMovie.id } : {}),
         title: selectedMovie.title || selectedMovie.name,
         poster: selectedMovie.poster_path
           ? tmdbImageUrl(selectedMovie.poster_path, 'w342')
@@ -201,7 +207,7 @@ export default function Diary() {
                         <div style={{ width: 58, height: 86, borderRadius: 7, background: 'var(--vc-bg-elevated)', display: 'grid', placeItems: 'center', flexShrink: 0 }}>🎬</div>
                       )}
                       <div style={{ minWidth: 0, flex: 1 }}>
-                        <Link to={`/${entry.mediaType === 'tv' ? 'tv' : 'movie'}/${entry.tmdbId}`} style={{ color: 'var(--vc-cream)', textDecoration: 'none', fontWeight: 600 }}>
+                        <Link to={`/${entry.mediaType === 'tv' ? 'tv' : 'movie'}/${entry.source === 'original' ? entry.originalId : entry.tmdbId}`} style={{ color: 'var(--vc-cream)', textDecoration: 'none', fontWeight: 600 }}>
                           {entry.title}
                         </Link>
                         <div style={{ marginTop: '0.35rem', color: 'var(--vc-slate)', fontSize: '0.75rem', textTransform: 'uppercase' }}>

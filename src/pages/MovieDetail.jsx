@@ -26,6 +26,7 @@ const MovieDetail = () => {
   // Add to Watchlist state
   const [addingToWatchlist, setAddingToWatchlist] = useState(false);
   const [watchlistToast, setWatchlistToast] = useState('');
+  const [shareNotice, setShareNotice] = useState('');
   // Review form state
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState('');
@@ -60,12 +61,21 @@ const MovieDetail = () => {
     debounceRef.current = setTimeout(async () => {
       try {
         // Search both movies and people, combine results
-        const [movieRes, peopleRes] = await Promise.all([
+        const [movieRes, peopleRes, originalRes] = await Promise.all([
           searchMovies(searchQuery),
-          searchPeople(searchQuery)
+          searchPeople(searchQuery),
+          axios.get('/api/original-films/search', { params: { query: searchQuery } })
+            .then(response => response.data)
+            .catch(() => ({ results: [], people: [] })),
         ]);
-        let movieResults = (movieRes?.results || []).map(r => ({ ...r, media_type: 'movie' }));
-        let peopleResults = (peopleRes?.results || []).map(r => ({ ...r, media_type: 'person' }));
+        const movieResults = [
+          ...(originalRes?.results || []).map(result => ({ ...result, media_type: 'movie' })),
+          ...(movieRes?.results || []).map(result => ({ ...result, media_type: 'movie' })),
+        ];
+        const peopleResults = [
+          ...(originalRes?.people || []),
+          ...(peopleRes?.results || []).map(result => ({ ...result, media_type: 'person' })),
+        ];
         // Optionally, add TV search here if needed
         setSearchResults([...movieResults, ...peopleResults]);
         setSearchLoading(false);
@@ -79,14 +89,35 @@ const MovieDetail = () => {
 
   // Fetch movie data from TMDb API
   const [movie, setMovie] = useState(null);
+  const [movieLoading, setMovieLoading] = useState(true);
+  const [movieError, setMovieError] = useState('');
   useEffect(() => {
     if (!id) return;
-    tmdbGet(`/movie/${id}`, { append_to_response: 'credits,videos' })
-      .then(async data => {
-        // Fetch watch providers and merge into movie object
-        const providersData = await tmdbGet(`/movie/${id}/watch/providers`);
-        setMovie({ ...data, 'watch/providers': providersData });
-      });
+    let active = true;
+    setMovie(null);
+    setMovieError('');
+    setMovieLoading(true);
+    const fetchMovie = async () => {
+      try {
+        let data;
+        if (/^\d+$/.test(id)) {
+          data = await tmdbGet(`/movie/${id}`, { append_to_response: 'credits,videos' });
+          const providersData = await tmdbGet(`/movie/${id}/watch/providers`).catch(() => null);
+          data = { ...data, 'watch/providers': providersData };
+        } else {
+          const response = await axios.get(`/api/original-films/${encodeURIComponent(id)}`);
+          data = response.data?.data;
+        }
+        if (!data) throw new Error('Movie details were not returned.');
+        if (active) setMovie(data);
+      } catch (error) {
+        if (active) setMovieError(error.response?.data?.error || 'Could not load movie details.');
+      } finally {
+        if (active) setMovieLoading(false);
+      }
+    };
+    fetchMovie();
+    return () => { active = false; };
   }, [id]);
 
   // Add to Watchlist handler
@@ -100,6 +131,8 @@ const MovieDetail = () => {
     try {
       await axios.post('/api/watchlist', {
         tmdbId: movie.id,
+        source: movie.source || 'tmdb',
+        ...(movie.source === 'original' ? { originalId: movie.slug } : {}),
         title: movie.title,
         poster: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
         posterUrl: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
@@ -114,21 +147,36 @@ const MovieDetail = () => {
       setWatchlistToast('Added to watchlist!');
     } catch (err) {
       console.error('Watchlist add error:', err);
-      setWatchlistToast('Failed to add. Try again.');
+      setWatchlistToast(err.response?.data?.error || 'Failed to add. Try again.');
     } finally {
       setAddingToWatchlist(false);
       setTimeout(() => setWatchlistToast(''), 2000);
     }
   };
 
+  const handleShare = async () => {
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: movie.title, url: window.location.href });
+      } else {
+        await navigator.clipboard.writeText(window.location.href);
+        setShareNotice('Link copied.');
+      }
+    } catch (error) {
+      if (error.name !== 'AbortError') setShareNotice('Could not share this link.');
+    }
+    setTimeout(() => setShareNotice(''), 2500);
+  };
+
   // Submit review handler
   const [reviews, setReviews] = useState([]);
   const [reviewsError, setReviewsError] = useState(null);
   useEffect(() => {
+    if (!movie?.id) return undefined;
     let active = true;
     setReviews([]);
     setReviewsError(null);
-    axios.get(`/api/review/movie/${id}`)
+    axios.get(`/api/review/movie/${movie.id}`)
       .then(response => {
         if (active) setReviews(Array.isArray(response.data?.data) ? response.data.data : []);
       })
@@ -136,7 +184,7 @@ const MovieDetail = () => {
         if (active) setReviewsError(err.response?.data?.error || 'Could not load reviews.');
       });
     return () => { active = false; };
-  }, [id]);
+  }, [movie?.id]);
 
   const ratingDistribution = Array.from({ length: 10 }, (_, index) => ({
     rating: index + 1,
@@ -177,6 +225,8 @@ const MovieDetail = () => {
     try {
       const res = await axios.post('/api/review', {
         tmdbId: movie.id,
+        source: movie.source || 'tmdb',
+        ...(movie.source === 'original' ? { originalId: movie.slug } : {}),
         title: movie.title,
         poster: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
         posterUrl: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
@@ -228,6 +278,8 @@ const MovieDetail = () => {
     try {
       await axios.post('/api/diary', {
         tmdbId: movie.id,
+        source: movie.source || 'tmdb',
+        ...(movie.source === 'original' ? { originalId: movie.slug } : {}),
         title: movie.title,
         poster: movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '',
         mediaType: 'movie',
@@ -254,12 +306,14 @@ const MovieDetail = () => {
 
   // Fetch box office from backend
   useEffect(() => {
-    if (!id) return;
     setBoxOfficeError(null);
     setBoxOffice([]);
     setRawBoxOfficeData(null);
-    axios.get(`/api/boxoffice/movie/${id}`)
+    if (!movie?.id || movie.source === 'original') return undefined;
+    let active = true;
+    axios.get(`/api/boxoffice/movie/${movie.id}`)
       .then(res => {
+        if (!active) return;
         const data = res.data;
         if (!data) return;
 
@@ -329,9 +383,10 @@ const MovieDetail = () => {
         setRawBoxOfficeData(data);
       })
       .catch(err => {
-        console.warn('Could not load box office:', err.message);
+        if (active) console.warn('Could not load box office:', err.message);
       });
-  }, [id]);
+    return () => { active = false; };
+  }, [movie?.id, movie?.source]);
 
   // Recommendations and actor movies state
   const [recommendations, setRecommendations] = useState([]);
@@ -341,6 +396,11 @@ const MovieDetail = () => {
   useEffect(() => {
     const fetchRecsAndActorMovies = async () => {
       if (!movie) return;
+      setActorMovies([]);
+      if (movie.source === 'original') {
+        setRecommendations(movie.related || []);
+        return;
+      }
       // Fetch recommendations
       try {
         const recData = await tmdbGet(`/movie/${movie.id}/recommendations`);
@@ -456,6 +516,8 @@ const MovieDetail = () => {
       )}
       {/* Main Content Container */}
       <div className="vc-container movie-detail-content relative z-10 pt-10 pb-16">
+        {movieLoading && <p className="py-12 text-center text-cyan-200">Loading movie details…</p>}
+        {!movieLoading && movieError && <p role="alert" className="py-12 text-center text-red-300">{movieError}</p>}
         {/* Main Movie Content with Poster and Info */}
         {movie && (
           <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start p-0 mb-10 mt-2 md:mt-4 bg-gradient-to-br from-[#10111a]/80 via-[#181c24]/70 to-[#10111a]/80 rounded-3xl shadow-2xl border border-cyan-900/50 backdrop-blur-xl mx-auto px-4 md:px-6 py-6 md:py-8" style={{maxWidth:'100%', boxShadow:'0 12px 36px 0 rgba(0,0,0,0.30)'}}>
@@ -531,6 +593,16 @@ const MovieDetail = () => {
                     );
                   })}
                 </div>
+                {movie.watchUrl && (
+                  <a
+                    href={movie.watchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 mt-3 bg-red-600 hover:bg-red-700 text-white rounded-full shadow text-sm font-bold transition"
+                  >
+                    Watch Full Film on YouTube
+                  </a>
+                )}
                 {movie.videos?.results?.find(v => v.site === 'YouTube' && v.type === 'Trailer') && (
                   <a
                     href={`https://www.youtube.com/watch?v=${movie.videos.results.find(v => v.site === 'YouTube' && v.type === 'Trailer').key}`}
@@ -549,25 +621,32 @@ const MovieDetail = () => {
             <div className="flex-1 w-full bg-transparent px-0 md:px-6">
               <h1 className="text-2xl md:text-4xl font-bold font-playfair flex items-center mb-4 text-cyan-200 drop-shadow-lg">
                 {movie.title}
-                {movie.release_date && (
-                  <span className="text-cyan-400 text-sm md:text-lg font-normal ml-2">({movie.release_date.split("-")[0]})</span>
+                {(movie.release_date || movie.releaseYear) && (
+                  <span className="text-cyan-400 text-sm md:text-lg font-normal ml-2">({movie.release_date ? movie.release_date.split("-")[0] : movie.releaseYear})</span>
                 )}
               </h1>
               <div className="flex flex-wrap gap-2 md:gap-4 text-sm md:text-base bg-white/10 p-3 md:p-4 rounded-xl border border-cyan-900/30 mb-5 shadow-inner font-semibold tracking-wide" style={{fontSize:'0.9rem', lineHeight:'1.5'}}>
-                <div className="flex items-center gap-1.5">
-                  <FiStar className="text-cyan-300 text-lg" />
-                  <span>{movie.vote_average?.toFixed(1)}/10</span>
-                </div>
+                {movie.source === 'original' ? (
+                  <div className="flex items-center gap-1.5">
+                    <FiStar className="text-cyan-300 text-lg" />
+                    <span>{ratingCount ? `${averageRating.toFixed(1)}/10 · ${ratingCount} ratings` : 'Not rated yet'}</span>
+                  </div>
+                ) : movie.vote_average != null && (
+                  <div className="flex items-center gap-1.5">
+                    <FiStar className="text-cyan-300 text-lg" />
+                    <span>{movie.vote_average?.toFixed(1)}/10</span>
+                  </div>
+                )}
                 {movie.revenue && (
                   <div className="flex items-center gap-1.5">
                     <FiDollarSign className="text-green-300 text-lg" />
                     <span>{movie.revenue.toLocaleString()}</span>
                   </div>
                 )}
-                {movie.runtime && (
+                {(movie.runtimeLabel || movie.runtime) && (
                   <div className="flex items-center gap-1.5">
                     <FiClock className="text-pink-300 text-lg" />
-                    <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m</span>
+                    <span>{movie.runtimeLabel || `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`}</span>
                   </div>
                 )}
                 {movie.release_date && (
@@ -577,6 +656,7 @@ const MovieDetail = () => {
                   </div>
                 )}
               </div>
+              {movie.tagline && <p className="mb-4 italic text-cyan-100">“{movie.tagline}”</p>}
               {/* Overview */}
               <section className="mb-5">
                 <h3 className="text-xs text-cyan-400 uppercase tracking-wider border-b border-gray-700 mb-1 pb-0.5 font-semibold">Overview</h3>
@@ -584,6 +664,11 @@ const MovieDetail = () => {
                   {movie.overview || 'No overview available.'}
                 </p>
               </section>
+              {movie.quote && (
+                <blockquote className="mb-5 border-l-2 border-cyan-500 pl-4 text-sm italic text-gray-200">
+                  “{movie.quote}”
+                </blockquote>
+              )}
               {/* Crew Info */}
               <section className="mb-4">
                 <h3 className="text-xs text-cyan-400 uppercase tracking-wider border-b border-gray-700 mb-1 pb-0.5 font-semibold">Crew</h3>
@@ -620,8 +705,28 @@ const MovieDetail = () => {
                       ))}
                     </span>
                   )}
+                  {movie.credits?.crew?.filter(c => !['Director', 'Writer', 'Screenplay'].includes(c.job)).map((credit, index) => (
+                    <span className="text-sm md:text-base" key={`${credit.id}-${credit.job}-${index}`}>
+                      <span className="text-cyan-300 font-semibold">{credit.job}</span>{' '}
+                      <Link to={`/person/${credit.id}`} className="text-cyan-200 hover:text-pink-400 underline font-semibold transition-colors">
+                        {credit.name}
+                      </Link>
+                    </span>
+                  ))}
                 </div>
               </section>
+              {movie.specialThanks?.length > 0 && (
+                <section className="mb-4">
+                  <h3 className="text-xs text-cyan-400 uppercase tracking-wider border-b border-gray-700 mb-1 pb-0.5 font-semibold">Special Thanks</h3>
+                  <div className="flex flex-wrap gap-x-3 gap-y-1">
+                    {movie.specialThanks.map((person, index) => (
+                      <Link key={`${person.id}-${index}`} to={`/person/${person.id}`} className="text-sm text-cyan-200 underline hover:text-pink-400">
+                        {person.name}
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
               {/* ...existing code... (Cast section removed from here) */}
             </div>
           </div>
@@ -654,7 +759,7 @@ const MovieDetail = () => {
           </div>
         )}
         {/* Box Office Section (now outside the highlight box, always visible) */}
-        <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto mt-2 mb-10">
+        {movie && movie.source !== 'original' && <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto mt-2 mb-10">
           <h4 className="text-base text-cyan-300 uppercase tracking-wider font-bold mb-2">Box Office</h4>
           {boxOfficeError ? (
             <p className="text-base text-red-400">{boxOfficeError}</p>
@@ -690,7 +795,7 @@ const MovieDetail = () => {
               )}
             </div>
           )}
-        </div>
+        </div>}
         {/* Reviews Section (full width) */}
         <section className="bg-[#181c24]/95 rounded-2xl p-0 mb-8 relative z-20 border border-cyan-900/30 shadow-xl overflow-hidden">
           {/* Add to Watchlist Button - prominent, card style */}
@@ -713,7 +818,17 @@ const MovieDetail = () => {
               </button>
               {watchlistToast && <span className="text-cyan-300 text-base font-semibold drop-shadow">{watchlistToast}</span>}
             </div>
-            <div className="hidden md:block text-gray-400 text-sm italic font-lato">Keep track of your favorites and never miss a rewatch!</div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleShare}
+                className="rounded-full border border-cyan-700/50 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-900/30"
+              >
+                Share
+              </button>
+              {shareNotice && <span role="status" className="text-sm text-cyan-300">{shareNotice}</span>}
+              <div className="hidden md:block text-gray-400 text-sm italic font-lato">Keep track of your favorites and never miss a rewatch!</div>
+            </div>
           </div>
           {/* Divider */}
           <div className="w-full h-0.5 bg-gradient-to-r from-cyan-900/0 via-cyan-900/40 to-cyan-900/0 my-0" />

@@ -3,6 +3,7 @@ import ReviewComment from '../models/ReviewComment.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 import DiaryEntry from '../models/DiaryEntry.js';
+import Movie from '../models/Movie.js';
 
 const parseWatchedAt = value => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -10,6 +11,10 @@ const parseWatchedAt = value => {
   return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value ? null : date;
 };
 const isValidObjectId = value => /^[a-f\d]{24}$/i.test(value);
+
+async function isOriginalMovieId(tmdbId) {
+  return tmdbId < 0 && Boolean(await Movie.exists({ tmdbId, source: 'original' }));
+}
 
 // GET /api/review — Get current user's reviews
 export const getReviews = async (req, res) => {
@@ -38,7 +43,7 @@ export const getReviewsByUser = async (req, res) => {
 export const getReviewsByMovie = async (req, res) => {
   try {
     const tmdbId = Number(req.params.tmdbId);
-    if (!Number.isInteger(tmdbId) || tmdbId <= 0) {
+    if (!Number.isSafeInteger(tmdbId) || (tmdbId <= 0 && !(await isOriginalMovieId(tmdbId)))) {
       return res.status(400).json({ success: false, error: 'A valid movie ID is required.' });
     }
 
@@ -154,12 +159,33 @@ export const addReviewComment = async (req, res) => {
 // POST /api/review — Add or update a review
 export const addReview = async (req, res) => {
   try {
-    const { tmdbId, title, poster = '', overview, rating, review = '', spoiler, mediaType = 'movie' } = req.body;
+    const {
+      tmdbId,
+      source = 'tmdb',
+      originalId,
+      title,
+      poster = '',
+      overview,
+      rating,
+      review = '',
+      spoiler,
+      mediaType = 'movie',
+    } = req.body;
+    const parsedTmdbId = Number(tmdbId);
     const watchedAt = parseWatchedAt(req.body.watchedAt || new Date().toISOString().slice(0, 10));
     const parsedRating = Number(rating);
     const reviewText = typeof review === 'string' ? review.trim() : '';
-    if (!tmdbId || !Number.isInteger(Number(tmdbId)) || Number(tmdbId) <= 0) {
+    if (!Number.isSafeInteger(parsedTmdbId)
+      || (source === 'tmdb' && parsedTmdbId <= 0)
+      || (source !== 'tmdb' && source !== 'original')) {
       return res.status(400).json({ success: false, error: 'A valid movie or TV show ID is required.' });
+    }
+    if (source === 'original' && (
+      mediaType !== 'movie'
+      || !/^[a-z0-9-]{1,80}$/.test(originalId || '')
+      || !(await Movie.exists({ tmdbId: parsedTmdbId, source: 'original', slug: originalId }))
+    )) {
+      return res.status(400).json({ success: false, error: 'A valid original film is required.' });
     }
     if (!watchedAt) return res.status(400).json({ success: false, error: 'Enter a valid watched date.' });
     if (!Number.isFinite(parsedRating) || parsedRating < 1 || parsedRating > 10) {
@@ -174,9 +200,11 @@ export const addReview = async (req, res) => {
 
     // Upsert: create or update the user's review for this title
     const savedReview = await Review.findOneAndUpdate(
-      { user: req.user.id, tmdbId: Number(tmdbId) },
+      { user: req.user.id, tmdbId: parsedTmdbId },
       {
         $set: {
+          source,
+          originalId: source === 'original' ? originalId : undefined,
           title: typeof title === 'string' ? title.trim() : '',
           poster: typeof poster === 'string' ? poster.slice(0, 500) : '',
           overview: typeof overview === 'string' ? overview : '',
@@ -195,13 +223,15 @@ export const addReview = async (req, res) => {
         title: typeof title === 'string' ? title.trim() : '',
         poster: typeof poster === 'string' ? poster.slice(0, 500) : '',
         mediaType,
+        source,
+        originalId: source === 'original' ? originalId : undefined,
         watchedAt,
         rating: parsedRating,
       };
       if (reviewText) diaryUpdate.note = reviewText;
       const diaryEntry = await DiaryEntry.findOneAndUpdate(
-        { user: req.user.id, tmdbId: Number(tmdbId), mediaType, watchedAt },
-        { $set: diaryUpdate, $setOnInsert: { user: req.user.id, tmdbId: Number(tmdbId) } },
+        { user: req.user.id, tmdbId: parsedTmdbId, mediaType, watchedAt },
+        { $set: diaryUpdate, $setOnInsert: { user: req.user.id, tmdbId: parsedTmdbId } },
         { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
       );
       res.json({ success: true, data: savedReview, diaryEntry, message: 'Review saved to your profile and diary.' });
