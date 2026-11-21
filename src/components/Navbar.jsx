@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { to: '/cinematic-picks', label: 'Picks' },
   { to: '/boxoffice',      label: 'Box Office' },
   { to: '/journal',        label: 'Journal' },
+  { to: '/community',      label: 'Community' },
   { to: '/people',         label: 'People' },
 ];
 

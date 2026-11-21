@@ -23,12 +23,14 @@ import blogRoutes from './routes/blog.js';
 import journalRoutes from './routes/journal.js';
 import tmdbRoutes from './routes/tmdb.js';
 import originalFilmRoutes from './routes/originalFilms.js';
+import communityRoutes from './routes/community.js';
 import gptRoute from './src/api/gpt.js';
 import connectDB from './db.js';
 import { monitorDatabaseStorage } from './services/storageMonitor.js';
 import { syncIndianBoxOfficeFeed } from './services/boxOfficeDataService.js';
 import { migrateOriginalWatchlists, seedOriginalFilms } from './services/originalFilmService.js';
 import { syncMediumJournal } from './services/mediumJournalService.js';
+import { ensureFeaturedCommunities } from './services/communitySeedService.js';
 
 dotenv.config();
 
@@ -106,6 +108,7 @@ app.use('/api/blog', blogRoutes);
 app.use('/api/journal', journalRoutes);
 app.use('/api/tmdb', tmdbRoutes);
 app.use('/api/original-films', originalFilmRoutes);
+app.use('/api/community', communityRoutes);
 
 // Rate limiting for AI endpoint
 const gptLimiter = rateLimit({
@@ -137,6 +140,11 @@ connectDB()
     console.log('✅ MongoDB connected');
     const seeded = await seedOriginalFilms();
     console.log(`[Original films] Seeded ${seeded.movies} movies and ${seeded.people} people.`);
+    try {
+      await ensureFeaturedCommunities();
+    } catch (error) {
+      console.warn('[Community] Featured seed skipped:', error.message);
+    }
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Visual.Cineaste API listening on port ${PORT}`);
       startStorageMonitoring();

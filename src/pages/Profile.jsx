@@ -13,6 +13,7 @@ const Profile = () => {
   const [reviews, setReviews] = useState([]);
   const [lists, setLists] = useState([]);
   const [diary, setDiary] = useState([]);
+  const [communities, setCommunities] = useState([]);
   const [activityError, setActivityError] = useState('');
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -64,9 +65,10 @@ const Profile = () => {
         axios.get('/api/lists', { headers, withCredentials: true }),
         axios.get('/api/diary', { headers, withCredentials: true }),
         axios.get('/api/people/sakha', { headers, withCredentials: true }),
+        axios.get('/api/community/me', { headers, withCredentials: true }),
       ]);
 
-      const [watchlistResult, reviewsResult, listsResult, diaryResult, friendsResult] = results;
+      const [watchlistResult, reviewsResult, listsResult, diaryResult, friendsResult, communitiesResult] = results;
       if (watchlistResult.status === 'fulfilled') {
         setWatchlist(watchlistResult.value.data?.movies || []);
       }
@@ -81,6 +83,9 @@ const Profile = () => {
       }
       if (friendsResult.status === 'fulfilled') {
         setSakha(friendsResult.value.data?.data || []);
+      }
+      if (communitiesResult.status === 'fulfilled') {
+        setCommunities(communitiesResult.value.data?.communities || []);
       }
       if (results.some(result => result.status === 'rejected')) {
         setActivityError('Some profile activity could not be loaded. Please refresh to try again.');
@@ -752,6 +757,36 @@ const Profile = () => {
                 <div className="font-semibold text-white">{list.name}</div>
                 {list.description && <p className="mt-1 line-clamp-2 text-sm text-gray-400">{list.description}</p>}
                 <div className="mt-2 text-xs text-gray-400">{list.items?.length || 0} titles · {list.isPublic ? 'Public' : 'Private'}</div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Communities */}
+      <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-slate-700/50">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-bold text-white">Communities</h3>
+          <Link to="/community" className="text-cyan-400 hover:text-cyan-300 text-sm font-medium">Explore society</Link>
+        </div>
+        {communities.length === 0 ? (
+          <div className="text-center py-10">
+            <p className="text-gray-400 text-lg mb-2">No communities yet</p>
+            <p className="text-gray-500 text-sm">Join a cinematic society to appear here.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {communities.slice(0, 8).map(community => (
+              <Link
+                key={community._id}
+                to={`/community/${community.slug}`}
+                className="rounded-xl border border-slate-700/60 bg-slate-700/30 p-4 transition-colors hover:border-cyan-400/40"
+              >
+                <div className="font-semibold text-white">{community.name}</div>
+                <p className="mt-1 line-clamp-2 text-sm text-gray-400">{community.description}</p>
+                <div className="mt-2 text-xs text-gray-400">
+                  {community.role || 'member'} · {community.memberCount || 0} members · {community.discussionCount || 0} discussions
+                </div>
               </Link>
             ))}
           </div>

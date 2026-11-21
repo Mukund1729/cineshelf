@@ -59,6 +59,7 @@ function MediaCard({ item, review }) {
 export default function PeopleProfile() {
   const { userId } = useParams();
   const [data, setData] = useState(null);
+  const [communities, setCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
   const [error, setError] = useState('');
@@ -74,10 +75,19 @@ export default function PeopleProfile() {
         return;
       }
       try {
-        const response = await axios.get(`/api/people/profile/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (active) setData(response.data?.data);
+        const [response, communitiesRes] = await Promise.all([
+          axios.get(`/api/people/profile/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          axios.get(`/api/community/user/${userId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            withCredentials: true,
+          }).catch(() => null),
+        ]);
+        if (active) {
+          setData(response.data?.data);
+          setCommunities(communitiesRes?.data?.communities || []);
+        }
       } catch (err) {
         if (active) {
           setError(err.response?.data?.error || 'Could not load this profile.');
@@ -202,7 +212,7 @@ export default function PeopleProfile() {
               ) : <p style={{ color: 'var(--vc-slate)' }}>No watchlist titles to show yet.</p>}
             </section>
 
-            <section>
+            <section style={{ marginBottom: '2rem' }}>
               <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem' }}>Reviews</h2>
               {!data.reviewsVisible ? (
                 <p style={{ color: 'var(--vc-slate)' }}>This member keeps their reviews private.</p>
@@ -213,6 +223,36 @@ export default function PeopleProfile() {
                   ))}
                 </div>
               ) : <p style={{ color: 'var(--vc-slate)' }}>No reviews to show yet.</p>}
+            </section>
+
+            <section>
+              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem' }}>Communities</h2>
+              {communities.length ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem' }}>
+                  {communities.map(community => (
+                    <Link
+                      key={community._id}
+                      to={`/community/${community.slug}`}
+                      style={{
+                        display: 'block',
+                        padding: '1rem',
+                        borderRadius: 12,
+                        background: 'var(--vc-bg-card)',
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        textDecoration: 'none',
+                        color: 'inherit',
+                      }}
+                    >
+                      <div style={{ color: 'var(--vc-cream)', fontWeight: 600 }}>{community.name}</div>
+                      <div style={{ marginTop: '0.35rem', color: 'var(--vc-slate)', fontSize: '0.82rem' }}>
+                        {community.role || 'member'} · {community.memberCount || 0} members
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: 'var(--vc-slate)' }}>No public communities to show yet.</p>
+              )}
             </section>
           </>
         ) : null}
