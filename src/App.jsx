@@ -1,5 +1,6 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
+import axios from 'axios';
 import ScrollToTop from './ScrollToTop';
 import ErrorBoundary from './components/ErrorBoundary';
 import AuthModal from './components/AuthModal';
@@ -23,12 +24,42 @@ function GlobalAuthModal() {
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.get('auth') !== 'google-error') return;
-    setType('login');
-    setAuthError('Google sign-in did not complete. Please try again.');
-    setOpen(true);
+    const authStatus = url.searchParams.get('auth');
+    const ticket = url.searchParams.get('ticket');
+
+    if (authStatus === 'google-error') {
+      setType('login');
+      setAuthError('Google sign-in did not complete. Please try again.');
+      setOpen(true);
+      url.searchParams.delete('auth');
+      url.searchParams.delete('ticket');
+      window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+      return;
+    }
+
+    if (authStatus !== 'google-ok' || !ticket) return;
+
+    let cancelled = false;
     url.searchParams.delete('auth');
+    url.searchParams.delete('ticket');
     window.history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+
+    axios.post('/api/auth/google/exchange', { ticket }, { withCredentials: true })
+      .then(({ data }) => {
+        if (cancelled) return;
+        if (data?.user) {
+          localStorage.setItem('user', JSON.stringify(data.user));
+          window.dispatchEvent(new CustomEvent('profile-updated', { detail: data.user }));
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setType('login');
+        setAuthError('Google sign-in did not complete. Please try again.');
+        setOpen(true);
+      });
+
+    return () => { cancelled = true; };
   }, []);
 
   if (!open) return null;

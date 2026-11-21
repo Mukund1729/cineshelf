@@ -10,6 +10,7 @@ import {
   googleLogin,
   googleAuthStart,
   googleAuthCallback,
+  googleAuthExchange,
   getMe,
   forgotPassword,
   resetPassword,
@@ -33,6 +34,7 @@ router.post('/login', loginLimiter, login);
 router.post('/google', loginLimiter, googleLogin);
 router.get('/google', googleAuthStart);
 router.get('/google/callback', googleAuthCallback);
+router.post('/google/exchange', loginLimiter, googleAuthExchange);
 router.get('/me', auth, getMe);
 router.post('/forgot-password', passwordResetLimiter, forgotPassword);
 router.post('/reset-password', passwordResetLimiter, resetPassword);

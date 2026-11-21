@@ -24,7 +24,9 @@ const MAX_OTP_ATTEMPTS = 5;
 const REQUIRE_SIGNUP_EMAIL_VERIFICATION = process.env.REQUIRE_SIGNUP_EMAIL_VERIFICATION === 'true';
 const OAUTH_STATE_COOKIE = 'vc_google_state';
 const OAUTH_STATE_TTL_SECONDS = 10 * 60;
+const OAUTH_LOGIN_TICKET_TTL_MS = 2 * 60 * 1000;
 const oauthStates = new Map();
+const oauthLoginTickets = new Map();
 
 function pruneOAuthStates(now = Date.now()) {
   for (const [state, expiresAt] of oauthStates) {
@@ -43,6 +45,31 @@ function consumeOAuthState(state) {
   const expiresAt = oauthStates.get(state);
   oauthStates.delete(state);
   return Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
+
+function pruneOAuthLoginTickets(now = Date.now()) {
+  for (const [ticket, entry] of oauthLoginTickets) {
+    if (!entry || entry.expiresAt <= now) oauthLoginTickets.delete(ticket);
+  }
+}
+
+function issueOAuthLoginTicket(userId) {
+  pruneOAuthLoginTickets();
+  const ticket = randomBytes(32).toString('hex');
+  oauthLoginTickets.set(ticket, {
+    userId: String(userId),
+    expiresAt: Date.now() + OAUTH_LOGIN_TICKET_TTL_MS,
+  });
+  return ticket;
+}
+
+function consumeOAuthLoginTicket(ticket) {
+  pruneOAuthLoginTickets();
+  if (typeof ticket !== 'string' || !/^[a-f0-9]{64}$/i.test(ticket)) return null;
+  const entry = oauthLoginTickets.get(ticket);
+  oauthLoginTickets.delete(ticket);
+  if (!entry || entry.expiresAt <= Date.now()) return null;
+  return entry.userId;
 }
 
 function normalizeEmail(value) {
@@ -635,11 +662,11 @@ export const googleAuthCallback = async (req, res) => {
       redirect_uri: redirectUri,
     });
     if (!tokens.id_token) throw new Error('Google did not return an ID token');
-    const ticket = await client.verifyIdToken({
+    const idTicket = await client.verifyIdToken({
       idToken: tokens.id_token,
       audience: clientId,
     });
-    const payload = ticket.getPayload();
+    const payload = idTicket.getPayload();
     if (!payload?.sub || !isValidEmail(normalizeEmail(payload.email)) || payload.email_verified !== true) {
       throw new Error('Google account email is not verified');
     }
@@ -652,11 +679,33 @@ export const googleAuthCallback = async (req, res) => {
         console.error('[Auth] Welcome email delivery failed:', error.message);
       });
     }
+    // Cookie here only sticks when callback host == frontend host (Vercel rewrite / Vite).
+    // Always also hand a one-time ticket so the SPA can establish the session same-origin.
     setSessionCookie(req, res, issueSessionToken(user));
-    return res.redirect(303, `${getFrontendUrl()}/`);
+    const loginTicket = issueOAuthLoginTicket(user._id);
+    return res.redirect(303, `${getFrontendUrl()}/?auth=google-ok&ticket=${loginTicket}`);
   } catch (error) {
     console.error('[Auth] Google OAuth callback failed:', error.message);
     return res.redirect(303, `${getFrontendUrl()}/?auth=google-error`);
+  }
+};
+
+export const googleAuthExchange = async (req, res) => {
+  try {
+    const userId = consumeOAuthLoginTicket(req.body?.ticket);
+    if (!userId) {
+      return res.status(401).json({ success: false, message: 'Google sign-in ticket is invalid or expired.' });
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+    user.lastActive = new Date();
+    await user.save();
+    return authenticateUser(req, res, user, 'Google sign-in successful');
+  } catch (error) {
+    console.error('[Auth] Google OAuth ticket exchange failed:', error.message);
+    return res.status(500).json({ success: false, message: 'Google sign-in could not be completed.' });
   }
 };
 
