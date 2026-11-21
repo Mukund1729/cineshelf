@@ -2,6 +2,37 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { hasAuthSession } from '../api/session';
+import './NotificationBell.css';
+
+function formatRelativeTime(value) {
+  if (!value) return '';
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return '';
+  const diff = Date.now() - then;
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function notificationIcon(type) {
+  switch (type) {
+    case 'new_message':
+      return '💬';
+    case 'friend_request':
+    case 'friend_accept':
+      return '👥';
+    case 'review_like':
+    case 'review_comment':
+      return '★';
+    default:
+      return '●';
+  }
+}
 
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
@@ -17,6 +48,7 @@ export default function NotificationBell() {
     try {
       const response = await axios.get('/api/notifications', {
         headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
       const items = Array.isArray(response.data) ? response.data : response.data?.data || [];
       setNotifications(items);
@@ -36,8 +68,15 @@ export default function NotificationBell() {
     const handleOutsideClick = event => {
       if (rootRef.current && !rootRef.current.contains(event.target)) setOpen(false);
     };
+    const handleEscape = event => {
+      if (event.key === 'Escape') setOpen(false);
+    };
     document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, []);
 
   const markRead = async notification => {
@@ -46,6 +85,7 @@ export default function NotificationBell() {
       try {
         await axios.put(`/api/notifications/${notification._id}/read`, {}, {
           headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
         });
         setNotifications(current => current.map(item => (
           item._id === notification._id ? { ...item, isRead: true } : item
@@ -64,6 +104,7 @@ export default function NotificationBell() {
     try {
       await axios.put('/api/notifications/read-all', {}, {
         headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
       setNotifications(current => current.map(notification => ({ ...notification, isRead: true })));
       setError('');
@@ -73,111 +114,71 @@ export default function NotificationBell() {
   };
 
   return (
-    <div ref={rootRef} style={{ position: 'relative', flexShrink: 0 }}>
+    <div ref={rootRef} className="vc-notify">
       <button
         type="button"
+        className={`vc-notify-bell${open ? ' is-open' : ''}`}
         aria-label={`Notifications${unreadCount ? `, ${unreadCount} unread` : ''}`}
         aria-expanded={open}
         onClick={() => {
           setOpen(value => !value);
           if (!open) refreshNotifications();
         }}
-        style={{
-          width: 38,
-          height: 38,
-          display: 'grid',
-          placeItems: 'center',
-          position: 'relative',
-          borderRadius: '50%',
-          border: '1px solid rgba(255,255,255,0.12)',
-          background: open ? 'rgba(212,175,55,0.12)' : 'rgba(255,255,255,0.05)',
-          color: 'var(--vc-cream)',
-          cursor: 'pointer',
-        }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M10 21h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
         </svg>
         {unreadCount > 0 && (
-          <span style={{
-            position: 'absolute',
-            top: -4,
-            right: -4,
-            minWidth: 17,
-            height: 17,
-            padding: '0 4px',
-            borderRadius: 999,
-            background: 'var(--vc-red)',
-            color: '#fff',
-            fontSize: '0.65rem',
-            fontWeight: 700,
-            display: 'grid',
-            placeItems: 'center',
-          }}>
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
+          <span className="vc-notify-count">{unreadCount > 99 ? '99+' : unreadCount}</span>
         )}
       </button>
 
       {open && (
-        <section
-          className="notification-panel"
-          aria-label="Notifications"
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 10px)',
-            right: 0,
-            width: 'min(360px, calc(100vw - 24px))',
-            maxHeight: 'min(480px, calc(100vh - 90px))',
-            overflowY: 'auto',
-            borderRadius: 12,
-            border: '1px solid rgba(255,255,255,0.1)',
-            background: 'var(--vc-bg-elevated)',
-            boxShadow: '0 18px 45px rgba(0,0,0,0.55)',
-            zIndex: 300,
-          }}
-        >
-          <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.9rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
-            <strong style={{ fontFamily: 'Playfair Display, serif' }}>Notifications</strong>
-            <button type="button" onClick={markAllRead} disabled={!unreadCount} style={{ background: 'none', border: 0, color: unreadCount ? 'var(--vc-gold)' : 'var(--vc-slate)', cursor: unreadCount ? 'pointer' : 'default', fontSize: '0.75rem' }}>
+        <section className="vc-notify-panel" aria-label="Notifications">
+          <header className="vc-notify-header">
+            <div>
+              <h2>Notifications</h2>
+              <p>{unreadCount ? `${unreadCount} unread` : 'You are all caught up'}</p>
+            </div>
+            <button
+              type="button"
+              className="vc-notify-mark"
+              onClick={markAllRead}
+              disabled={!unreadCount}
+            >
               Mark all read
             </button>
           </header>
-          {error && <p role="alert" style={{ margin: 0, padding: '0.75rem 1rem', color: '#fc8181', fontSize: '0.8rem' }}>{error}</p>}
-          {notifications.length === 0 ? (
-            <p style={{ margin: 0, padding: '1.5rem 1rem', textAlign: 'center', color: 'var(--vc-slate)', fontSize: '0.85rem' }}>
-              No notifications yet.
-            </p>
-          ) : notifications.map(notification => (
-            <button
-              type="button"
-              key={notification._id}
-              onClick={() => markRead(notification)}
-              style={{
-                display: 'block',
-                width: '100%',
-                padding: '0.85rem 1rem',
-                textAlign: 'left',
-                background: notification.isRead ? 'transparent' : 'rgba(212,175,55,0.07)',
-                border: 0,
-                borderBottom: '1px solid rgba(255,255,255,0.05)',
-                color: 'var(--vc-cream)',
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', fontWeight: 600, fontSize: '0.85rem' }}>
-                {notification.title || 'Notification'}
-                {!notification.isRead && <span aria-label="Unread" style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--vc-gold)', marginTop: 5, flexShrink: 0 }} />}
-              </span>
-              <span style={{ display: 'block', marginTop: '0.25rem', color: 'var(--vc-slate)', fontSize: '0.78rem', lineHeight: 1.4 }}>
-                {notification.message}
-              </span>
-              <time style={{ display: 'block', marginTop: '0.35rem', color: 'rgba(148,163,184,0.65)', fontSize: '0.68rem' }}>
-                {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : ''}
-              </time>
-            </button>
-          ))}
+
+          {error && <p role="alert" className="vc-notify-error">{error}</p>}
+
+          <div className="vc-notify-list">
+            {notifications.length === 0 ? (
+              <p className="vc-notify-empty">No notifications yet.</p>
+            ) : notifications.map(notification => (
+              <button
+                type="button"
+                key={notification._id}
+                className={`vc-notify-item${!notification.isRead ? ' is-unread' : ''}`}
+                onClick={() => markRead(notification)}
+              >
+                <span className="vc-notify-icon" aria-hidden="true">
+                  {notificationIcon(notification.type)}
+                </span>
+                <span className="vc-notify-body">
+                  <span className="vc-notify-title-row">
+                    <span className="vc-notify-title">{notification.title || 'Notification'}</span>
+                    {!notification.isRead && <span className="vc-notify-dot" aria-label="Unread" />}
+                  </span>
+                  <span className="vc-notify-message">{notification.message}</span>
+                  <time className="vc-notify-time" dateTime={notification.createdAt}>
+                    {formatRelativeTime(notification.createdAt)}
+                  </time>
+                </span>
+              </button>
+            ))}
+          </div>
         </section>
       )}
     </div>

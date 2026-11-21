@@ -5,56 +5,62 @@ import Navbar from '../components/Navbar';
 import Chat from '../components/Chat';
 import { apiUrl } from '../api/config';
 import { hasAuthSession } from '../api/session';
+import './People.css';
+
+function PersonAvatar({ person, size = 48 }) {
+  const [broken, setBroken] = useState(false);
+  const src = person?.avatar
+    ? (person.avatar.startsWith('/') ? apiUrl(person.avatar) : person.avatar)
+    : '';
+  const label = person?.username || person?.name || 'U';
+
+  if (src && !broken) {
+    return (
+      <img
+        className="vc-people-avatar"
+        src={src}
+        alt=""
+        style={{ width: size, height: size }}
+        onError={() => setBroken(true)}
+      />
+    );
+  }
+
+  return (
+    <span className="vc-people-avatar-fallback" style={{ width: size, height: size }} aria-hidden="true">
+      {label[0].toUpperCase()}
+    </span>
+  );
+}
 
 function FriendCard({ person, onRemove, onRequest, isFriend, isPending, onChat }) {
   const profilePath = `/people/${person._id}`;
+  const displayName = person.name || person.username || 'User';
 
   return (
-    <div style={{
-      background: 'var(--vc-bg-card)', border: '1px solid rgba(255,255,255,0.06)',
-      borderRadius: '12px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem',
-      transition: 'border-color 200ms',
-    }}
-      onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(212,175,55,0.2)'}
-      onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)'}
-    >
-      <Link to={profilePath} aria-label={`View ${person.username || person.name}'s profile`} style={{ flexShrink: 0 }}>
-        {person.avatar ? (
-          <img src={person.avatar.startsWith('/') ? apiUrl(person.avatar) : person.avatar} alt="" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
-        ) : (
-          <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, var(--vc-gold), #b8860b)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: '#0a0f1a' }}>
-            {(person.username || person.name || 'U')[0].toUpperCase()}
-          </div>
-        )}
+    <div className="vc-people-card">
+      <Link to={profilePath} aria-label={`View ${displayName}'s profile`}>
+        <PersonAvatar person={person} />
       </Link>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <Link to={profilePath} style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '0.95rem', color: 'var(--vc-cream)', textDecoration: 'none', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {person.username || person.name}
-        </Link>
-        {person.bio && (
-          <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: 'var(--vc-slate)', lineHeight: 1.4, marginTop: '0.15rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {person.bio}
-          </div>
-        )}
+      <div className="vc-people-meta">
+        <Link to={profilePath} className="vc-people-name">{displayName}</Link>
+        {person.username && <div className="vc-people-handle">@{person.username}</div>}
+        {person.bio && <div className="vc-people-bio">{person.bio}</div>}
       </div>
-      <div style={{ flexShrink: 0, display: 'flex', gap: '0.5rem' }}>
+      <div className="vc-people-actions">
         {isFriend ? (
           <>
-            <button 
-              className="vc-btn vc-btn-outline" 
-              style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem' }} 
-              onClick={() => onChat(person)}
-            >
+            <button type="button" className="vc-btn vc-btn-outline" onClick={() => onChat(person)}>
               Chat
             </button>
-            <button className="vc-btn vc-btn-danger" style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem' }} onClick={() => onRemove(person._id)}>
+            <button type="button" className="vc-btn vc-btn-danger" onClick={() => onRemove(person._id)}>
               Remove
             </button>
           </>
         ) : isPending ? (
           <span className="vc-badge vc-badge-slate">Pending</span>
         ) : (
-          <button className="vc-btn vc-btn-outline" style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem' }} onClick={() => onRequest(person._id)}>
+          <button type="button" className="vc-btn vc-btn-outline" onClick={() => onRequest(person._id)}>
             + Add
           </button>
         )}
@@ -66,28 +72,25 @@ function FriendCard({ person, onRemove, onRequest, isFriend, isPending, onChat }
 function RequestCard({ request, onAccept, onReject }) {
   const person = request.from;
   const profilePath = `/people/${person?._id || ''}`;
+  const displayName = person?.name || person?.username || 'User';
 
   return (
-    <div style={{
-      background: 'var(--vc-bg-card)', border: '1px solid rgba(212,175,55,0.2)',
-      borderRadius: '12px', padding: '1.25rem', display: 'flex', alignItems: 'center', gap: '1rem',
-    }}>
-      <Link to={profilePath} aria-label={`View ${person?.username || 'user'}'s profile`} style={{ flexShrink: 0 }}>
-        {person?.avatar ? (
-          <img src={person.avatar.startsWith('/') ? apiUrl(person.avatar) : person.avatar} alt="" style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
-        ) : (
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'var(--vc-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 700, color: '#0a0f1a' }}>
-            {(person?.username || 'U')[0].toUpperCase()}
-          </div>
-        )}
+    <div className="vc-people-card is-request">
+      <Link to={profilePath} aria-label={`View ${displayName}'s profile`}>
+        <PersonAvatar person={person} size={44} />
       </Link>
-      <div style={{ flex: 1 }}>
-        <Link to={profilePath} style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem', color: 'var(--vc-cream)', fontWeight: 600, textDecoration: 'none' }}>{person?.username}</Link>
-        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'var(--vc-gold)' }}>Friend request</div>
+      <div className="vc-people-meta">
+        <Link to={profilePath} className="vc-people-name">{displayName}</Link>
+        {person?.username && <div className="vc-people-handle">@{person.username}</div>}
+        <div className="vc-people-request-label">Friend request</div>
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem' }}>
-        <button className="vc-btn vc-btn-primary" style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem' }} onClick={() => onAccept(request._id)}>Accept</button>
-        <button className="vc-btn vc-btn-ghost" style={{ fontSize: '0.75rem', padding: '0.3rem 0.75rem' }} onClick={() => onReject(request._id)}>Decline</button>
+      <div className="vc-people-actions">
+        <button type="button" className="vc-btn vc-btn-primary" onClick={() => onAccept(request._id)}>
+          Accept
+        </button>
+        <button type="button" className="vc-btn vc-btn-ghost" onClick={() => onReject(request._id)}>
+          Decline
+        </button>
       </div>
     </div>
   );
@@ -110,15 +113,20 @@ export default function People() {
   const headers = { Authorization: `Bearer ${token}` };
 
   const fetchData = async () => {
-    if (!hasAuthSession()) { setError('Please sign in.'); setLoading(false); return; }
+    if (!hasAuthSession()) {
+      setError('Please sign in.');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const [friendsRes, requestsRes] = await Promise.all([
-        axios.get('/api/people/sakha', { headers }),
-        axios.get('/api/people/requests', { headers }),
+        axios.get('/api/people/sakha', { headers, withCredentials: true }),
+        axios.get('/api/people/requests', { headers, withCredentials: true }),
       ]);
       setFriends(friendsRes.data?.data || []);
       setRequests(requestsRes.data?.data || []);
+      setError(null);
     } catch (err) {
       if (err.response?.status === 401) setError('Please sign in to view your people.');
       else setError('Failed to load.');
@@ -137,21 +145,36 @@ export default function People() {
   }, [location.search, friends, loading]);
 
   useEffect(() => {
-    if (searchQuery.trim().length < 2) { setSearchResults([]); return; }
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return undefined;
+    }
     const timer = setTimeout(async () => {
       setSearching(true);
       try {
-        const res = await axios.get('/api/people/search', { headers, params: { q: searchQuery } });
+        const res = await axios.get('/api/people/search', {
+          headers,
+          params: { q: searchQuery },
+          withCredentials: true,
+        });
         setSearchResults(res.data?.data || []);
-      } catch { setSearchResults([]); }
-      finally { setSearching(false); }
+      } catch {
+        setSearchResults([]);
+      } finally {
+        setSearching(false);
+      }
     }, 400);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  const sendRequest = async (userId) => {
+  const showToast = msg => {
+    setToast(msg);
+    setTimeout(() => setToast(''), 3000);
+  };
+
+  const sendRequest = async userId => {
     try {
-      await axios.post('/api/people/request', { userId }, { headers });
+      await axios.post('/api/people/request', { userId }, { headers, withCredentials: true });
       showToast('Friend request sent!');
       setSearchResults(prev => prev.map(person => (
         person._id === userId ? { ...person, relation: 'outgoing' } : person
@@ -161,36 +184,38 @@ export default function People() {
     }
   };
 
-  const acceptRequest = async (requestId) => {
+  const acceptRequest = async requestId => {
     try {
-      await axios.post(`/api/people/request/${requestId}/accept`, {}, { headers });
+      await axios.post(`/api/people/request/${requestId}/accept`, {}, { headers, withCredentials: true });
       showToast('Request accepted!');
       fetchData();
-    } catch { showToast('Failed to accept.'); }
+    } catch {
+      showToast('Failed to accept.');
+    }
   };
 
-  const rejectRequest = async (requestId) => {
+  const rejectRequest = async requestId => {
     try {
-      await axios.post(`/api/people/request/${requestId}/reject`, {}, { headers });
+      await axios.post(`/api/people/request/${requestId}/reject`, {}, { headers, withCredentials: true });
       setRequests(prev => prev.filter(r => r._id !== requestId));
       showToast('Request declined.');
-    } catch { showToast('Failed to decline.'); }
+    } catch {
+      showToast('Failed to decline.');
+    }
   };
 
-  const removeFriend = async (userId) => {
+  const removeFriend = async userId => {
     if (!window.confirm('Remove this friend?')) return;
     try {
-      await axios.delete(`/api/people/sakha/${userId}`, { headers });
+      await axios.delete(`/api/people/sakha/${userId}`, { headers, withCredentials: true });
       setFriends(prev => prev.filter(f => f._id !== userId));
       showToast('Friend removed.');
-    } catch { showToast('Failed to remove.'); }
+    } catch {
+      showToast('Failed to remove.');
+    }
   };
 
-  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
-
-  const handleChat = (friend) => {
-    setChatFriend(friend);
-  };
+  const handleChat = friend => setChatFriend(friend);
 
   const closeChat = () => {
     setChatFriend(null);
@@ -200,124 +225,118 @@ export default function People() {
   const friendIds = friends.map(f => f._id);
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)', width: '100%' }}>
+    <div className="vc-people-page">
       <Navbar />
 
-      <section style={{
-        paddingTop: '6rem',
-        paddingBottom: '3rem',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        background: 'linear-gradient(135deg, #060912 0%, #0a0f1a 50%, #0d1420 100%)',
-      }}>
+      <section className="vc-people-hero">
         <div className="vc-container">
-          <span className="vc-section-label">👥 Community</span>
-          <h1 style={{
-            fontFamily: 'Playfair Display, serif',
-            fontSize: 'clamp(2rem, 4vw, 3rem)',
-            fontWeight: 800,
-            marginBottom: '0.75rem',
-          }}>
-            Your People
-          </h1>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
-            Connect with fellow cinephiles, share recommendations, and chat about cinema.
-          </p>
+          <span className="vc-section-label">Community</span>
+          <h1>Your People</h1>
+          <p>Connect with fellow cinephiles, share recommendations, and chat about cinema.</p>
         </div>
       </section>
 
-      <div className="vc-container" style={{ paddingTop: '2.5rem', paddingBottom: '4rem' }}>
+      <div className="vc-container vc-people-body">
         {error ? (
-          <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--vc-slate)' }}>
-            <p style={{ marginBottom: '1.5rem' }}>{error}</p>
-            <button className="vc-btn vc-btn-primary" onClick={() => window.dispatchEvent(new CustomEvent('open-auth-modal'))}>Sign In</button>
+          <div className="vc-people-auth">
+            <p>{error}</p>
+            <button
+              type="button"
+              className="vc-btn vc-btn-primary"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-auth-modal'))}
+            >
+              Sign In
+            </button>
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem', alignItems: 'start' }} className="people-layout">
-            {/* Left: Friends + Requests */}
-            <div>
-              {/* Pending requests */}
+          <div className="vc-people-layout">
+            <div className="vc-people-main">
               {requests.length > 0 && (
-                <div style={{ marginBottom: '2.5rem' }}>
-                  <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.15rem', marginBottom: '1rem', color: 'var(--vc-cream)' }}>
-                    Requests <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-gold)' }}>({requests.length})</span>
+                <section style={{ marginBottom: '2.25rem' }}>
+                  <h2 className="vc-people-section-title">
+                    Requests <span className="is-accent">({requests.length})</span>
                   </h2>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div className="vc-people-stack">
                     {requests.map(req => (
-                      <RequestCard key={req._id} request={req} onAccept={acceptRequest} onReject={rejectRequest} />
+                      <RequestCard
+                        key={req._id}
+                        request={req}
+                        onAccept={acceptRequest}
+                        onReject={rejectRequest}
+                      />
                     ))}
                   </div>
-                </div>
+                </section>
               )}
 
-              {/* Friends */}
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.15rem', marginBottom: '1rem', color: 'var(--vc-cream)' }}>
-                Friends <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-slate)' }}>({friends.length})</span>
-              </h2>
+              <section>
+                <h2 className="vc-people-section-title">
+                  Friends <span>({friends.length})</span>
+                </h2>
 
-              {loading ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {[1, 2, 3].map(i => (
-                    <div key={i} style={{ background: 'var(--vc-bg-card)', borderRadius: 12, padding: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                      <div className="vc-skeleton" style={{ width: 48, height: 48, borderRadius: '50%' }} />
-                      <div style={{ flex: 1 }}>
-                        <div className="vc-skeleton" style={{ height: 14, width: '40%', marginBottom: 8 }} />
-                        <div className="vc-skeleton" style={{ height: 12, width: '60%' }} />
+                {loading ? (
+                  <div className="vc-people-stack">
+                    {[1, 2, 3].map(i => (
+                      <div key={i} className="vc-people-card">
+                        <div className="vc-skeleton" style={{ width: 48, height: 48, borderRadius: '50%' }} />
+                        <div style={{ flex: 1 }}>
+                          <div className="vc-skeleton" style={{ height: 14, width: '40%', marginBottom: 8 }} />
+                          <div className="vc-skeleton" style={{ height: 12, width: '60%' }} />
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ) : friends.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--vc-slate)', background: 'var(--vc-bg-card)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>🎬</div>
-                  <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem' }}>No friends yet. Search for people to connect with.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  {friends.map(friend => (
-                    <FriendCard key={friend._id} person={friend} isFriend onRemove={removeFriend} onChat={handleChat} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Right: Search */}
-            <aside>
-              <div style={{ background: 'var(--vc-bg-card)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1.5rem', position: 'sticky', top: '80px' }}>
-                <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1rem', marginBottom: '1rem', color: 'var(--vc-cream)' }}>
-                  Find People
-                </h3>
-                <input
-                  type="text"
-                  className="vc-input"
-                  placeholder="Search by username or name…"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  style={{ marginBottom: '1rem' }}
-                />
-                {searching && (
-                  <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--vc-slate)', fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem' }}>Searching…</div>
-                )}
-                {searchResults.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {searchResults.map(person => (
+                    ))}
+                  </div>
+                ) : friends.length === 0 ? (
+                  <div className="vc-people-empty">
+                    No friends yet. Search for people to connect with.
+                  </div>
+                ) : (
+                  <div className="vc-people-stack">
+                    {friends.map(friend => (
                       <FriendCard
-                        key={person._id}
-                        person={person}
-                        isFriend={person.relation === 'friend' || friendIds.includes(person._id)}
-                        isPending={person.relation === 'outgoing' || person.relation === 'incoming'}
-                        onRequest={sendRequest}
+                        key={friend._id}
+                        person={friend}
+                        isFriend
                         onRemove={removeFriend}
                         onChat={handleChat}
                       />
                     ))}
                   </div>
                 )}
-                {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--vc-slate)', fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem' }}>
-                    No users found for "{searchQuery}"
-                  </div>
-                )}
-              </div>
+              </section>
+            </div>
+
+            <aside className="vc-people-search">
+              <h3>Find People</h3>
+              <input
+                type="search"
+                className="vc-input"
+                placeholder="Search by username or name…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                aria-label="Search people"
+              />
+              {searching && <div className="vc-people-search-status">Searching…</div>}
+              {searchResults.length > 0 && (
+                <div className="vc-people-stack">
+                  {searchResults.map(person => (
+                    <FriendCard
+                      key={person._id}
+                      person={person}
+                      isFriend={person.relation === 'friend' || friendIds.includes(person._id)}
+                      isPending={person.relation === 'outgoing' || person.relation === 'incoming'}
+                      onRequest={sendRequest}
+                      onRemove={removeFriend}
+                      onChat={handleChat}
+                    />
+                  ))}
+                </div>
+              )}
+              {searchQuery.length >= 2 && !searching && searchResults.length === 0 && (
+                <div className="vc-people-search-status">
+                  No users found for “{searchQuery}”
+                </div>
+              )}
             </aside>
           </div>
         )}
@@ -334,17 +353,10 @@ export default function People() {
           friendId={chatFriend._id}
           friendName={chatFriend.username || chatFriend.name}
           friendAvatar={chatFriend.avatar}
+          friendLastActive={chatFriend.lastActive}
           onClose={closeChat}
         />
       )}
-      
-      <style>{`
-        @media (max-width: 768px) {
-          .people-layout {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   );
 }

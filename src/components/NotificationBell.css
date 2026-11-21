@@ -1,0 +1,212 @@
+.vc-notify {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.vc-notify-bell {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--vc-cream);
+  cursor: pointer;
+  transition: background var(--vc-transition), border-color var(--vc-transition), transform var(--vc-transition);
+}
+
+.vc-notify-bell:hover,
+.vc-notify-bell.is-open {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.35);
+  color: var(--vc-gold-light);
+}
+
+.vc-notify-bell svg {
+  width: 18px;
+  height: 18px;
+}
+
+.vc-notify-count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--vc-red);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 0 0 2px var(--vc-bg-base);
+}
+
+.vc-notify-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: min(380px, calc(100vw - 24px));
+  max-height: min(520px, calc(100vh - 90px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(120% 70% at 100% 0%, rgba(212, 175, 55, 0.08), transparent 50%),
+    linear-gradient(180deg, #182234 0%, var(--vc-bg-elevated) 40%);
+  box-shadow: 0 22px 55px rgba(0, 0, 0, 0.55);
+  z-index: 300;
+}
+
+.vc-notify-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.95rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(10, 15, 26, 0.28);
+}
+
+.vc-notify-header h2 {
+  margin: 0;
+  font: 600 1rem var(--vc-font-display);
+  color: var(--vc-cream);
+}
+
+.vc-notify-header p {
+  margin: 0.15rem 0 0;
+  color: var(--vc-slate);
+  font-size: 0.72rem;
+}
+
+.vc-notify-mark {
+  border: 0;
+  background: none;
+  color: var(--vc-gold);
+  cursor: pointer;
+  font: 600 0.72rem var(--vc-font-body);
+  white-space: nowrap;
+}
+
+.vc-notify-mark:disabled {
+  color: var(--vc-slate-dark);
+  cursor: default;
+}
+
+.vc-notify-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.vc-notify-error {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  color: #fc8181;
+  font-size: 0.8rem;
+}
+
+.vc-notify-empty {
+  margin: 0;
+  padding: 2.25rem 1.25rem;
+  text-align: center;
+  color: var(--vc-slate);
+  font-size: 0.85rem;
+}
+
+.vc-notify-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.9rem 1rem;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--vc-cream);
+  cursor: pointer;
+  transition: background var(--vc-transition);
+}
+
+.vc-notify-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.vc-notify-item.is-unread {
+  background: rgba(212, 175, 55, 0.07);
+}
+
+.vc-notify-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--vc-gold-light);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.vc-notify-body {
+  min-width: 0;
+}
+
+.vc-notify-title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.vc-notify-title {
+  font: 600 0.86rem var(--vc-font-body);
+  line-height: 1.3;
+}
+
+.vc-notify-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 50%;
+  background: var(--vc-gold);
+  flex-shrink: 0;
+}
+
+.vc-notify-message {
+  display: block;
+  margin-top: 0.2rem;
+  color: var(--vc-slate);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.vc-notify-time {
+  display: block;
+  margin-top: 0.35rem;
+  color: rgba(148, 163, 184, 0.7);
+  font-size: 0.68rem;
+}
+
+@media (max-width: 640px) {
+  .vc-notify-panel {
+    position: fixed;
+    top: 68px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 84px);
+  }
+
+  .vc-notify-bell {
+    width: 38px;
+    height: 38px;
+  }
+}

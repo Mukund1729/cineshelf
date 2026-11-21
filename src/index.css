@@ -850,7 +850,8 @@ body, html {
     justify-content: center;
   }
 
-  .notification-panel {
+  .notification-panel,
+  .vc-notify-panel {
     position: fixed !important;
     top: 68px !important;
     right: 12px !important;
