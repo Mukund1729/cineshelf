@@ -102,9 +102,10 @@ const Profile = () => {
         ...prev,
         socials: { ...prev.socials, [socialKey]: value }
       }));
-    } else {
-      setEditForm(prev => ({ ...prev, [name]: value }));
+      return;
     }
+    const nextValue = name === 'username' ? value.replace(/^@+/, '').replace(/\s+/g, '') : value;
+    setEditForm(prev => ({ ...prev, [name]: nextValue }));
   };
 
   const handleAvatarUpload = async (e) => {
@@ -156,6 +157,17 @@ const Profile = () => {
         return;
       }
 
+      const nextName = editForm.name.trim();
+      const nextUsername = editForm.username.trim().replace(/^@+/, '');
+      if (nextName.length < 2 || nextName.length > 80) {
+        setError('Name must be between 2 and 80 characters.');
+        return;
+      }
+      if (!/^[a-zA-Z0-9._-]{3,30}$/.test(nextUsername)) {
+        setError('Username must be 3–30 letters, numbers, dots, underscores, or hyphens.');
+        return;
+      }
+
       const headers = { Authorization: `Bearer ${token}` };
       let avatarUrl = editForm.avatar;
 
@@ -185,10 +197,12 @@ const Profile = () => {
         }
       }
 
-      // Update profile
       const updateData = {
         ...editForm,
-        avatar: avatarUrl
+        name: nextName,
+        username: nextUsername,
+        bio: editForm.bio.trim(),
+        avatar: avatarUrl,
       };
 
       const profileRes = await axios.put('/api/user/profile', updateData, { headers, withCredentials: true });
@@ -267,53 +281,61 @@ const Profile = () => {
               alt={`${profile.name || profile.username}'s profile`}
               onError={e => { e.currentTarget.src = getDefaultAvatar(profile.name || profile.username); }}
             />
-            <div>
+            <div className="vc-profile-heading-copy">
               <span className="vc-section-label">Your Profile</span>
-              <h1 style={{
-                fontFamily: 'Playfair Display, serif',
-                fontSize: 'clamp(2rem, 4vw, 3rem)',
-                fontWeight: 800,
-                marginBottom: '0.75rem',
-              }}>
+              <h1 className="vc-profile-name">
                 {profile.name || profile.username}
               </h1>
-              <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
+              {profile.username && (
+                <p className="vc-profile-username">@{profile.username}</p>
+              )}
+              <p className="vc-profile-bio">
                 {profile.bio || 'Cinematic journey and preferences'}
               </p>
+              <div className="vc-profile-actions">
+                <button
+                  type="button"
+                  onClick={() => setEditing(!editing)}
+                  className="vc-btn vc-btn-primary"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"} />
+                  </svg>
+                  {editing ? 'Cancel Edit' : 'Edit Profile'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      <div className="vc-container" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
-        {/* Stats Row */}
-        <div className="flex flex-wrap justify-center md:justify-start gap-8 mb-8">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white">{watchlist.length}</div>
-            <div className="text-gray-400 text-sm uppercase tracking-wider">Watchlist</div>
+      <div className="vc-container vc-profile-stats-wrap">
+        <div className="vc-profile-stats">
+          <div className="vc-profile-stat">
+            <div className="vc-profile-stat-value">{watchlist.length}</div>
+            <div className="vc-profile-stat-label">Watchlist</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white">{reviews.length}</div>
-            <div className="text-gray-400 text-sm uppercase tracking-wider">Reviews</div>
+          <div className="vc-profile-stat">
+            <div className="vc-profile-stat-value">{reviews.length}</div>
+            <div className="vc-profile-stat-label">Reviews</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white">{diary.length}</div>
-            <div className="text-gray-400 text-sm uppercase tracking-wider">Diary logs</div>
+          <div className="vc-profile-stat">
+            <div className="vc-profile-stat-value">{diary.length}</div>
+            <div className="vc-profile-stat-label">Diary logs</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white">{lists.length}</div>
-            <div className="text-gray-400 text-sm uppercase tracking-wider">Lists</div>
+          <div className="vc-profile-stat">
+            <div className="vc-profile-stat-value">{lists.length}</div>
+            <div className="vc-profile-stat-label">Lists</div>
           </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-white">{sakha.length}</div>
-            <div className="text-gray-400 text-sm uppercase tracking-wider">Friends</div>
+          <div className="vc-profile-stat">
+            <div className="vc-profile-stat-value">{sakha.length}</div>
+            <div className="vc-profile-stat-label">Friends</div>
           </div>
         </div>
-        {activityError && <p role="status" className="mb-6 text-sm text-yellow-300">{activityError}</p>}
+        {activityError && <p role="status" className="vc-profile-activity-error">{activityError}</p>}
 
-        {/* Social Links */}
         {(profile.socials?.instagram || profile.socials?.twitter || profile.socials?.website) && (
-          <div className="flex justify-center md:justify-start gap-6 mb-8">
+          <div className="vc-profile-socials">
             {profile.socials?.instagram && (
               <a href={profile.socials.instagram} target="_blank" rel="noopener noreferrer"
                 className="flex items-center gap-2 text-gray-300 hover:text-cyan-400 transition-colors group">
@@ -343,17 +365,6 @@ const Profile = () => {
             )}
           </div>
         )}
-
-        {/* Edit Button */}
-        <button
-          onClick={() => setEditing(!editing)}
-          className="vc-btn vc-btn-primary"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"} />
-          </svg>
-          {editing ? 'Cancel Edit' : 'Edit Profile'}
-        </button>
       </div>
 
   {/* Messages */ }
@@ -418,15 +429,21 @@ const Profile = () => {
 
           <div>
             <label className="vc-profile-label" htmlFor="profile-username">Username</label>
-            <input
-              id="profile-username"
-              type="text"
-              name="username"
-              value={editForm.username}
-              onChange={handleEditChange}
-              className="vc-input"
-              placeholder="Username"
-            />
+            <div className="vc-username-field">
+              <span className="vc-username-prefix" aria-hidden="true">@</span>
+              <input
+                id="profile-username"
+                type="text"
+                name="username"
+                value={editForm.username}
+                onChange={handleEditChange}
+                className="vc-input"
+                placeholder="travis"
+                autoComplete="username"
+                maxLength={30}
+              />
+            </div>
+            <p className="vc-profile-hint">3–30 characters. Letters, numbers, dots, underscores, or hyphens.</p>
           </div>
 
           <div>
@@ -543,18 +560,18 @@ const Profile = () => {
         ) : (
           <div className="space-y-3">
             {sakha.map((friend, index) => (
-              <div key={friend.id || `friend-${index}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-700/30 transition-all duration-200 group cursor-pointer">
+              <div key={friend._id || friend.id || `friend-${index}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-700/30 transition-all duration-200 group cursor-pointer">
                 <img
-                  src={getAvatarUrl(friend.avatar) || getDefaultAvatar(friend.name)}
-                  alt={friend.name}
+                  src={getAvatarUrl(friend.avatar) || getDefaultAvatar(friend.name || friend.username)}
+                  alt={friend.name || friend.username || 'Friend'}
                   className="w-12 h-12 rounded-full object-cover border-2 border-slate-600 group-hover:border-cyan-400/50 transition-colors"
                   onError={(e) => {
-                    e.target.src = getDefaultAvatar(friend.name);
+                    e.target.src = getDefaultAvatar(friend.name || friend.username);
                   }}
                 />
-                <div className="flex-1">
-                  <p className="text-white font-semibold group-hover:text-cyan-300 transition-colors">{friend.name}</p>
-                  <p className="text-gray-400 text-sm">@{friend.username}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold group-hover:text-cyan-300 transition-colors truncate">{friend.name || friend.username}</p>
+                  <p className="text-gray-400 text-sm truncate">@{friend.username}</p>
                 </div>
                 <svg className="w-4 h-4 text-gray-500 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M9 5l7 7-7 7"} />

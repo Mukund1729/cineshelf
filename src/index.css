@@ -426,6 +426,87 @@ body, html {
   gap: 1.5rem;
 }
 
+.vc-profile-heading-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.vc-profile-name {
+  font-family: var(--vc-font-display);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  margin: 0.15rem 0 0.35rem;
+  line-height: 1.1;
+  word-break: break-word;
+}
+
+.vc-profile-username {
+  margin: 0 0 0.85rem;
+  color: var(--vc-gold-light);
+  font-family: var(--vc-font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.vc-profile-bio {
+  margin: 0 0 1.25rem;
+  max-width: 560px;
+  color: var(--vc-slate);
+  font-family: var(--vc-font-body);
+  line-height: 1.5;
+}
+
+.vc-profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.vc-profile-stats-wrap {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+}
+
+.vc-profile-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem 1.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.vc-profile-stat {
+  min-width: 4.5rem;
+  text-align: left;
+}
+
+.vc-profile-stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--vc-cream);
+  line-height: 1.1;
+}
+
+.vc-profile-stat-label {
+  margin-top: 0.25rem;
+  color: var(--vc-slate);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vc-profile-activity-error {
+  margin: 0 0 1rem;
+  color: #f6e05e;
+  font-size: 0.85rem;
+}
+
+.vc-profile-socials {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+}
+
 .vc-profile-avatar {
   width: 6rem;
   height: 6rem;
@@ -454,6 +535,28 @@ body, html {
   margin: 0.4rem 0 0;
   color: var(--vc-slate);
   font-size: 0.75rem;
+}
+
+.vc-username-field {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--vc-radius);
+  background: var(--vc-bg-elevated);
+  overflow: hidden;
+}
+
+.vc-username-prefix {
+  padding-left: 0.9rem;
+  color: var(--vc-gold);
+  font-weight: 700;
+}
+
+.vc-username-field .vc-input {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .vc-avatar-picker {
@@ -810,22 +913,48 @@ body, html {
   }
 
   .vc-profile-heading {
+    flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
 
   .vc-profile-avatar {
-    width: 4.5rem;
-    height: 4.5rem;
-    flex-basis: 4.5rem;
+    width: 4.75rem;
+    height: 4.75rem;
+    flex-basis: 4.75rem;
+  }
+
+  .vc-profile-name {
+    font-size: clamp(1.7rem, 8vw, 2.2rem);
+  }
+
+  .vc-profile-username {
+    font-size: 0.95rem;
+  }
+
+  .vc-profile-stats {
+    gap: 1rem 1.25rem;
+  }
+
+  .vc-profile-stat {
+    min-width: 4rem;
+  }
+
+  .vc-profile-stat-value {
+    font-size: 1.25rem;
   }
 
   .vc-avatar-picker {
+    flex-direction: column;
     align-items: flex-start;
   }
 
   .vc-profile-form {
     padding: 1rem;
+  }
+
+  .vc-username-field {
+    width: 100%;
   }
 
   .movie-detail-search {

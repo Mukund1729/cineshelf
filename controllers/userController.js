@@ -22,9 +22,31 @@ export const updateProfile = async (req, res) => {
 
     // Build safe update — explicitly exclude isAdmin, isVerified, password
     const updateData = {};
-    if (name !== undefined)            updateData.name = name;
-    if (username !== undefined)        updateData.username = username;
-    if (bio !== undefined)             updateData.bio = bio;
+    if (name !== undefined) {
+      const nextName = typeof name === 'string' ? name.trim() : '';
+      if (nextName.length < 2 || nextName.length > 80) {
+        return res.status(400).json({ success: false, error: 'Name must be between 2 and 80 characters.' });
+      }
+      updateData.name = nextName;
+    }
+    if (username !== undefined) {
+      const nextUsername = typeof username === 'string' ? username.trim().replace(/^@+/, '') : '';
+      if (!/^[a-zA-Z0-9._-]{3,30}$/.test(nextUsername)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Username must be 3–30 letters, numbers, dots, underscores, or hyphens.',
+        });
+      }
+      const taken = await User.exists({
+        username: nextUsername,
+        _id: { $ne: req.user.id },
+      }).collation({ locale: 'en', strength: 2 });
+      if (taken) {
+        return res.status(409).json({ success: false, error: 'Username already taken' });
+      }
+      updateData.username = nextUsername;
+    }
+    if (bio !== undefined)             updateData.bio = typeof bio === 'string' ? bio.trim().slice(0, 500) : '';
     if (avatar !== undefined)          updateData.avatar = avatar;
     if (socials !== undefined)         updateData.socials = socials;
     if (favouriteGenres !== undefined) updateData.favouriteGenres = favouriteGenres;
