@@ -24,6 +24,26 @@ const MAX_OTP_ATTEMPTS = 5;
 const REQUIRE_SIGNUP_EMAIL_VERIFICATION = process.env.REQUIRE_SIGNUP_EMAIL_VERIFICATION === 'true';
 const OAUTH_STATE_COOKIE = 'vc_google_state';
 const OAUTH_STATE_TTL_SECONDS = 10 * 60;
+const oauthStates = new Map();
+
+function pruneOAuthStates(now = Date.now()) {
+  for (const [state, expiresAt] of oauthStates) {
+    if (expiresAt <= now) oauthStates.delete(state);
+  }
+}
+
+function rememberOAuthState(state) {
+  pruneOAuthStates();
+  oauthStates.set(state, Date.now() + (OAUTH_STATE_TTL_SECONDS * 1000));
+}
+
+function consumeOAuthState(state) {
+  pruneOAuthStates();
+  if (typeof state !== 'string' || !state) return false;
+  const expiresAt = oauthStates.get(state);
+  oauthStates.delete(state);
+  return Number.isFinite(expiresAt) && expiresAt > Date.now();
+}
 
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -174,7 +194,8 @@ function setOAuthStateCookie(req, res, state, clear = false) {
   const secure = process.env.NODE_ENV === 'production' || req.secure;
   const parts = [
     `${OAUTH_STATE_COOKIE}=${clear ? '' : encodeURIComponent(state)}`,
-    'Path=/api/auth/google/callback',
+    // Broad path so Vite/local proxies still send the cookie on the callback.
+    'Path=/',
     `Max-Age=${clear ? 0 : OAUTH_STATE_TTL_SECONDS}`,
     'HttpOnly',
     'SameSite=Lax',
@@ -576,6 +597,7 @@ export const googleAuthStart = (req, res) => {
   }
 
   const state = randomBytes(32).toString('hex');
+  rememberOAuthState(state);
   setOAuthStateCookie(req, res, state);
   const client = new OAuth2Client(clientId, clientSecret, redirectUri);
   return res.redirect(client.generateAuthUrl({
@@ -590,11 +612,19 @@ export const googleAuthCallback = async (req, res) => {
   const state = req.query?.state;
   const storedState = readCookie(req, OAUTH_STATE_COOKIE);
   setOAuthStateCookie(req, res, '', true);
-  if (!isOAuthStateValid(storedState, state)) {
+  if (typeof req.query?.error === 'string' && req.query.error) {
+    console.warn('[Auth] Google OAuth provider error:', req.query.error, req.query.error_description || '');
+    consumeOAuthState(state);
+    return res.redirect(303, `${getFrontendUrl()}/?auth=google-error`);
+  }
+  const stateOk = consumeOAuthState(state) || isOAuthStateValid(storedState, state);
+  if (!stateOk) {
+    console.warn('[Auth] Google OAuth state mismatch or expired.');
     return res.redirect(303, `${getFrontendUrl()}/?auth=google-error`);
   }
   const { clientId, clientSecret, redirectUri } = googleOAuthConfig();
   if (typeof req.query?.code !== 'string' || !clientId || !clientSecret || !redirectUri) {
+    console.warn('[Auth] Google OAuth callback missing code or client config.');
     return res.redirect(303, `${getFrontendUrl()}/?auth=google-error`);
   }
 

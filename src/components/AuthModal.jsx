@@ -222,7 +222,8 @@ const AuthModal = ({ type = 'login', onClose, onSwitch, initialError = '' }) => 
   };
 
   const handleGoogleSignIn = () => {
-    window.location.assign(apiUrl('/api/auth/google'));
+    // Always same-origin so the OAuth state/session cookies stay on the Vite/Vercel host.
+    window.location.assign('/api/auth/google');
   };
 
   const handleForgotPassword = async event => {
