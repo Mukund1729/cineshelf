@@ -5,17 +5,61 @@ import { apiUrl } from '../api/config';
 import { hasAuthSession } from '../api/session';
 import './GlobalChat.css';
 
-function FriendAvatar({ friend }) {
+const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+
+function isOnline(lastActive) {
+  if (!lastActive) return false;
+  return Date.now() - new Date(lastActive).getTime() < ONLINE_WINDOW_MS;
+}
+
+function formatLastSeen(lastActive) {
+  if (!lastActive) return 'Last seen unavailable';
+  const then = new Date(lastActive).getTime();
+  if (Number.isNaN(then)) return 'Last seen unavailable';
+  const diffMs = Date.now() - then;
+  if (diffMs < ONLINE_WINDOW_MS) return 'Online';
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 60) return `Last seen ${minutes < 1 ? 'just now' : `${minutes}m ago`}`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Last seen ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Last seen ${days}d ago`;
+  return `Last seen ${new Date(lastActive).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+}
+
+function formatPreviewTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const sameDay = new Date().toDateString() === date.toDateString();
+  return sameDay
+    ? date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+function FriendAvatar({ friend, sizeClass = 'vc-messages-avatar-wrap' }) {
+  const [broken, setBroken] = useState(false);
   const avatar = friend.avatar
     ? (friend.avatar.startsWith('/') ? apiUrl(friend.avatar) : friend.avatar)
     : '';
   const name = friend.username || friend.name || 'User';
+  const online = isOnline(friend.lastActive);
 
-  return avatar ? (
-    <img className="vc-messages-avatar" src={avatar} alt="" />
-  ) : (
-    <span className="vc-messages-avatar vc-messages-avatar-fallback" aria-hidden="true">
-      {name[0].toUpperCase()}
+  return (
+    <span className={sizeClass}>
+      {avatar && !broken ? (
+        <img
+          className="vc-messages-avatar"
+          src={avatar}
+          alt=""
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <span className="vc-messages-avatar-fallback" aria-hidden="true">
+          {name[0].toUpperCase()}
+        </span>
+      )}
+      {online && <span className="vc-messages-online-dot" aria-hidden="true" />}
     </span>
   );
 }
@@ -44,6 +88,7 @@ export default function GlobalChat() {
         const token = localStorage.getItem('token');
         const response = await axios.get('/api/people/sakha', {
           headers: { Authorization: `Bearer ${token}` },
+          withCredentials: true,
         });
         if (active) setFriends(response.data?.data || []);
       } catch (requestError) {
@@ -56,7 +101,11 @@ export default function GlobalChat() {
     };
 
     loadFriends();
-    return () => { active = false; };
+    const intervalId = window.setInterval(loadFriends, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
   }, [open, loadVersion]);
 
   useEffect(() => {
@@ -105,15 +154,16 @@ export default function GlobalChat() {
           friendId={selectedFriend._id}
           friendName={selectedFriend.username || selectedFriend.name}
           friendAvatar={selectedFriend.avatar}
+          friendLastActive={selectedFriend.lastActive}
           onClose={() => setSelectedFriend(null)}
           docked
         />
       ) : open ? (
         <section className="vc-messages-panel" aria-label="Messages">
           <header className="vc-messages-header">
-            <div>
+            <div className="vc-messages-header-copy">
               <h2>Messages</h2>
-              <p>Chat with your friends</p>
+              <p>Friends · last seen updates live</p>
             </div>
             <button type="button" className="vc-messages-close" onClick={closeInbox} aria-label="Close messages">
               ×
@@ -132,7 +182,7 @@ export default function GlobalChat() {
               </button>
             </div>
           ) : loading ? (
-            <p className="vc-messages-state" role="status">Loading friends…</p>
+            <p className="vc-messages-state" role="status">Loading chats…</p>
           ) : error ? (
             <div className="vc-messages-empty">
               <p role="alert">{error}</p>
@@ -144,18 +194,32 @@ export default function GlobalChat() {
             <p className="vc-messages-state">Add friends to start a conversation.</p>
           ) : (
             <div className="vc-messages-friend-list">
-              {friends.map(friend => (
-                <button
-                  type="button"
-                  className="vc-messages-friend"
-                  key={friend._id}
-                  onClick={() => setSelectedFriend(friend)}
-                >
-                  <FriendAvatar friend={friend} />
-                  <span>{friend.username || friend.name || 'User'}</span>
-                  <span className="vc-messages-chevron" aria-hidden="true">›</span>
-                </button>
-              ))}
+              {friends.map(friend => {
+                const preview = friend.lastMessage?.text
+                  ? `${friend.lastMessage.fromMe ? 'You: ' : ''}${friend.lastMessage.text}`
+                  : 'Say hello about a film…';
+                const seenLabel = formatLastSeen(friend.lastActive);
+                const online = isOnline(friend.lastActive);
+                return (
+                  <button
+                    type="button"
+                    className="vc-messages-friend"
+                    key={friend._id}
+                    onClick={() => setSelectedFriend(friend)}
+                  >
+                    <FriendAvatar friend={friend} />
+                    <span className="vc-messages-friend-meta">
+                      <span className="vc-messages-friend-name">{friend.username || friend.name || 'User'}</span>
+                      <span className="vc-messages-friend-preview">{preview}</span>
+                      <span className={`vc-messages-friend-seen${online ? ' is-online' : ''}`}>{seenLabel}</span>
+                    </span>
+                    <span className="vc-messages-friend-side">
+                      <span>{formatPreviewTime(friend.lastMessage?.createdAt)}</span>
+                      <span aria-hidden="true">›</span>
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </section>

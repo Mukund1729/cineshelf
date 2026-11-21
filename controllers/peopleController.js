@@ -3,15 +3,72 @@ import FriendRequest from '../models/FriendRequest.js';
 import Notification from '../models/Notification.js';
 import Watchlist from '../models/Watchlist.js';
 import Review from '../models/Review.js';
+import ChatMessage from '../models/ChatMessage.js';
 import mongoose from 'mongoose';
 
 // GET /api/people/sakha — Get current user's friends
 export const getSakha = async (req, res) => {
   try {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
     const user = await User.findById(req.user.id)
-      .populate('sakha', 'username name avatar bio');
-    res.json({ success: true, data: user?.sakha || [] });
+      .populate('sakha', 'username name avatar bio lastActive');
+    const friends = user?.sakha || [];
+    if (!friends.length) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const friendIds = friends.map(friend => friend._id);
+    const lastMessages = await ChatMessage.aggregate([
+      {
+        $match: {
+          $or: [
+            { sender: userId, recipient: { $in: friendIds } },
+            { sender: { $in: friendIds }, recipient: userId },
+          ],
+        },
+      },
+      { $sort: { createdAt: -1 } },
+      {
+        $group: {
+          _id: {
+            $cond: [{ $eq: ['$sender', userId] }, '$recipient', '$sender'],
+          },
+          text: { $first: '$text' },
+          createdAt: { $first: '$createdAt' },
+          sender: { $first: '$sender' },
+        },
+      },
+    ]);
+    const lastByFriend = new Map(
+      lastMessages.map(row => [row._id.toString(), {
+        text: row.text,
+        createdAt: row.createdAt,
+        fromMe: row.sender.toString() === req.user.id,
+      }])
+    );
+
+    const data = friends
+      .map(friend => {
+        const lastMessage = lastByFriend.get(friend._id.toString()) || null;
+        return {
+          _id: friend._id,
+          username: friend.username,
+          name: friend.name,
+          avatar: friend.avatar,
+          bio: friend.bio,
+          lastActive: friend.lastActive || null,
+          lastMessage,
+        };
+      })
+      .sort((left, right) => {
+        const leftAt = left.lastMessage?.createdAt ? new Date(left.lastMessage.createdAt).getTime() : 0;
+        const rightAt = right.lastMessage?.createdAt ? new Date(right.lastMessage.createdAt).getTime() : 0;
+        return rightAt - leftAt;
+      });
+
+    res.json({ success: true, data });
   } catch (err) {
+    console.error('Get sakha error:', err);
     res.status(500).json({ success: false, error: 'Server error' });
   }
 };

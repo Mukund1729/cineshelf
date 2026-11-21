@@ -80,10 +80,14 @@ export const getConversation = async (req, res) => {
         };
       }),
     };
-    const page = await ChatMessage.find(query)
-      .sort({ createdAt: -1, _id: -1 })
-      .limit(limit + 1)
-      .lean();
+    const [page, friend] = await Promise.all([
+      ChatMessage.find(query)
+        .sort({ createdAt: -1, _id: -1 })
+        .limit(limit + 1)
+        .lean(),
+      User.findById(friendId).select('username name avatar lastActive').lean(),
+      User.updateOne({ _id: req.user.id }, { $set: { lastActive: new Date() } }),
+    ]);
     const hasMore = page.length > limit;
     const messages = page.slice(0, limit).reverse();
 
@@ -92,6 +96,13 @@ export const getConversation = async (req, res) => {
       messages: messages.map(serializeMessage),
       hasMore,
       nextCursor: hasMore && messages.length ? messages[0]._id.toString() : null,
+      friend: friend ? {
+        _id: friend._id.toString(),
+        username: friend.username,
+        name: friend.name,
+        avatar: friend.avatar,
+        lastActive: friend.lastActive || null,
+      } : null,
     });
   } catch (err) {
     console.error('Get chat conversation error:', err);
@@ -117,6 +128,7 @@ export const sendMessage = async (req, res) => {
       recipient: friendId,
       text,
     });
+    await User.updateOne({ _id: req.user.id }, { $set: { lastActive: new Date() } });
 
     try {
       await Notification.create({

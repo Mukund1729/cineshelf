@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { apiUrl } from '../api/config';
 
+const ONLINE_WINDOW_MS = 5 * 60 * 1000;
+
 function mergeMessages(current, incoming) {
   const merged = new Map(current.map(message => [message._id, message]));
   incoming.forEach(message => merged.set(message._id, message));
@@ -16,17 +18,45 @@ function mergeMessages(current, incoming) {
   return ordered;
 }
 
-export default function Chat({ friendId, friendName, friendAvatar, onClose, docked = false }) {
+function formatLastSeen(lastActive) {
+  if (!lastActive) return 'Last seen unavailable';
+  const then = new Date(lastActive).getTime();
+  if (Number.isNaN(then)) return 'Last seen unavailable';
+  const diffMs = Date.now() - then;
+  if (diffMs < ONLINE_WINDOW_MS) return 'Online';
+  const minutes = Math.floor(diffMs / 60000);
+  if (minutes < 60) return `Last seen ${minutes < 1 ? 'just now' : `${minutes}m ago`}`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `Last seen ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Last seen ${days}d ago`;
+  return `Last seen ${new Date(lastActive).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+}
+
+export default function Chat({
+  friendId,
+  friendName,
+  friendAvatar,
+  friendLastActive = null,
+  onClose,
+  docked = false,
+}) {
   const [messages, setMessages] = useState([]);
   const [hasMore, setHasMore] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
-  const [syncStatus, setSyncStatus] = useState('Loading conversation…');
+  const [lastActive, setLastActive] = useState(friendLastActive);
   const [error, setError] = useState('');
+  const [brokenAvatar, setBrokenAvatar] = useState(false);
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
   const autoScrollRef = useRef(true);
+
+  useEffect(() => {
+    setLastActive(friendLastActive);
+    setBrokenAvatar(false);
+  }, [friendId, friendLastActive]);
 
   useEffect(() => {
     let active = true;
@@ -41,17 +71,21 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
         const container = messagesContainerRef.current;
         const nearBottom = !container ||
           container.scrollHeight - container.scrollTop - container.clientHeight < 80;
-        const response = await axios.get(`/api/chat/${friendId}?limit=40`, { headers });
+        const response = await axios.get(`/api/chat/${friendId}?limit=40`, {
+          headers,
+          withCredentials: true,
+        });
         if (!active) return;
         const incomingMessages = response.data?.messages || [];
         if (nearBottom) autoScrollRef.current = true;
         setMessages(current => mergeMessages(current, incomingMessages));
         setHasMore(Boolean(response.data?.hasMore));
-        setSyncStatus('Auto-refreshing');
+        if (response.data?.friend?.lastActive) {
+          setLastActive(response.data.friend.lastActive);
+        }
         setError('');
       } catch (err) {
         if (!active) return;
-        setSyncStatus('Unable to sync');
         setError(err.response?.data?.error || 'Could not load messages.');
       } finally {
         requestInFlight = false;
@@ -85,7 +119,7 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
       const token = localStorage.getItem('token');
       const response = await axios.get(
         `/api/chat/${friendId}?limit=40&before=${encodeURIComponent(oldestMessage._id)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, withCredentials: true }
       );
       const olderMessages = response.data?.messages || [];
       autoScrollRef.current = false;
@@ -112,6 +146,7 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
       const token = localStorage.getItem('token');
       const response = await axios.post(`/api/chat/${friendId}`, { text }, {
         headers: { Authorization: `Bearer ${token}` },
+        withCredentials: true,
       });
       const message = response.data?.message;
       if (message) {
@@ -119,7 +154,6 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
         setMessages(current => mergeMessages(current, [message]));
       }
       setInput('');
-      setSyncStatus('Auto-refreshing');
     } catch (err) {
       setError(err.response?.data?.error || 'Could not send message. Please try again.');
     } finally {
@@ -130,6 +164,8 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
   const avatar = friendAvatar
     ? (friendAvatar.startsWith('/') ? apiUrl(friendAvatar) : friendAvatar)
     : '';
+  const online = lastActive && Date.now() - new Date(lastActive).getTime() < ONLINE_WINDOW_MS;
+  const statusLabel = formatLastSeen(lastActive);
 
   return (
     <div className={`vc-chat-overlay${docked ? ' vc-chat-overlay--docked' : ''}`}>
@@ -138,162 +174,87 @@ export default function Chat({ friendId, friendName, friendAvatar, onClose, dock
         role="dialog"
         aria-modal="true"
         aria-label={`Chat with ${friendName}`}
-        style={{
-          background: 'var(--vc-bg-card)',
-          borderRadius: '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          border: '1px solid rgba(255,255,255,0.1)',
-        }}
       >
-        <header style={{
-          padding: '1rem 1.25rem',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '1rem',
-          background: 'var(--vc-bg-elevated)',
-        }}>
-          {avatar ? (
-            <img src={avatar} alt="" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
-          ) : (
-            <div style={{
-              width: 40,
-              height: 40,
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, var(--vc-gold), #b8860b)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1rem',
-              fontWeight: 700,
-              color: '#0a0f1a',
-            }}>
-              {(friendName || 'U')[0].toUpperCase()}
-            </div>
+        <header className="vc-chat-header">
+          {docked && (
+            <button type="button" className="vc-chat-back" onClick={onClose} aria-label="Back to chats">
+              ‹
+            </button>
           )}
-          <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 600, color: 'var(--vc-cream)' }}>
-              {friendName}
-            </div>
-            <div role="status" style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: error ? '#fc8181' : 'var(--vc-slate)' }}>
-              {syncStatus}
+          <span className="vc-chat-header-avatar">
+            {avatar && !brokenAvatar ? (
+              <img
+                className="vc-chat-avatar"
+                src={avatar}
+                alt=""
+                onError={() => setBrokenAvatar(true)}
+              />
+            ) : (
+              <span className="vc-chat-avatar-fallback" aria-hidden="true">
+                {(friendName || 'U')[0].toUpperCase()}
+              </span>
+            )}
+            {online && <span className="vc-messages-online-dot" aria-hidden="true" />}
+          </span>
+          <div className="vc-chat-header-copy">
+            <div className="vc-chat-header-title">{friendName}</div>
+            <div className={`vc-chat-header-status${online ? ' is-online' : ''}`} role="status">
+              {statusLabel}
             </div>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close chat" style={{
-            background: 'none',
-            border: 'none',
-            color: 'var(--vc-slate)',
-            fontSize: '1.5rem',
-            cursor: 'pointer',
-            padding: '0.5rem',
-          }}>
-            ×
-          </button>
+          {!docked && (
+            <button type="button" className="vc-chat-close" onClick={onClose} aria-label="Close chat">
+              ×
+            </button>
+          )}
         </header>
 
-        <div ref={messagesContainerRef} style={{
-          flex: 1,
-          overflowY: 'auto',
-          padding: '1rem',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem',
-        }}>
+        <div ref={messagesContainerRef} className="vc-chat-body">
           {hasMore && (
             <button
               type="button"
+              className="vc-chat-load-older"
               onClick={loadOlderMessages}
               disabled={loadingOlder}
-              style={{
-                alignSelf: 'center',
-                padding: '0.45rem 0.9rem',
-                borderRadius: '999px',
-                border: '1px solid rgba(255,255,255,0.12)',
-                background: 'var(--vc-bg-elevated)',
-                color: 'var(--vc-slate)',
-                cursor: loadingOlder ? 'wait' : 'pointer',
-                fontFamily: 'Outfit, sans-serif',
-                fontSize: '0.78rem',
-              }}
             >
               {loadingOlder ? 'Loading older messages…' : 'Load older messages'}
             </button>
           )}
           {messages.length === 0 && !error && (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--vc-slate)' }}>
-              <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem' }}>Start a conversation about cinema</p>
+            <div className="vc-chat-empty">
+              <p>Start a conversation about cinema</p>
             </div>
           )}
-          {messages.map(message => (
-            <div
-              key={message._id}
-              style={{
-                maxWidth: '70%',
-                alignSelf: message.senderId === friendId ? 'flex-start' : 'flex-end',
-                padding: '0.75rem 1rem',
-                borderRadius: '12px',
-                background: message.senderId === friendId ? 'rgba(255,255,255,0.1)' : 'rgba(212,175,55,0.15)',
-                border: message.senderId === friendId ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(212,175,55,0.3)',
-              }}
-            >
-              <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem', lineHeight: 1.4, wordBreak: 'break-word' }}>
-                {message.text}
+          {messages.map(message => {
+            const mine = message.senderId !== friendId;
+            return (
+              <div
+                key={message._id}
+                className={`vc-chat-bubble${mine ? ' is-mine' : ' is-theirs'}`}
+              >
+                <div className="vc-chat-bubble-text">{message.text}</div>
+                <time className="vc-chat-bubble-time" dateTime={message.createdAt}>
+                  {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </time>
               </div>
-              <time style={{ fontSize: '0.65rem', color: 'var(--vc-slate)', marginTop: '0.25rem', display: 'block' }}>
-                {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </time>
-            </div>
-          ))}
-          {error && <p role="alert" style={{ color: '#fc8181', fontSize: '0.82rem', textAlign: 'center' }}>{error}</p>}
+            );
+          })}
+          {error && <p role="alert" className="vc-chat-error">{error}</p>}
           <div ref={messagesEndRef} />
         </div>
 
-        <form onSubmit={sendMessage} style={{
-          padding: '1rem',
-          borderTop: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex',
-          gap: '0.5rem',
-          background: 'var(--vc-bg-elevated)',
-        }}>
+        <form className="vc-chat-composer" onSubmit={sendMessage}>
           <input
             type="text"
             value={input}
             onChange={event => setInput(event.target.value)}
-            placeholder="Type a message..."
+            placeholder="Write a message…"
             aria-label="Type a message"
             maxLength={2000}
             disabled={sending}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              padding: '0.75rem 1rem',
-              borderRadius: '8px',
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'var(--vc-bg-base)',
-              color: 'var(--vc-cream)',
-              fontFamily: 'Outfit, sans-serif',
-              fontSize: '0.9rem',
-              outline: 'none',
-            }}
           />
-          <button
-            type="submit"
-            disabled={sending || !input.trim()}
-            style={{
-              padding: '0.75rem 1.5rem',
-              borderRadius: '8px',
-              border: 'none',
-              background: sending || !input.trim() ? 'rgba(212,175,55,0.3)' : 'var(--vc-gold)',
-              color: '#0a0f1a',
-              fontFamily: 'Outfit, sans-serif',
-              fontWeight: 600,
-              cursor: sending || !input.trim() ? 'not-allowed' : 'pointer',
-              fontSize: '0.9rem',
-            }}
-          >
-            {sending ? 'Sending…' : 'Send'}
+          <button type="submit" disabled={sending || !input.trim()}>
+            {sending ? '…' : 'Send'}
           </button>
         </form>
       </section>
