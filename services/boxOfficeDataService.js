@@ -8,11 +8,13 @@ import { fetchTmdb } from './tmdbService.js';
 import { ensureBoxOfficeCacheWritesAllowed } from './storageMonitor.js';
 
 const INDIAN_BOX_OFFICE_FEED_URL = 'https://indian-boxoffice.com/feed.xml';
+const INDIAN_BOX_OFFICE_DAILY_URL = 'https://indian-boxoffice.com/daily-box-office/';
 const BOX_OFFICE_HISTORY_API = 'https://www.boxofficehistory.com/api/v1';
 const INDIA_PROVIDER = 'indian-boxoffice-rss';
 const HISTORY_PROVIDER = 'box-office-history';
 const CRORE_INR = 10_000_000;
 const MAX_RSS_BYTES = 1_000_000;
+const MAX_HTML_BYTES = 2_000_000;
 const MAX_CACHE_PAYLOAD_BYTES = 128 * 1024;
 const MAX_HISTORY_RESPONSE_BYTES = 4 * 1024 * 1024;
 const MAX_HISTORY_MEMORY_ENTRY_BYTES = 2 * 1024 * 1024;
@@ -20,7 +22,7 @@ const MAX_HISTORY_MEMORY_CACHE_BYTES = 8 * 1024 * 1024;
 const MAX_CACHE_ENTRIES = 100;
 const MAX_DAILY_REPORTS = 1000;
 const MAX_LIFETIME_REPORTS = 300;
-const MAX_TMDB_LOOKUPS_PER_SYNC = 30;
+const DEFAULT_MAX_TMDB_LOOKUPS_PER_SYNC = 60;
 const DEFAULT_CACHE_TTL_SECONDS = 60 * 60;
 const DEFAULT_REPORT_TTL_DAYS = 30;
 const SYNC_LEASE_MS = 30 * 60 * 1000;
@@ -31,6 +33,10 @@ let historyMemoryCacheBytes = 0;
 function envInteger(name, fallback, min, max) {
   const value = Number(process.env[name]);
   return Number.isInteger(value) && value >= min && value <= max ? value : fallback;
+}
+
+function maxTmdbLookupsPerSync() {
+  return envInteger('BOX_OFFICE_MAX_TMDB_LOOKUPS', DEFAULT_MAX_TMDB_LOOKUPS_PER_SYNC, 10, 120);
 }
 
 function normalizeTitle(value) {
@@ -94,9 +100,183 @@ function parseCrores(value) {
 
 function getSourceMovieKey(path, title) {
   const moviePath = path.match(/(?:^|\/)movies\/([^/]+)/i);
-  if (moviePath) return moviePath[1].toLowerCase();
+  // Preserve publisher slug casing — indian-boxoffice.com paths are case-sensitive.
+  if (moviePath) return decodeURIComponent(moviePath[1]).replace(/\/+$/, '');
   const normalized = normalizeTitle(title).replace(/\s+/g, '-');
   return `title-${normalized || 'unknown'}`;
+}
+
+function escapeRegex(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function sourceMovieKeyFilter(sourceMovieKey) {
+  const key = String(sourceMovieKey || '').replace(/^\/?movies\//i, '').replace(/\/+$/, '').trim();
+  if (!key) return null;
+  return { $regex: `^${escapeRegex(key)}$`, $options: 'i' };
+}
+
+function parseCroreCell(value) {
+  const text = decodeXml(value).replace(/\s+/g, ' ').trim();
+  if (!text || text === '—' || text === '-' || /^n\/?a$/i.test(text)) return null;
+  const match = text.match(/₹\s*([\d,.]+)\s*Cr/i) || text.match(/^([\d,.]+)\s*Cr$/i);
+  if (!match) return null;
+  return {
+    amount: parseCrores(match[1]),
+    reported: match[0].startsWith('₹') ? match[0] : `₹${match[1]} Cr`,
+  };
+}
+
+function pushDailyReport(target, report) {
+  if (!report?.movieTitle || !report.reportDate || report.dailyCollection == null) return;
+  const key = `${normalizeTitle(report.movieTitle)}|${report.reportDate}`;
+  const existing = target.get(key);
+  if (!existing) {
+    target.set(key, report);
+    return;
+  }
+  const preferRanked = report.rank != null && existing.rank == null;
+  const preferLaterDay = Number(report.dayNumber || 0) > Number(existing.dayNumber || 0);
+  if (preferRanked || preferLaterDay) target.set(key, report);
+}
+
+function pushLifetimeReport(target, report) {
+  if (!report?.movieTitle || !report.reportDate || report.amount == null) return;
+  const key = `${normalizeTitle(report.movieTitle)}|${report.collectionType}|${report.reportDate}`;
+  const existing = target.get(key);
+  if (!existing || report.amount >= existing.amount) {
+    target.set(key, report);
+  }
+}
+
+function cleanBriefMovieTitle(value) {
+  return String(value || '')
+    .replace(/\b\d{1,2}:\d{2}\s*(?:IST|UTC|GMT)?\s*:?\s*/gi, ' ')
+    .replace(/\bIST\s*:?\s*/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseCompactBriefEntries(text, reportDate, reportedAt, sourceUrl, lifetimeByTitle) {
+  const daily = new Map();
+  const lifetime = new Map();
+  const matches = [...String(text || '').matchAll(
+    /(?:^|[;\n]|\d{1,2}:\d{2}\s*(?:IST|UTC|GMT)?\s*:)\s*([A-Za-z][\w .'&:-]{1,80}?)\s+Day\s+(\d+)\s*:\s*₹\s*([\d,.]+)\s*Cr(?:\s+India\s+nett)?/gi
+  )];
+  for (const match of matches) {
+    const movieTitle = cleanBriefMovieTitle(match[1]);
+    if (!movieTitle || /^(india box office|daily indian|latest|update)/i.test(movieTitle)) continue;
+    const dailyCollection = parseCrores(match[3]);
+    if (dailyCollection == null || !reportDate) continue;
+    const movieInfo = lifetimeByTitle.get(normalizeTitle(movieTitle));
+    const sourceMovieKey = movieInfo?.sourceMovieKey || getSourceMovieKey(sourceUrl || '', movieTitle);
+    pushDailyReport(daily, {
+      movieTitle,
+      sourceMovieKey,
+      reportDate,
+      dayNumber: Number(match[2]),
+      dailyCollection,
+      cumulativeCollection: null,
+      sourceReportedValue: `₹${match[3]} Cr`,
+      sourceReportedCumulativeValue: null,
+      reportedAt,
+      sourceUrl,
+    });
+  }
+  return { dailyReports: [...daily.values()], lifetimeReports: [...lifetime.values()] };
+}
+
+export function parseIndianDailyChartHtml(html, { reportDate = null, reportedAt = new Date() } = {}) {
+  if (typeof html !== 'string' || html.length > MAX_HTML_BYTES) {
+    throw new Error('Indian Box Office daily chart HTML is missing or exceeds the size limit.');
+  }
+
+  const updatedMatch = html.match(/Updated\s+(\d{4}-\d{2}-\d{2})/i);
+  const chartDate = reportDate || updatedMatch?.[1] || dateOnly(reportedAt);
+  if (!chartDate) {
+    throw new Error('Indian Box Office daily chart date could not be determined.');
+  }
+
+  const daily = new Map();
+  const lifetime = new Map();
+  const rows = [...html.matchAll(/<tr\b[^>]*class="[^"]*\blive\b[^"]*"[^>]*>([\s\S]*?)<\/tr>/gi)];
+  if (rows.length > 200) throw new Error('Indian Box Office daily chart exceeds the row limit.');
+
+  for (const rowMatch of rows) {
+    const row = rowMatch[1];
+    const cells = [...row.matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map(match => match[1]);
+    if (cells.length < 5) continue;
+
+    const linkMatch = cells[1].match(/href="(\/movies\/[^"]+)"/i);
+    const titleMatch = cells[1].match(/aria-label="Open details for ([^"]+)"/i)
+      || cells[1].match(/<span>([\s\S]*?)<span class="pill">/i)
+      || cells[1].match(/alt="([^"]+?)\s+box office poster"/i);
+    const movieTitle = decodeXml(titleMatch?.[1] || '').trim();
+    if (!movieTitle) continue;
+
+    const path = linkMatch ? `movies/${linkMatch[1].replace(/^\/movies\//i, '').replace(/\/$/, '')}` : '';
+    const sourceMovieKey = getSourceMovieKey(path || linkMatch?.[1] || '', movieTitle);
+    const dayMatch = decodeXml(cells[3]).match(/Day\s*(\d+)/i);
+    const dayAmount = parseCroreCell(cells[4]);
+    const cumulative = cells[6] ? parseCroreCell(cells[6]) : null;
+    const worldwide = cells[7] ? parseCroreCell(cells[7]) : null;
+    const rank = Number(decodeXml(cells[0]));
+    const sourceUrl = linkMatch
+      ? `https://indian-boxoffice.com${linkMatch[1]}`
+      : INDIAN_BOX_OFFICE_DAILY_URL;
+
+    if (dayAmount?.amount != null) {
+      pushDailyReport(daily, {
+        movieTitle,
+        sourceMovieKey,
+        reportDate: chartDate,
+        dayNumber: dayMatch ? Number(dayMatch[1]) : null,
+        dailyCollection: dayAmount.amount,
+        cumulativeCollection: cumulative?.amount ?? null,
+        sourceReportedValue: dayAmount.reported,
+        sourceReportedCumulativeValue: cumulative?.reported ?? null,
+        reportedAt,
+        sourceUrl,
+        rank: Number.isFinite(rank) ? rank : null,
+      });
+    }
+
+    if (cumulative?.amount != null) {
+      pushLifetimeReport(lifetime, {
+        movieTitle,
+        sourceMovieKey,
+        collectionType: 'india_nett',
+        market: 'india',
+        territory: 'IN',
+        amount: cumulative.amount,
+        sourceReportedValue: cumulative.reported,
+        reportDate: chartDate,
+        reportedAt,
+        sourceUrl,
+      });
+    }
+
+    if (worldwide?.amount != null) {
+      pushLifetimeReport(lifetime, {
+        movieTitle,
+        sourceMovieKey,
+        collectionType: 'worldwide_gross',
+        market: 'worldwide',
+        territory: 'WW',
+        amount: worldwide.amount,
+        sourceReportedValue: worldwide.reported,
+        reportDate: chartDate,
+        reportedAt,
+        sourceUrl,
+      });
+    }
+  }
+
+  return {
+    reportDate: chartDate,
+    dailyReports: [...daily.values()],
+    lifetimeReports: [...lifetime.values()],
+  };
 }
 
 export function parseIndianBoxOfficeFeed(xml) {
@@ -126,38 +306,39 @@ export function parseIndianBoxOfficeFeed(xml) {
     }
   }
 
-  const dailyReports = [];
-  const lifetimeReports = [];
+  const daily = new Map();
+  const lifetime = new Map();
   for (const item of rawItems) {
     const path = sourcePath(item.link);
     const reportedAt = new Date(item.pubDate);
     if (!path || Number.isNaN(reportedAt.getTime())) continue;
 
-    const daily = item.description.match(
+    const reportDate = (path.match(/^briefs\/(\d{4}-\d{2}-\d{2})$/i) || [])[1]
+      || dateOnly(item.pubDate);
+
+    const leadDaily = item.description.match(
       /^(.+?)\s+leads the latest reported daily India nett at\s*₹\s*([\d,.]+)\s*Cr on Day\s*(\d+)([\s\S]*)$/i
     );
-    if (daily) {
-      const movieTitle = daily[1].trim();
-      const dailyCollection = parseCrores(daily[2]);
-      const cumulativeMatch = daily[4].match(
+    if (leadDaily) {
+      const movieTitle = leadDaily[1].trim();
+      const dailyCollection = parseCrores(leadDaily[2]);
+      const cumulativeMatch = leadDaily[4].match(
         /cumulative India nett (?:to|is)\s*₹\s*([\d,.]+)\s*Cr/i
       );
       const cumulativeCollection = cumulativeMatch ? parseCrores(cumulativeMatch[1]) : null;
-      const worldwideMatch = daily[4].match(/worldwide gross to\s*₹\s*([\d,.]+)\s*Cr/i);
-      const reportDate = (path.match(/^briefs\/(\d{4}-\d{2}-\d{2})$/i) || [])[1]
-        || dateOnly(item.pubDate);
+      const worldwideMatch = leadDaily[4].match(/worldwide gross to\s*₹\s*([\d,.]+)\s*Cr/i);
       const movieInfo = lifetimeByTitle.get(normalizeTitle(movieTitle));
       const sourceMovieKey = movieInfo?.sourceMovieKey || getSourceMovieKey(path, movieTitle);
 
       if (dailyCollection !== null && reportDate) {
-        dailyReports.push({
+        pushDailyReport(daily, {
           movieTitle,
           sourceMovieKey,
           reportDate,
-          dayNumber: Number(daily[3]),
+          dayNumber: Number(leadDaily[3]),
           dailyCollection,
           cumulativeCollection,
-          sourceReportedValue: `₹${daily[2]} Cr`,
+          sourceReportedValue: `₹${leadDaily[2]} Cr`,
           sourceReportedCumulativeValue: cumulativeMatch ? `₹${cumulativeMatch[1]} Cr` : null,
           reportedAt,
           sourceUrl: item.link,
@@ -167,7 +348,7 @@ export function parseIndianBoxOfficeFeed(xml) {
       if (worldwideMatch && reportDate) {
         const amount = parseCrores(worldwideMatch[1]);
         if (amount !== null) {
-          lifetimeReports.push({
+          pushLifetimeReport(lifetime, {
             movieTitle,
             sourceMovieKey,
             collectionType: 'worldwide_gross',
@@ -181,12 +362,39 @@ export function parseIndianBoxOfficeFeed(xml) {
           });
         }
       }
+      if (cumulativeCollection != null && reportDate) {
+        pushLifetimeReport(lifetime, {
+          movieTitle,
+          sourceMovieKey,
+          collectionType: 'india_nett',
+          market: 'india',
+          territory: 'IN',
+          amount: cumulativeCollection,
+          sourceReportedValue: cumulativeMatch ? `₹${cumulativeMatch[1]} Cr` : null,
+          reportDate,
+          reportedAt,
+          sourceUrl: item.link,
+        });
+      }
       continue;
+    }
+
+    // Newer brief style: "Ramayana Day 16: ₹15.75 Cr India nett"
+    if (/^briefs?(?:\/|$)/i.test(path) || /day\s+\d+\s*:/i.test(item.title) || /day\s+\d+\s*:/i.test(item.description)) {
+      const compact = parseCompactBriefEntries(
+        `${item.title}\n${item.description}`,
+        reportDate,
+        reportedAt,
+        item.link,
+        lifetimeByTitle
+      );
+      for (const report of compact.dailyReports) pushDailyReport(daily, report);
+      for (const report of compact.lifetimeReports) pushLifetimeReport(lifetime, report);
+      if (compact.dailyReports.length) continue;
     }
 
     if (!/^movies\//i.test(path)) continue;
     const movieTitle = item.title.replace(/\s+box office\s*[—-].*$/i, '').trim();
-    const reportDate = dateOnly(item.pubDate);
     if (!movieTitle || !reportDate) continue;
 
     const languageMatch = item.description.match(/\((Hindi|Telugu|Tamil|Malayalam|Kannada|English)\)/i);
@@ -206,7 +414,7 @@ export function parseIndianBoxOfficeFeed(xml) {
     if (netMatch) {
       const amount = parseCrores(netMatch[1]);
       if (amount !== null) {
-        lifetimeReports.push({
+        pushLifetimeReport(lifetime, {
           movieTitle,
           sourceMovieKey,
           collectionType: 'india_nett',
@@ -224,7 +432,7 @@ export function parseIndianBoxOfficeFeed(xml) {
     if (worldwideMatch) {
       const amount = parseCrores(worldwideMatch[1]);
       if (amount !== null) {
-        lifetimeReports.push({
+        pushLifetimeReport(lifetime, {
           movieTitle,
           sourceMovieKey,
           collectionType: 'worldwide_gross',
@@ -241,7 +449,10 @@ export function parseIndianBoxOfficeFeed(xml) {
     }
   }
 
-  return { dailyReports, lifetimeReports };
+  return {
+    dailyReports: [...daily.values()],
+    lifetimeReports: [...lifetime.values()],
+  };
 }
 
 function reportDateValue(value) {
@@ -399,18 +610,21 @@ async function releaseSyncLease(owner) {
   );
 }
 
-async function fetchIndianFeed() {
+async function fetchIndianText(url, { accept, maxBytes }) {
   let lastError;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const response = await axios.get(INDIAN_BOX_OFFICE_FEED_URL, {
-        timeout: 15_000,
+      const response = await axios.get(url, {
+        timeout: 20_000,
         responseType: 'text',
-        maxContentLength: MAX_RSS_BYTES,
-        maxBodyLength: MAX_RSS_BYTES,
-        headers: { Accept: 'application/rss+xml, application/xml, text/xml' },
+        maxContentLength: maxBytes,
+        maxBodyLength: maxBytes,
+        headers: {
+          Accept: accept,
+          'User-Agent': 'VisualCineasteBoxOffice/1.0 (+https://visualcineaste.local)',
+        },
       });
-      if (typeof response.data !== 'string') throw new Error('RSS response was not text.');
+      if (typeof response.data !== 'string') throw new Error('Provider response was not text.');
       return response.data;
     } catch (error) {
       lastError = error;
@@ -421,6 +635,33 @@ async function fetchIndianFeed() {
   throw lastError;
 }
 
+async function fetchIndianFeed() {
+  return fetchIndianText(INDIAN_BOX_OFFICE_FEED_URL, {
+    accept: 'application/rss+xml, application/xml, text/xml',
+    maxBytes: MAX_RSS_BYTES,
+  });
+}
+
+async function fetchIndianDailyChart() {
+  return fetchIndianText(INDIAN_BOX_OFFICE_DAILY_URL, {
+    accept: 'text/html,application/xhtml+xml',
+    maxBytes: MAX_HTML_BYTES,
+  });
+}
+
+function mergeParsedReports(...parts) {
+  const daily = new Map();
+  const lifetime = new Map();
+  for (const part of parts) {
+    for (const report of part?.dailyReports || []) pushDailyReport(daily, report);
+    for (const report of part?.lifetimeReports || []) pushLifetimeReport(lifetime, report);
+  }
+  return {
+    dailyReports: [...daily.values()],
+    lifetimeReports: [...lifetime.values()],
+  };
+}
+
 export async function syncIndianBoxOfficeFeed() {
   const owner = randomUUID();
   if (!await acquireSyncLease(owner)) {
@@ -428,14 +669,29 @@ export async function syncIndianBoxOfficeFeed() {
   }
 
   try {
-    const parsed = parseIndianBoxOfficeFeed(await fetchIndianFeed());
+    const feedXml = await fetchIndianFeed();
+    const feedParsed = parseIndianBoxOfficeFeed(feedXml);
+
+    let chartParsed = { dailyReports: [], lifetimeReports: [] };
+    try {
+      chartParsed = parseIndianDailyChartHtml(await fetchIndianDailyChart(), {
+        reportedAt: new Date(),
+      });
+      console.log(
+        `[Box Office] Daily chart parsed: ${chartParsed.dailyReports.length} films for ${chartParsed.reportDate}.`
+      );
+    } catch (error) {
+      console.warn(`[Box Office] Daily chart fetch/parse failed: ${error.message}`);
+    }
+
+    const parsed = mergeParsedReports(feedParsed, chartParsed);
     const titles = [...new Set([...parsed.dailyReports, ...parsed.lifetimeReports].map(report => report.movieTitle))];
     const tmdbMatches = new Map();
     const canLookupTmdb = Boolean(process.env.TMDB_READ_ACCESS_TOKEN && process.env.TMDB_READ_ACCESS_TOKEN.length >= 20);
     if (!canLookupTmdb) {
       console.warn('[Box Office] TMDB matching skipped because TMDB_READ_ACCESS_TOKEN is unavailable.');
     }
-    for (const title of (canLookupTmdb ? titles.slice(0, MAX_TMDB_LOOKUPS_PER_SYNC) : [])) {
+    for (const title of (canLookupTmdb ? titles.slice(0, maxTmdbLookupsPerSync()) : [])) {
       try {
         const sourceKey = [...parsed.lifetimeReports, ...parsed.dailyReports]
           .find(report => normalizeTitle(report.movieTitle) === normalizeTitle(title))
@@ -470,7 +726,8 @@ export async function syncIndianBoxOfficeFeed() {
         sourceReportedValue: report.sourceReportedValue,
         sourceReportedCumulativeValue: report.sourceReportedCumulativeValue,
         currency: 'INR',
-        rank: null,
+        rank: report.rank ?? null,
+        dayNumber: Number.isFinite(Number(report.dayNumber)) ? Number(report.dayNumber) : null,
         source: INDIA_PROVIDER,
         sourceMovieKey: report.sourceMovieKey,
         sourceUrl: report.sourceUrl,
@@ -519,8 +776,54 @@ export async function syncIndianBoxOfficeFeed() {
       upsertReportBatch(BoxOfficeDaily, daily, 'daily'),
       upsertReportBatch(BoxOfficeLifetime, lifetime, 'lifetime'),
     ]);
+
+    // Drop malformed brief titles left by earlier parsers (e.g. "7:00 IST: Ramayana").
+    const junkFilter = {
+      source: INDIA_PROVIDER,
+      $or: [
+        { movieTitle: /^\d{1,2}:\d{2}\b/i },
+        { movieTitle: /\bIST\s*:/i },
+        { sourceMovieKey: /^title-\d{1,2}-\d{2}-ist-/i },
+      ],
+    };
+    const [junkDaily, junkLifetime] = await Promise.all([
+      BoxOfficeDaily.deleteMany(junkFilter),
+      BoxOfficeLifetime.deleteMany(junkFilter),
+    ]);
+    if (junkDaily.deletedCount || junkLifetime.deletedCount) {
+      console.log(
+        `[Box Office] Removed ${junkDaily.deletedCount} daily and ${junkLifetime.deletedCount} lifetime junk reports.`
+      );
+    }
+
+    let daywiseMovies = 0;
+    try {
+      const chartMovies = chartParsed.dailyReports.map(report => {
+        const match = tmdbMatches.get(normalizeTitle(report.movieTitle));
+        return {
+          sourceMovieKey: report.sourceMovieKey,
+          movieTitle: report.movieTitle,
+          tmdbId: match?.tmdbId ?? null,
+          posterPath: match?.posterPath || null,
+          releaseDate: match?.releaseDate || null,
+          releaseYear: match?.releaseYear || null,
+          originalLanguage: match?.originalLanguage || null,
+        };
+      });
+      daywiseMovies = await syncDaywiseForChartMovies(chartMovies);
+      console.log(`[Box Office] Day-wise movie pages synced for ${daywiseMovies} titles.`);
+    } catch (error) {
+      console.warn(`[Box Office] Day-wise movie sync skipped: ${error.message}`);
+    }
+
     await syncState(INDIA_PROVIDER, true, dailyCount + lifetimeCount);
-    return { dailyReports: dailyCount, lifetimeReports: lifetimeCount };
+    return {
+      dailyReports: dailyCount,
+      lifetimeReports: lifetimeCount,
+      chartFilms: chartParsed.dailyReports.length,
+      chartDate: chartParsed.reportDate || null,
+      daywiseMovies,
+    };
   } catch (error) {
     await syncState(INDIA_PROVIDER, false, 0, error);
     throw error;
@@ -1070,28 +1373,101 @@ export async function getLatestLifetimeReportsPage(collectionType, date, languag
   return { reports, total, page, limit };
 }
 
-export async function getMovieBoxOfficeReports(tmdbId) {
+async function loadMovieBoxOfficeReports(tmdbId, sourceMovieKey = null) {
+  const hasTmdb = Number.isSafeInteger(tmdbId) && tmdbId > 0;
+  const hasKey = Boolean(sourceMovieKey);
+  if (!hasTmdb && !hasKey) return { lifetimeReports: [], dailyReports: [] };
+
+  const query = { expiresAt: { $gt: new Date() } };
+  const keyFilter = hasKey ? sourceMovieKeyFilter(sourceMovieKey) : null;
+  if (hasTmdb && keyFilter) {
+    query.$or = [{ tmdbId }, { sourceMovieKey: keyFilter }];
+  } else if (hasTmdb) {
+    query.tmdbId = tmdbId;
+  } else if (keyFilter) {
+    query.sourceMovieKey = keyFilter;
+  }
+
   const [lifetimeReports, dailyReports] = await Promise.all([
-    BoxOfficeLifetime.find({ tmdbId, expiresAt: { $gt: new Date() } })
+    BoxOfficeLifetime.find(query)
       .sort({ reportedAt: -1 })
-      .limit(20)
+      .limit(40)
       .lean(),
-    BoxOfficeDaily.find({ tmdbId, expiresAt: { $gt: new Date() } })
-      .sort({ reportDate: 1 })
-      .limit(100)
+    BoxOfficeDaily.find(query)
+      .sort({ reportDate: 1, dayNumber: 1, reportedAt: 1 })
+      .limit(400)
       .lean(),
   ]);
+  return { lifetimeReports, dailyReports };
+}
+
+function shouldRefreshMovieDaywise(dailyReports = [], sourceMovieKey = null) {
+  if (!sourceMovieKey) return false;
+  if (!dailyReports.length) return true;
+  const maxDay = Math.max(0, ...dailyReports.map(report => Number(report.dayNumber) || 0));
+  if (maxDay > dailyReports.length + 2) return true;
+  const uniqueDates = new Set(dailyReports.map(report => report.reportDate?.toISOString?.()?.slice(0, 10) || String(report.reportDate)));
+  return uniqueDates.size < Math.max(3, Math.min(maxDay, 10));
+}
+
+export async function getMovieBoxOfficeReports(tmdbId, sourceMovieKey = null, { refreshDaywise = true } = {}) {
+  const hasTmdb = Number.isSafeInteger(tmdbId) && tmdbId > 0;
+  const hasKey = Boolean(sourceMovieKey);
+  if (!hasTmdb && !hasKey) return null;
+
+  let { lifetimeReports, dailyReports } = await loadMovieBoxOfficeReports(tmdbId, sourceMovieKey);
+
+  if (refreshDaywise && shouldRefreshMovieDaywise(dailyReports, sourceMovieKey)) {
+    try {
+      const seed = lifetimeReports[0] || dailyReports[0] || {};
+      await syncMovieDaywiseFromSource(sourceMovieKey, {
+        movieTitle: seed.movieTitle || null,
+        tmdbId: seed.tmdbId ?? (hasTmdb ? tmdbId : null),
+        posterPath: seed.posterPath || null,
+        releaseDate: seed.releaseDate || null,
+        releaseYear: seed.releaseYear || null,
+        originalLanguage: seed.originalLanguage || null,
+      });
+      ({ lifetimeReports, dailyReports } = await loadMovieBoxOfficeReports(tmdbId, sourceMovieKey));
+    } catch (error) {
+      console.warn(`[Box Office] On-demand day-wise sync failed for ${sourceMovieKey}:`, error.message);
+    }
+  }
+
   if (!lifetimeReports.length && !dailyReports.length) return null;
 
-  const title = lifetimeReports[0]?.movieTitle || dailyReports[0]?.movieTitle;
+  const uniqueDaily = [];
+  const dailyByDate = new Map();
+  for (const report of dailyReports) {
+    const dateKey = report.reportDate?.toISOString?.()?.slice(0, 10) || String(report.reportDate);
+    const existing = dailyByDate.get(dateKey);
+    const prefer = !existing
+      || (Number(report.dayNumber) || 0) > (Number(existing.dayNumber) || 0)
+      || ((Number(report.dayNumber) || 0) === (Number(existing.dayNumber) || 0)
+        && new Date(report.reportedAt) > new Date(existing.reportedAt));
+    if (prefer) dailyByDate.set(dateKey, report);
+  }
+  uniqueDaily.push(...[...dailyByDate.values()].sort((a, b) => {
+    const dayDiff = (Number(a.dayNumber) || 0) - (Number(b.dayNumber) || 0);
+    if (dayDiff) return dayDiff;
+    return new Date(a.reportDate) - new Date(b.reportDate);
+  }));
+
+  const title = lifetimeReports[0]?.movieTitle || uniqueDaily[0]?.movieTitle;
+  const resolvedTmdbId = lifetimeReports[0]?.tmdbId || uniqueDaily[0]?.tmdbId || tmdbId || null;
+  const resolvedKey = lifetimeReports[0]?.sourceMovieKey || uniqueDaily[0]?.sourceMovieKey || sourceMovieKey || null;
   const latestByType = new Map();
   for (const report of lifetimeReports) {
-    if (!latestByType.has(report.collectionType)) latestByType.set(report.collectionType, report);
+    const existing = latestByType.get(report.collectionType);
+    if (!existing || (report.amount || 0) >= (existing.amount || 0)) {
+      latestByType.set(report.collectionType, report);
+    }
   }
   const indiaNet = latestByType.get('india_nett');
   const worldwideGross = latestByType.get('worldwide_gross');
   return {
-    tmdbId,
+    tmdbId: resolvedTmdbId,
+    sourceMovieKey: resolvedKey,
     title,
     reports: lifetimeReports.map(report => ({
       collectionType: report.collectionType,
@@ -1118,9 +1494,9 @@ export async function getMovieBoxOfficeReports(tmdbId) {
       sourceUrl: worldwideGross.sourceUrl,
       lastUpdated: worldwideGross.reportedAt,
     } : null,
-    daywiseCollection: dailyReports.length ? {
-      value: dailyReports.map(report => ({
-        day: null,
+    daywiseCollection: uniqueDaily.length ? {
+      value: uniqueDaily.map(report => ({
+        day: report.dayNumber ?? null,
         date: report.reportDate.toISOString().slice(0, 10),
         amount: report.dailyCollection,
         cumulativeAmount: report.cumulativeCollection,
@@ -1131,13 +1507,539 @@ export async function getMovieBoxOfficeReports(tmdbId) {
         sourceUrl: report.sourceUrl,
         isEstimate: report.isEstimate,
       })),
-      source: dailyReports[0].source,
-      sourceUrl: dailyReports[0].sourceUrl,
-      lastUpdated: dailyReports[dailyReports.length - 1].reportedAt,
+      source: uniqueDaily[0].source,
+      sourceUrl: uniqueDaily[0].sourceUrl,
+      lastUpdated: uniqueDaily[uniqueDaily.length - 1].reportedAt,
     } : null,
     lifetimeReports,
+    dailyReports: uniqueDaily,
+    coverage: 'Only source-reported records are returned; missing days are not filled. India nett is day-wise when reported; gross is the latest worldwide total when available.',
+  };
+}
+
+function isNonIndianReport(report) {
+  const language = String(report.originalLanguage || '').toLowerCase();
+  if (language === 'en') return true;
+  const title = String(report.movieTitle || '');
+  return /\b(godzilla|hunger games|insidious|christmas carol|how to rob)\b/i.test(title);
+}
+
+const MONTHS = {
+  jan: 0, january: 0,
+  feb: 1, february: 1,
+  mar: 2, march: 2,
+  apr: 3, april: 3,
+  may: 4,
+  jun: 5, june: 5,
+  jul: 6, july: 6,
+  aug: 7, august: 7,
+  sep: 8, sept: 8, september: 8,
+  oct: 9, october: 9,
+  nov: 10, november: 10,
+  dec: 11, december: 11,
+};
+
+function parseIndianDisplayDate(value) {
+  const text = decodeXml(value).replace(/\s+/g, ' ').trim();
+  const match = text.match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  if (!match) return null;
+  const day = Number(match[1]);
+  const month = MONTHS[match[2].toLowerCase()];
+  const year = Number(match[3]);
+  if (!Number.isInteger(day) || month == null || !Number.isInteger(year)) return null;
+  const date = new Date(Date.UTC(year, month, day));
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 10);
+}
+
+export function parseIndianMovieDaywiseHtml(html, {
+  sourceMovieKey,
+  movieTitle = null,
+  reportedAt = new Date(),
+} = {}) {
+  if (typeof html !== 'string' || html.length > MAX_HTML_BYTES) {
+    throw new Error('Indian movie day-wise HTML is missing or exceeds the size limit.');
+  }
+  if (!sourceMovieKey) throw new Error('sourceMovieKey is required for movie day-wise parsing.');
+
+  const titleMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const resolvedTitle = movieTitle
+    || decodeXml(titleMatch?.[1] || '')
+      .replace(/\s+box office[\s\S]*$/i, '')
+      .trim()
+    || sourceMovieKey;
+
+  const table = (html.match(/<table[\s\S]*?<\/table>/i) || [])[0] || '';
+  const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)];
+  const dailyReports = [];
+  let runningNett = 0;
+  let runningWorldwide = 0;
+
+  for (const rowMatch of rows) {
+    const cells = [...rowMatch[1].matchAll(/<td\b[^>]*>([\s\S]*?)<\/td>/gi)].map(match => decodeXml(match[1]));
+    if (cells.length < 3) continue;
+    const dayMatch = cells[0].match(/Day\s*(\d+)/i);
+    if (!dayMatch) continue;
+    const reportDate = parseIndianDisplayDate(cells[1]);
+    const nett = parseCroreCell(cells[2]);
+    const worldwide = cells[3] ? parseCroreCell(cells[3]) : null;
+    if (!reportDate || nett?.amount == null) continue;
+
+    runningNett += nett.amount;
+    if (worldwide?.amount) runningWorldwide = Math.max(runningWorldwide, worldwide.amount);
+
+    dailyReports.push({
+      movieTitle: resolvedTitle,
+      sourceMovieKey,
+      reportDate,
+      dayNumber: Number(dayMatch[1]),
+      dailyCollection: nett.amount,
+      cumulativeCollection: runningNett,
+      worldwideDailyCollection: worldwide?.amount ?? null,
+      sourceReportedValue: nett.reported,
+      sourceReportedCumulativeValue: `₹${(runningNett / CRORE_INR).toFixed(2)} Cr`,
+      reportedAt,
+      sourceUrl: `https://indian-boxoffice.com/movies/${sourceMovieKey}/`,
+    });
+  }
+
+  const lifetimeReports = [];
+  if (runningNett > 0) {
+    lifetimeReports.push({
+      movieTitle: resolvedTitle,
+      sourceMovieKey,
+      collectionType: 'india_nett',
+      market: 'india',
+      territory: 'IN',
+      amount: runningNett,
+      sourceReportedValue: `₹${(runningNett / CRORE_INR).toFixed(2)} Cr`,
+      reportDate: dailyReports.at(-1)?.reportDate || dateOnly(reportedAt),
+      reportedAt,
+      sourceUrl: `https://indian-boxoffice.com/movies/${sourceMovieKey}/`,
+    });
+  }
+  if (runningWorldwide > 0) {
+    lifetimeReports.push({
+      movieTitle: resolvedTitle,
+      sourceMovieKey,
+      collectionType: 'worldwide_gross',
+      market: 'worldwide',
+      territory: 'WW',
+      amount: runningWorldwide,
+      sourceReportedValue: `₹${(runningWorldwide / CRORE_INR).toFixed(2)} Cr`,
+      reportDate: dailyReports.at(-1)?.reportDate || dateOnly(reportedAt),
+      reportedAt,
+      sourceUrl: `https://indian-boxoffice.com/movies/${sourceMovieKey}/`,
+    });
+  }
+
+  return {
+    movieTitle: resolvedTitle,
+    sourceMovieKey,
     dailyReports,
-    coverage: 'Only source-reported records are returned; missing days are not filled.',
+    lifetimeReports,
+  };
+}
+
+function normalizeIndiaMovieKey(sourceMovieKey) {
+  return String(sourceMovieKey || '')
+    .replace(/^\/?movies\//i, '')
+    .replace(/\/+$/, '')
+    .trim();
+}
+
+function isValidIndiaMovieKey(key) {
+  return Boolean(key)
+    && key.length >= 3
+    && key.length <= 120
+    && /^[a-z0-9][a-z0-9_-]*$/i.test(key)
+    && !/^(hi|en|ta|te|ml|kn|all|index)$/i.test(key);
+}
+
+async function resolveCanonicalIndiaMovieKey(sourceMovieKey) {
+  const key = normalizeIndiaMovieKey(sourceMovieKey);
+  if (!isValidIndiaMovieKey(key)) {
+    throw new Error('Invalid Indian Box Office movie key.');
+  }
+  try {
+    const html = await fetchIndianDailyChart();
+    const paths = [...html.matchAll(/href="(\/movies\/[^"]+)"/gi)].map(match => match[1]);
+    const exact = paths.find(path => normalizeIndiaMovieKey(path) === key);
+    if (exact) return normalizeIndiaMovieKey(exact);
+    const insensitive = paths.find(path => normalizeIndiaMovieKey(path).toLowerCase() === key.toLowerCase());
+    if (insensitive) return normalizeIndiaMovieKey(insensitive);
+  } catch (error) {
+    console.warn('[Box Office] Could not resolve movie slug from daily chart:', error.message);
+  }
+  return key;
+}
+
+async function fetchIndianMoviePage(sourceMovieKey) {
+  let key = normalizeIndiaMovieKey(sourceMovieKey);
+  if (!isValidIndiaMovieKey(key)) {
+    throw new Error('Invalid Indian Box Office movie key.');
+  }
+  try {
+    return await fetchIndianText(`https://indian-boxoffice.com/movies/${encodeURIComponent(key)}/`, {
+      accept: 'text/html,application/xhtml+xml',
+      maxBytes: MAX_HTML_BYTES,
+    });
+  } catch (error) {
+    if (error.response?.status !== 404) throw error;
+    const resolved = await resolveCanonicalIndiaMovieKey(key);
+    if (resolved === key) throw error;
+    key = resolved;
+    return fetchIndianText(`https://indian-boxoffice.com/movies/${encodeURIComponent(key)}/`, {
+      accept: 'text/html,application/xhtml+xml',
+      maxBytes: MAX_HTML_BYTES,
+    });
+  }
+}
+
+export async function syncMovieDaywiseFromSource(sourceMovieKey, meta = {}) {
+  const key = normalizeIndiaMovieKey(sourceMovieKey);
+  if (!isValidIndiaMovieKey(key)) return { dailyReports: 0, lifetimeReports: 0, skipped: true };
+
+  const parsed = parseIndianMovieDaywiseHtml(await fetchIndianMoviePage(key), {
+    sourceMovieKey: key,
+    movieTitle: meta.movieTitle || null,
+    reportedAt: new Date(),
+  });
+  if (!parsed.dailyReports.length) {
+    return { dailyReports: 0, lifetimeReports: 0, movieTitle: parsed.movieTitle, sourceMovieKey: key };
+  }
+
+  const expiresAt = reportTtlDate();
+  const daily = parsed.dailyReports.map(report => ({
+    reportKey: reportIdentity(INDIA_PROVIDER, key, 'india_nett', report.reportDate),
+    tmdbId: meta.tmdbId ?? null,
+    movieTitle: report.movieTitle,
+    originalTitle: meta.originalTitle || null,
+    posterPath: meta.posterPath || null,
+    releaseDate: meta.releaseDate || null,
+    releaseYear: meta.releaseYear || null,
+    originalLanguage: meta.originalLanguage || null,
+    reportDate: reportDateValue(report.reportDate),
+    market: 'india',
+    territory: 'IN',
+    collectionType: 'india_nett',
+    dailyCollection: report.dailyCollection,
+    cumulativeCollection: report.cumulativeCollection,
+    sourceReportedValue: report.sourceReportedValue,
+    sourceReportedCumulativeValue: report.sourceReportedCumulativeValue,
+    currency: 'INR',
+    rank: null,
+    dayNumber: report.dayNumber,
+    source: INDIA_PROVIDER,
+    sourceMovieKey: key,
+    sourceUrl: report.sourceUrl,
+    reportedAt: report.reportedAt,
+    isEstimate: true,
+    verificationStatus: 'publisher-consensus-estimate',
+    expiresAt,
+  }));
+
+  const lifetime = parsed.lifetimeReports.map(report => ({
+    reportKey: reportIdentity(INDIA_PROVIDER, key, report.collectionType, 'latest'),
+    tmdbId: meta.tmdbId ?? null,
+    movieTitle: report.movieTitle,
+    originalTitle: meta.originalTitle || null,
+    posterPath: meta.posterPath || null,
+    releaseDate: meta.releaseDate || null,
+    releaseYear: meta.releaseYear || null,
+    originalLanguage: meta.originalLanguage || null,
+    reportDate: reportDateValue(report.reportDate),
+    market: report.market,
+    territory: report.territory,
+    collectionType: report.collectionType,
+    amount: report.amount,
+    sourceReportedValue: report.sourceReportedValue,
+    currency: 'INR',
+    source: INDIA_PROVIDER,
+    sourceMovieKey: key,
+    sourceUrl: report.sourceUrl,
+    reportedAt: report.reportedAt,
+    isEstimate: true,
+    verificationStatus: 'publisher-consensus-estimate',
+    expiresAt,
+  }));
+
+  const [dailyCount, lifetimeCount] = await Promise.all([
+    upsertReportBatch(BoxOfficeDaily, daily, 'daily'),
+    upsertReportBatch(BoxOfficeLifetime, lifetime, 'lifetime'),
+  ]);
+
+  return {
+    dailyReports: dailyCount,
+    lifetimeReports: lifetimeCount,
+    daysParsed: parsed.dailyReports.length,
+    movieTitle: parsed.movieTitle,
+    sourceMovieKey: key,
+  };
+}
+
+async function syncDaywiseForChartMovies(chartMovies = []) {
+  const unique = [];
+  const seen = new Set();
+  for (const movie of chartMovies) {
+    const key = normalizeIndiaMovieKey(movie.sourceMovieKey);
+    if (!isValidIndiaMovieKey(key) || seen.has(key)) continue;
+    seen.add(key);
+    unique.push({ ...movie, sourceMovieKey: key });
+  }
+
+  const selected = unique.slice(0, Math.min(40, unique.length));
+  let synced = 0;
+  for (let index = 0; index < selected.length; index += 4) {
+    const batch = selected.slice(index, index + 4);
+    const results = await Promise.allSettled(
+      batch.map(movie => syncMovieDaywiseFromSource(movie.sourceMovieKey, {
+        movieTitle: movie.movieTitle || movie.title,
+        tmdbId: movie.tmdbId ?? null,
+        posterPath: movie.posterPath || null,
+        releaseDate: movie.releaseDate || null,
+        releaseYear: movie.releaseYear || null,
+        originalLanguage: movie.originalLanguage || null,
+      }))
+    );
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value.daysParsed > 0) synced += 1;
+      if (result.status === 'rejected') {
+        console.warn('[Box Office] Movie day-wise sync failed:', result.reason.message);
+      }
+    }
+  }
+  return synced;
+}
+
+export async function getYearlyBoxOfficeReports(year, { page = 1, limit = 50, language } = {}) {
+  const selectedYear = Number(year);
+  const yearStart = reportDateValue(`${selectedYear}-01-01`);
+  const yearEnd = reportDateValue(`${selectedYear + 1}-01-01`);
+  const indiaQuery = {
+    expiresAt: { $gt: new Date() },
+    $or: [
+      { releaseYear: selectedYear },
+      { reportDate: { $gte: yearStart, $lt: yearEnd } },
+    ],
+  };
+  if (language && language !== 'all') indiaQuery.originalLanguage = language;
+
+  const indiaRows = await BoxOfficeLifetime.find(indiaQuery)
+    .sort({ amount: -1, reportedAt: -1 })
+    .limit(500)
+    .lean();
+
+  const indiaByKey = new Map();
+  for (const report of indiaRows) {
+    const key = `${report.collectionType}:${report.tmdbId || report.sourceMovieKey}`;
+    if (!indiaByKey.has(key)) indiaByKey.set(key, report);
+  }
+  const indiaReports = [...indiaByKey.values()];
+
+  let usReports = [];
+  try {
+    const usYearly = await getBoxOfficeHistoryChart({
+      market: 'us',
+      period: 'yearly',
+      date: `${selectedYear}-12-31`,
+    });
+    usReports = (usYearly.rows || []).map((row, index) => ({
+      reportKey: `${HISTORY_PROVIDER}:us-yearly:${selectedYear}:${row.sourceId || row.title || index}`,
+      tmdbId: row.tmdbId || null,
+      movieTitle: row.title || row.movieTitle,
+      originalTitle: null,
+      posterPath: null,
+      releaseDate: row.releaseDate || null,
+      releaseYear: row.releaseYear || selectedYear,
+      originalLanguage: 'en',
+      reportDate: reportDateValue(`${selectedYear}-12-31`),
+      market: 'us',
+      territory: 'US',
+      collectionType: 'domestic_gross',
+      amount: row.dailyCollection ?? row.amount ?? null,
+      sourceReportedValue: row.dailyCollection != null
+        ? `$${Number(row.dailyCollection).toLocaleString('en-US')}`
+        : null,
+      currency: 'USD',
+      source: HISTORY_PROVIDER,
+      sourceMovieKey: row.sourceId || `us-${selectedYear}-${index + 1}`,
+      sourceUrl: row.sourceUrl || usYearly.sourceUrl,
+      reportedAt: new Date(),
+      isEstimate: row.isEstimate === true,
+      verificationStatus: row.verificationStatus || 'provider-reported',
+      expiresAt: reportTtlDate(),
+    })).filter(report => report.movieTitle && report.amount != null);
+  } catch (error) {
+    console.warn(`[Box Office] US yearly chart unavailable for ${selectedYear}:`, error.code || error.message);
+  }
+
+  const combined = [...indiaReports, ...usReports]
+    .sort((left, right) => {
+      if (left.currency === right.currency) return (right.amount || 0) - (left.amount || 0);
+      if (left.currency === 'INR' && right.currency !== 'INR') return -1;
+      if (right.currency === 'INR' && left.currency !== 'INR') return 1;
+      return (right.amount || 0) - (left.amount || 0);
+    });
+
+  const total = combined.length;
+  const start = (page - 1) * limit;
+  return {
+    year: selectedYear,
+    reports: combined.slice(start, start + limit),
+    total,
+    page,
+    limit,
+    pages: Math.max(1, Math.ceil(total / limit)),
+    coverage: usReports.length
+      ? `India lifetime reports for ${selectedYear} plus US domestic yearly gross from Box Office History.`
+      : `Partial India lifetime reports for ${selectedYear}; US domestic yearly chart was unavailable.`,
+  };
+}
+
+export async function getIndiaBoxOfficeBoard({ year, date, language } = {}) {
+  const selectedYear = Number(year) || new Date().getUTCFullYear();
+  const dailyBundle = await getIndianReportsForDate(date, language === 'all' ? undefined : language, 1, 100);
+  const selectedDate = dailyBundle.date;
+
+  const yearStart = reportDateValue(`${selectedYear}-01-01`);
+  const yearEnd = reportDateValue(`${selectedYear + 1}-01-01`);
+  const lifetimeQuery = {
+    collectionType: 'india_nett',
+    expiresAt: { $gt: new Date() },
+    $or: [
+      { releaseYear: selectedYear },
+      { reportDate: { $gte: yearStart, $lt: yearEnd } },
+    ],
+  };
+  if (language && language !== 'all') lifetimeQuery.originalLanguage = language;
+
+  const lifetimeRows = await BoxOfficeLifetime.find(lifetimeQuery)
+    .sort({ amount: -1, reportedAt: -1 })
+    .limit(300)
+    .lean();
+
+  const topperMap = new Map();
+  for (const report of lifetimeRows) {
+    const key = report.tmdbId ? `tmdb:${report.tmdbId}` : report.sourceMovieKey;
+    if (!topperMap.has(key)) topperMap.set(key, report);
+  }
+  const yearToppers = [...topperMap.values()]
+    .sort((a, b) => (b.amount || 0) - (a.amount || 0))
+    .slice(0, 15)
+    .map((report, index) => ({
+      rank: index + 1,
+      tmdbId: report.tmdbId,
+      sourceMovieKey: report.sourceMovieKey,
+      movieTitle: report.movieTitle,
+      posterPath: report.posterPath,
+      originalLanguage: report.originalLanguage,
+      releaseYear: report.releaseYear,
+      releaseDate: report.releaseDate,
+      amount: report.amount,
+      currency: report.currency || 'INR',
+      sourceReportedValue: report.sourceReportedValue,
+      source: report.source,
+      sourceUrl: report.sourceUrl,
+      isEstimate: report.isEstimate,
+      verificationStatus: report.verificationStatus,
+    }));
+
+  const latestPlaying = (dailyBundle.reports || []).map((report, index) => ({
+    rank: report.rank ?? index + 1,
+    dayNumber: report.dayNumber ?? null,
+    tmdbId: report.tmdbId,
+    sourceMovieKey: report.sourceMovieKey,
+    movieTitle: report.movieTitle,
+    posterPath: report.posterPath,
+    originalLanguage: report.originalLanguage,
+    releaseDate: report.releaseDate,
+    releaseYear: report.releaseYear,
+    dailyCollection: report.dailyCollection,
+    cumulativeCollection: report.cumulativeCollection,
+    currency: report.currency || 'INR',
+    sourceReportedValue: report.sourceReportedValue,
+    sourceReportedCumulativeValue: report.sourceReportedCumulativeValue,
+    source: report.source,
+    sourceUrl: report.sourceUrl,
+    isEstimate: report.isEstimate,
+    verificationStatus: report.verificationStatus,
+    reportDate: report.reportDate,
+  }));
+
+  const nonIndianFromChart = latestPlaying.filter(isNonIndianReport);
+
+  let nonIndianDomestic = [];
+  let nonIndianCoverage = 'Non-Indian titles from the India chart, with domestic-region totals when available.';
+  let usYearlyRows = [];
+  try {
+    const usYearly = await getBoxOfficeHistoryChart({
+      market: 'us',
+      period: 'yearly',
+      date: `${selectedYear}-12-31`,
+    });
+    usYearlyRows = usYearly.rows || [];
+    nonIndianDomestic = usYearlyRows.slice(0, 25).map((row, index) => ({
+      rank: row.rank || index + 1,
+      tmdbId: row.tmdbId || null,
+      sourceId: row.sourceId || null,
+      movieTitle: row.title || row.movieTitle,
+      releaseLabel: row.releaseLabel || row.releaseYear || selectedYear,
+      amount: row.dailyCollection ?? row.cumulativeCollection ?? row.gross ?? row.amount ?? null,
+      currency: row.currency || 'USD',
+      market: 'US domestic',
+      source: usYearly.source || HISTORY_PROVIDER,
+      sourceUrl: row.sourceUrl || usYearly.sourceUrl,
+      isEstimate: row.isEstimate === true,
+      verificationStatus: row.verificationStatus || 'provider-reported',
+    })).filter(row => row.movieTitle && Number.isFinite(Number(row.amount)));
+    nonIndianCoverage = `${usYearly.coverage} Source: https://www.boxofficehistory.com/api/v1/`;
+  } catch (error) {
+    nonIndianDomestic = nonIndianFromChart.map(row => ({
+      ...row,
+      amount: row.cumulativeCollection || row.dailyCollection,
+      market: 'Playing in India (domestic total unavailable)',
+    }));
+    nonIndianCoverage = `US domestic yearly chart unavailable (${error.code || error.message}). Showing non-Indian titles currently reported on the India chart only.`;
+  }
+
+  let yearTopperCoverage = `Highest India nett totals reported for ${selectedYear} releases/reports. Publisher consensus estimates.`;
+  if (!yearToppers.length && usYearlyRows.length) {
+    yearToppers.push(...usYearlyRows.slice(0, 15).map((row, index) => ({
+      rank: row.rank || index + 1,
+      tmdbId: row.tmdbId || null,
+      sourceMovieKey: row.sourceId || null,
+      movieTitle: row.title || row.movieTitle,
+      posterPath: null,
+      originalLanguage: 'en',
+      releaseYear: row.releaseYear || selectedYear,
+      releaseDate: row.releaseDate || null,
+      amount: row.dailyCollection ?? row.amount ?? null,
+      currency: 'USD',
+      sourceReportedValue: row.dailyCollection != null
+        ? `$${Number(row.dailyCollection).toLocaleString('en-US')}`
+        : null,
+      source: HISTORY_PROVIDER,
+      sourceUrl: row.sourceUrl || null,
+      isEstimate: row.isEstimate === true,
+      verificationStatus: row.verificationStatus || 'provider-reported',
+      market: 'US domestic',
+    })).filter(row => row.movieTitle && Number.isFinite(Number(row.amount))));
+    yearTopperCoverage = `No India nett lifetime rows for ${selectedYear} yet; showing US domestic yearly gross instead.`;
+  }
+
+  return {
+    year: selectedYear,
+    date: selectedDate,
+    yearToppers,
+    latestPlaying,
+    nonIndianDomestic,
+    nonIndianOnIndiaChart: nonIndianFromChart,
+    coverage: {
+      yearToppers: yearTopperCoverage,
+      latestPlaying: 'Films currently on the live India daily chart, with day number when reported.',
+      nonIndianDomestic: nonIndianCoverage,
+    },
   };
 }
 

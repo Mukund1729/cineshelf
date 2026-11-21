@@ -28,6 +28,7 @@ const boxOfficeDailySchema = new mongoose.Schema({
   sourceReportedCumulativeValue: { type: String, default: null },
   currency: { type: String, required: true },
   rank: { type: Number, default: null, min: 1 },
+  dayNumber: { type: Number, default: null, min: 1 },
   source: { type: String, required: true },
   sourceMovieKey: { type: String, required: true },
   sourceUrl: { type: String, required: true },

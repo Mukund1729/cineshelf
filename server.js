@@ -175,8 +175,9 @@ connectDB()
           console.log('[Box Office API] RSS sync skipped; another process holds the sync lease.');
         } else {
           console.log(
-            `[Box Office API] RSS sync completed: ${result.dailyReports} daily and ` +
-            `${result.lifetimeReports} lifetime reports.`
+            `[Box Office API] Sync completed: ${result.dailyReports} daily and ` +
+            `${result.lifetimeReports} lifetime reports` +
+            (result.chartFilms ? ` (${result.chartFilms} live chart films for ${result.chartDate}).` : '.')
           );
         }
       } catch (error) {

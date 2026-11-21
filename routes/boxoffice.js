@@ -15,11 +15,13 @@ import {
   getBoxOfficeWeekly,
   getBoxOfficeWorldwide,
   getBoxOfficeYearly,
+  getIndiaBoxOfficeBoardController,
   getIndiaBoxOfficeReports,
   getIndianDaywiseBoxOffice,
   getIndianLiveBoxOffice,
   getMovieBoxOffice,
   getMovieBoxOfficeHistory,
+  syncIndianBoxOffice,
 } from '../controllers/boxOfficeController.js';
 
 const router = express.Router();
@@ -33,6 +35,8 @@ router.use(rateLimit({
 }));
 
 router.get('/overview', getBoxOfficeOverview);
+router.post('/sync', syncIndianBoxOffice);
+router.get('/board', getIndiaBoxOfficeBoardController);
 router.get('/daily', getBoxOfficeDaily);
 router.get('/weekly', getBoxOfficeWeekly);
 router.get('/yearly', getBoxOfficeYearly);
@@ -43,6 +47,8 @@ router.get('/history/meta', getBoxOfficeHistoryMetaController);
 router.get('/history/international/countries', getBoxOfficeHistoryCountries);
 router.get('/history/chart', getBoxOfficeHistoryChart);
 router.get('/worldwide', getBoxOfficeWorldwide);
+// Register /india/board before /india so proxies/servers never treat it as a missing subpath.
+router.get('/india/board', getIndiaBoxOfficeBoardController);
 router.get('/india', getIndiaBoxOfficeReports);
 
 // Get box office data by year

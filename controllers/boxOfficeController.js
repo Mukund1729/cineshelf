@@ -12,9 +12,12 @@ import {
   getIndianReportsForDate,
   getIndianReportsInRange,
   getLatestLifetimeReportsPage,
+  getIndiaBoxOfficeBoard,
   getLatestLifetimeReports,
   getMovieBoxOfficeReports,
   getReportDateRange,
+  getYearlyBoxOfficeReports,
+  syncIndianBoxOfficeFeed,
 } from '../services/boxOfficeDataService.js';
 
 const isValidDate = value => (
@@ -264,7 +267,7 @@ export const getBoxOfficeOverview = async (req, res) => {
         latestReportDate: latestDaily?.reportDate || latestWorldwide?.reportDate || null,
         lastSuccessfulSyncAt: successfulSyncs[0]?.lastSuccessfulAt || null,
         dataCoverage: {
-          india: 'RSS briefs and lifetime summaries only; not a complete daily chart.',
+          india: 'Live daily chart plus RSS briefs from indian-boxoffice.com; figures are publisher consensus estimates.',
           unitedStates: 'Historical daily charts are fetched from Box Office History on demand.',
           worldwide: 'Publisher-reported lifetime gross only; territory-level coverage is not verified.',
         },
@@ -295,7 +298,7 @@ export const getIndiaBoxOfficeReports = async (req, res) => {
         success: true,
         ...result,
         pages: Math.ceil(result.total / result.limit),
-        coverage: 'RSS brief reports only; the publisher feed does not contain a complete all-film daily chart.',
+        coverage: 'Live Indian daily chart and RSS briefs from indian-boxoffice.com (publisher consensus estimates).',
       });
     }
     const periodDate = date || new Date().toISOString().slice(0, 10);
@@ -545,28 +548,16 @@ export const getBoxOfficeYearly = async (req, res) => {
     if (!Number.isInteger(year) || year < 1900 || year > 2100) {
       return res.status(400).json({ success: false, error: 'invalid_year' });
     }
-    const query = {
-      releaseYear: year,
-      expiresAt: { $gt: new Date() },
-    };
-    const [reports, total] = await Promise.all([
-      BoxOfficeLifetime.find(query)
-        .sort({ amount: -1 })
-        .skip((pagination.page - 1) * pagination.limit)
-        .limit(pagination.limit)
-        .lean(),
-      BoxOfficeLifetime.countDocuments(query),
-    ]);
-    res.json({
-      success: true,
-      year,
-      reports,
+    const language = typeof req.query.language === 'string' ? req.query.language.trim() : 'all';
+    if (language && !VALID_LANGUAGES.has(language)) {
+      return res.status(400).json({ success: false, error: 'invalid_language' });
+    }
+    const result = await getYearlyBoxOfficeReports(year, {
       page: pagination.page,
       limit: pagination.limit,
-      total,
-      pages: Math.ceil(total / pagination.limit),
-      coverage: 'Partial lifetime reports for movies released in this year; not a complete annual box-office total.',
+      language,
     });
+    res.json({ success: true, ...result });
   } catch (error) {
     sendBoxOfficeError(res, error, 'yearly_box_office_unavailable');
   }
@@ -600,6 +591,45 @@ export const getBoxOfficeRecords = async (req, res) => {
   }
 };
 
+export const getIndiaBoxOfficeBoardController = async (req, res) => {
+  try {
+    const year = Number(req.query.year) || new Date().getUTCFullYear();
+    const { date, language } = req.query;
+    if (date && !isValidDate(date)) return res.status(400).json({ success: false, error: 'invalid_date' });
+    if (language && !VALID_LANGUAGES.has(language)) {
+      return res.status(400).json({ success: false, error: 'invalid_language' });
+    }
+    if (!Number.isInteger(year) || year < 1900 || year > 2100) {
+      return res.status(400).json({ success: false, error: 'invalid_year' });
+    }
+    const board = await getIndiaBoxOfficeBoard({ year, date, language });
+    res.json({ success: true, ...board });
+  } catch (error) {
+    sendBoxOfficeError(res, error, 'india_box_office_board_unavailable');
+  }
+};
+
+export const syncIndianBoxOffice = async (req, res) => {
+  try {
+    const result = await syncIndianBoxOfficeFeed();
+    if (result.skipped) {
+      return res.status(409).json({
+        success: false,
+        error: 'box_office_sync_in_progress',
+        message: 'Another sync already holds the lease. Try again shortly.',
+      });
+    }
+    res.json({
+      success: true,
+      data: result,
+      message: `Synced ${result.dailyReports} daily and ${result.lifetimeReports} lifetime reports`
+        + (result.chartFilms ? ` including ${result.chartFilms} live chart films.` : '.'),
+    });
+  } catch (error) {
+    sendBoxOfficeError(res, error, 'box_office_sync_failed');
+  }
+};
+
 export const getBoxOfficeSources = (req, res) => {
   res.json({
     success: true,
@@ -607,19 +637,19 @@ export const getBoxOfficeSources = (req, res) => {
       {
         id: INDIA_SOURCE_LABEL,
         name: 'Indian Box Office',
-        status: 'rss-limited',
-        url: 'https://indian-boxoffice.com/feed.xml',
-        authentication: 'No API key; public RSS feed.',
-        coverage: 'Publisher consensus daily briefs and selected lifetime India nett/worldwide gross reports.',
-        limitation: 'The RSS does not contain all 49 daily chart rows or complete historical day-wise data. Figures are estimates.',
+        status: 'active',
+        url: 'https://indian-boxoffice.com/daily-box-office/',
+        authentication: 'No API key; public daily chart + RSS feed.',
+        coverage: 'Live daily India nett chart for films currently playing, plus RSS briefs and lifetime India nett/worldwide gross.',
+        limitation: 'Figures are publisher consensus estimates, not auditor-certified totals. Historical day-wise coverage depends on retained briefs.',
       },
       {
         id: 'box-office-history',
         name: 'Box Office History',
         status: 'active-on-demand',
-        url: 'https://www.boxofficehistory.com/api',
+        url: 'https://www.boxofficehistory.com/api/v1/',
         authentication: 'No API key documented.',
-        coverage: 'Verified US daily/weekend/weekly/yearly charts, 100+ international market indexes, country weekend/yearly charts, movie day/weekend/week histories, and a historical worldwide snapshot.',
+        coverage: 'US domestic daily/weekend/weekly/yearly charts via https://www.boxofficehistory.com/api/v1/, plus international market indexes and movie histories.',
         limitation: 'USD gross only; international availability varies by market. The worldwide all-time chart is a historical snapshot from October 2019, not a current total.',
       },
       {
@@ -679,16 +709,28 @@ export const getBoxOfficeLastUpdated = async (req, res) => {
 export const getMovieBoxOfficeHistory = async (req, res) => {
   try {
     const tmdbId = Number(req.params.tmdbId);
-    if (!Number.isSafeInteger(tmdbId) || tmdbId <= 0) {
-      return res.status(400).json({ success: false, error: 'invalid_tmdb_id' });
+    const sourceMovieKey = typeof req.query.sourceMovieKey === 'string' ? req.query.sourceMovieKey.trim() : '';
+    const hasTmdb = Number.isSafeInteger(tmdbId) && tmdbId > 0;
+    if (!hasTmdb && !sourceMovieKey) {
+      return res.status(400).json({ success: false, error: 'invalid_movie_key' });
     }
     const [providerHistory, reports] = await Promise.allSettled([
-      getBoxOfficeHistoryMovie(tmdbId),
-      getMovieBoxOfficeReports(tmdbId),
+      hasTmdb ? getBoxOfficeHistoryMovie(tmdbId) : Promise.resolve(null),
+      getMovieBoxOfficeReports(hasTmdb ? tmdbId : null, sourceMovieKey || null, { refreshDaywise: true }),
     ]);
     const usHistory = providerHistory.status === 'fulfilled' ? providerHistory.value : null;
-    const indiaReports = reports.status === 'fulfilled' ? reports.value?.dailyReports || [] : [];
-    if (!usHistory && !indiaReports.length) {
+    const movieReports = reports.status === 'fulfilled' ? reports.value : null;
+    const indiaReports = movieReports?.dailyReports || [];
+    const hasUsSeries = Boolean(
+      usHistory
+      && (
+        usHistory.lifetimeDomesticGross != null
+        || usHistory.daily?.length
+        || usHistory.weekends?.length
+        || usHistory.weeks?.length
+      )
+    );
+    if (!hasUsSeries && !indiaReports.length && !movieReports?.indiaNet) {
       const error = providerHistory.status === 'rejected' ? providerHistory.reason : null;
       return res.status(error?.status || 404).json({
         success: false,
@@ -700,8 +742,13 @@ export const getMovieBoxOfficeHistory = async (req, res) => {
     }
     res.json({
       success: true,
-      tmdbId,
+      tmdbId: movieReports?.tmdbId || (hasTmdb ? tmdbId : null),
+      sourceMovieKey: movieReports?.sourceMovieKey || sourceMovieKey || null,
+      title: movieReports?.title || usHistory?.title || null,
+      indiaNettTotal: movieReports?.indiaNet || null,
+      worldwideGrossTotal: movieReports?.worldwideGross || null,
       indiaDaily: indiaReports.map(report => ({
+        day: report.dayNumber ?? null,
         date: report.reportDate.toISOString().slice(0, 10),
         dailyCollection: report.dailyCollection,
         cumulativeCollection: report.cumulativeCollection,
@@ -711,7 +758,7 @@ export const getMovieBoxOfficeHistory = async (req, res) => {
         isEstimate: report.isEstimate,
       })),
       unitedStates: usHistory,
-      coverage: 'Only source-reported points are returned. Daily, weekend, weekly, and international lifetime records are shown only when supplied by the provider; missing values are not synthesized.',
+      coverage: 'Day-wise India nett from Day 1 (when reported) through the latest cached day. Worldwide gross is the latest reported total when available; missing days are never invented.',
     });
   } catch (error) {
     sendBoxOfficeError(res, error, 'movie_history_unavailable');

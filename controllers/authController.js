@@ -229,8 +229,16 @@ async function findOrCreateGoogleUser(payload) {
   return { user, created: true };
 }
 
+function googleOAuthConfig() {
+  return {
+    clientId: String(process.env.GOOGLE_CLIENT_ID || '').trim(),
+    clientSecret: String(process.env.GOOGLE_CLIENT_SECRET || '').trim(),
+    redirectUri: String(process.env.GOOGLE_CALLBACK_URL || '').trim(),
+  };
+}
+
 async function verifyGoogleCredential(credential) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const { clientId } = googleOAuthConfig();
   if (!clientId) throw Object.assign(new Error('Google sign-in is not configured on the server'), { status: 503 });
   if (typeof credential !== 'string' || !credential) {
     throw Object.assign(new Error('Google credential is required'), { status: 400 });
@@ -559,9 +567,7 @@ export const googleLogin = async (req, res) => {
 };
 
 export const googleAuthStart = (req, res) => {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_CALLBACK_URL;
+  const { clientId, clientSecret, redirectUri } = googleOAuthConfig();
   if (!clientId || !clientSecret || !redirectUri) {
     return res.status(503).json({
       success: false,
@@ -587,27 +593,21 @@ export const googleAuthCallback = async (req, res) => {
   if (!isOAuthStateValid(storedState, state)) {
     return res.redirect(303, `${getFrontendUrl()}/?auth=google-error`);
   }
-  if (typeof req.query?.code !== 'string'
-    || !process.env.GOOGLE_CLIENT_ID
-    || !process.env.GOOGLE_CLIENT_SECRET
-    || !process.env.GOOGLE_CALLBACK_URL) {
+  const { clientId, clientSecret, redirectUri } = googleOAuthConfig();
+  if (typeof req.query?.code !== 'string' || !clientId || !clientSecret || !redirectUri) {
     return res.redirect(303, `${getFrontendUrl()}/?auth=google-error`);
   }
 
   try {
-    const client = new OAuth2Client(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      process.env.GOOGLE_CALLBACK_URL,
-    );
+    const client = new OAuth2Client(clientId, clientSecret, redirectUri);
     const { tokens } = await client.getToken({
       code: req.query.code,
-      redirect_uri: process.env.GOOGLE_CALLBACK_URL,
+      redirect_uri: redirectUri,
     });
     if (!tokens.id_token) throw new Error('Google did not return an ID token');
     const ticket = await client.verifyIdToken({
       idToken: tokens.id_token,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience: clientId,
     });
     const payload = ticket.getPayload();
     if (!payload?.sub || !isValidEmail(normalizeEmail(payload.email)) || payload.email_verified !== true) {
