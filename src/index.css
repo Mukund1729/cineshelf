@@ -478,6 +478,8 @@ h1, h2, h3, h4, h5, h6 {
 .vc-profile-stats-wrap {
   padding-top: 2rem;
   padding-bottom: 2rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .vc-profile-stats {
@@ -487,7 +489,11 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 1.25rem;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
   padding-bottom: 0.35rem;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .vc-profile-stat {
@@ -613,6 +619,12 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--vc-bg-base) !important;
 }
 
+.vc-profile-page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
 .vc-profile-cover {
   position: relative;
   min-height: clamp(280px, 38vw, 420px);
@@ -632,7 +644,6 @@ h1, h2, h3, h4, h5, h6 {
   background-size: cover;
   background-position: center;
   filter: saturate(1.08) contrast(1.05);
-  transform: scale(1.02);
 }
 
 .vc-profile-cover-shade {
@@ -694,6 +705,10 @@ h1, h2, h3, h4, h5, h6 {
   margin-bottom: 1.25rem;
   border-bottom: 1px solid rgba(255,255,255,0.06);
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .vc-profile-tab {
@@ -720,6 +735,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .vc-profile-body {
   padding-bottom: 4rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .vc-profile-layout {
@@ -727,6 +744,8 @@ h1, h2, h3, h4, h5, h6 {
   grid-template-columns: minmax(0, 1.7fr) minmax(260px, 0.9fr);
   gap: 1.5rem;
   align-items: start;
+  min-width: 0;
+  width: 100%;
 }
 
 .vc-profile-main,
@@ -734,6 +753,8 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .vc-profile-panel {
@@ -741,6 +762,10 @@ h1, h2, h3, h4, h5, h6 {
   border: 1px solid rgba(255,255,255,0.06);
   border-radius: 14px;
   padding: 1.25rem 1.35rem;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .vc-profile-section-head {
@@ -1205,11 +1230,22 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 1.05rem;
 }
 
+@media (max-width: 900px) {
+  .vc-profile-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vc-profile-top4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
   .vc-container {
     padding-right: 1rem !important;
     padding-left: 1rem !important;
     max-width: 100% !important;
+    box-sizing: border-box;
   }
 
   .pt-24,
@@ -1445,7 +1481,8 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .vc-profile-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
   }
 
   .vc-cover-picker {
@@ -1453,23 +1490,113 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   .vc-profile-cover {
-    min-height: 240px;
-    padding-top: 5.5rem;
+    min-height: 220px;
+    padding-top: 5.25rem;
+    padding-bottom: 1.75rem;
+  }
+
+  .vc-profile-stats-wrap {
+    padding-top: 1.25rem;
+    padding-bottom: 1rem;
+  }
+
+  .vc-profile-stats {
+    width: 100%;
+    max-width: 100%;
+    gap: 0.85rem 1.1rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .vc-profile-tabs {
+    width: 100%;
+    max-width: 100%;
+    margin-bottom: 1rem;
+  }
+
+  .vc-profile-panel {
+    padding: 1rem;
+    border-radius: 12px;
+  }
+
+  .vc-profile-section-head {
+    gap: 0.5rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .vc-profile-section-title {
+    font-size: 1.45rem;
+    min-width: 0;
+  }
+
+  .vc-profile-section-link {
+    flex-shrink: 0;
+    white-space: nowrap;
   }
 
   .vc-profile-top4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+    width: 100%;
+  }
+
+  .vc-profile-top4-card,
+  .vc-profile-top4-slot {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .vc-profile-top4-card img,
+  .vc-profile-top4-slot img {
+    width: 100%;
+    max-width: 100%;
+    display: block;
+  }
+
+  .vc-profile-top4-card strong,
+  .vc-profile-poster-meta span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
   }
 
   .vc-profile-poster-row {
     display: flex;
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
-    gap: 0.75rem;
-    padding-bottom: 0.35rem;
+    overflow-y: hidden;
+    gap: 0.7rem;
+    padding-bottom: 0.45rem;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
   }
 
   .vc-profile-poster-card {
-    flex: 0 0 110px;
+    flex: 0 0 104px;
+    width: 104px;
+    max-width: 104px;
+    min-width: 104px;
+    scroll-snap-align: start;
+  }
+
+  .vc-profile-poster-card img {
+    width: 104px;
+    max-width: 104px;
+  }
+
+  .vc-profile-lists-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .vc-profile-taste {
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+    gap: 0.45rem 0.65rem;
+  }
+
+  .vc-profile-body {
+    padding-bottom: 6.5rem; /* keep last row clear of chat FAB */
   }
 
   .vc-avatar-picker {
@@ -1479,6 +1606,9 @@ h1, h2, h3, h4, h5, h6 {
 
   .vc-profile-form {
     padding: 1rem;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .vc-username-field {
