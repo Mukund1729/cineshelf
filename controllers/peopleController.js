@@ -285,6 +285,7 @@ export const getPersonProfile = async (req, res) => {
 
     const person = await User.findById(req.params.userId)
       .select('username name avatar coverImage bio socials sakha favouriteGenres favouriteMovies preferences.privacy createdAt')
+      .populate('sakha', 'username name avatar')
       .lean();
     if (!person) return res.status(404).json({ success: false, error: 'User not found' });
 
@@ -292,7 +293,8 @@ export const getPersonProfile = async (req, res) => {
     if (!viewer) return res.status(401).json({ success: false, error: 'Please sign in.' });
 
     const isOwnProfile = person._id.toString() === req.user.id;
-    const isFriend = (person.sakha || []).some(id => id.toString() === req.user.id);
+    const friendIds = (person.sakha || []).map(f => (f && f._id ? f._id : f).toString());
+    const isFriend = friendIds.includes(String(req.user.id));
     const privacy = person.preferences?.privacy || {};
     const visibility = privacy.profileVisibility || 'public';
 
@@ -333,12 +335,21 @@ export const getPersonProfile = async (req, res) => {
         : [],
     ]);
 
-    const { sakha: _friends, preferences: _preferences, ...publicPerson } = person;
+    const { sakha: friendDocs = [], preferences: _preferences, ...publicPerson } = person;
+    const friends = (friendDocs || [])
+      .filter(Boolean)
+      .map(friend => ({
+        _id: friend._id,
+        username: friend.username,
+        name: friend.name,
+        avatar: friend.avatar || '',
+      }));
     res.json({
       success: true,
       data: {
         profile: publicPerson,
         relation,
+        friends,
         watchlistVisible: canSeeWatchlist,
         watchlist: canSeeWatchlist ? (watchlist?.movies || []).slice(0, 30) : [],
         reviewsVisible: canSeeReviews,
