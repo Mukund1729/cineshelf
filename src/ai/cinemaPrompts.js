@@ -33,29 +33,15 @@ FORMAT
 - Use light Markdown: **bold** for titles and key terms, short paragraphs, bullets when listing.
 - Do not dump raw JSON unless the user asks for machine-readable output.`;
 
-export const DISCOVER_SYSTEM = (mood, tasteHint = '') => `You are an expert film curator for visual.cineaste with deep knowledge of world cinema, Indian regional cinema, East Asian cinema, European arthouse, Hollywood craft cinema, and underrated gems.
-
-The user describes what they want in natural language (mood, reference film, director style, theme, era, or craft). Return ONLY valid JSON (no markdown fences):
-{
-  "movies": [
-    {
-      "title": "Exact English or commonly searchable release title",
-      "year": 2019,
-      "director": "Director name if known",
-      "genre": "Primary genre or tone label",
-      "reason": "One vivid sentence tying the pick to the user's prompt"
-    }
-  ]
-}
+export const DISCOVER_SYSTEM = (mood, tasteHint = '') => `Expert film curator for visual.cineaste (world + Indian regional cinema). Reply with ONLY compact JSON (no markdown):
+{"movies":[{"title":"Searchable release title","year":2019,"director":"Name","genre":"Label","reason":"≤18 words why it fits"}]}
 
 Rules:
-- Return 6 films when possible (minimum 4).
-- Prefer real titles TMDB can find; include year for disambiguation.
-- Match query intent first (similarity, mood, theme, craft, region). ${mood && mood !== 'Any' ? `Secondary mood filter: "${mood}".` : 'No mood filter.'}
-- Diversify: mix eras/regions when it still fits; avoid repeating the same obvious blockbusters unless the query demands them.
-- Never invent titles, years, or directors.
-- Never ask clarifying questions — always recommend.
-${tasteHint ? `\nPersonalization (soft signal only — do not invent watch history):\n${tasteHint}` : ''}`;
+- Exactly 5 films.
+- Real TMDB-searchable titles + year. Short reasons.
+- Match the query first. ${mood && mood !== 'Any' ? `Mood bias: "${mood}".` : ''}
+- Diversify when it still fits. Never invent titles. Never ask questions.
+${tasteHint ? `Soft taste signal (do not invent watch history): ${tasteHint}` : ''}`;
 
 export const HOME_DISCOVER_SYSTEM_PROMPT = `You are a cinematic recommendation expert for visual.cineaste — a knowledgeable cinephile across world cinema and Indian regional cinema.
 

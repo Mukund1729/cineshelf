@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import UserAvatar from '../models/UserAvatar.js';
+import UserCover from '../models/UserCover.js';
 import bcrypt from 'bcryptjs';
 
 // Get current user profile — returns consistent { success, data: user } format
@@ -18,7 +19,7 @@ export const getProfile = async (req, res) => {
 // Update user profile — never allow isAdmin update through this endpoint
 export const updateProfile = async (req, res) => {
   try {
-    const { name, username, bio, avatar, socials, favouriteGenres, favouriteMovies } = req.body;
+    const { name, username, bio, avatar, coverImage, socials, favouriteGenres, favouriteMovies } = req.body;
 
     // Build safe update — explicitly exclude isAdmin, isVerified, password
     const updateData = {};
@@ -48,9 +49,24 @@ export const updateProfile = async (req, res) => {
     }
     if (bio !== undefined)             updateData.bio = typeof bio === 'string' ? bio.trim().slice(0, 500) : '';
     if (avatar !== undefined)          updateData.avatar = avatar;
+    if (coverImage !== undefined) {
+      const nextCover = typeof coverImage === 'string' ? coverImage.trim().slice(0, 500) : '';
+      updateData.coverImage = nextCover;
+    }
     if (socials !== undefined)         updateData.socials = socials;
     if (favouriteGenres !== undefined) updateData.favouriteGenres = favouriteGenres;
-    if (favouriteMovies !== undefined) updateData.favouriteMovies = favouriteMovies;
+    if (favouriteMovies !== undefined) {
+      // Top 4: keep at most four real TMDB picks; never invent entries.
+      const cleaned = (Array.isArray(favouriteMovies) ? favouriteMovies : [])
+        .filter(m => m && Number.isFinite(Number(m.tmdbId)) && Number(m.tmdbId) > 0 && typeof m.title === 'string' && m.title.trim())
+        .slice(0, 4)
+        .map(m => ({
+          tmdbId: Number(m.tmdbId),
+          title: String(m.title).trim().slice(0, 200),
+          poster: typeof m.poster === 'string' ? m.poster : '',
+        }));
+      updateData.favouriteMovies = cleaned;
+    }
 
     const user = await User.findByIdAndUpdate(
       req.user.id,
@@ -175,6 +191,86 @@ export const getAvatar = async (req, res) => {
   } catch (err) {
     console.error('Avatar retrieval error:', err);
     res.status(500).json({ success: false, error: 'Failed to retrieve avatar' });
+  }
+};
+
+// Upload/set cover photo (browse upload — same pattern as avatar)
+export const uploadCover = async (req, res) => {
+  try {
+    let coverUrl = req.body.coverUrl;
+
+    if (req.file) {
+      const storedCover = await UserCover.findOneAndUpdate(
+        { userId: req.user.id },
+        {
+          $set: {
+            data: req.file.buffer,
+            contentType: req.file.mimetype,
+          },
+        },
+        { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
+      );
+      coverUrl = `/api/user/cover/${req.user.id}?v=${storedCover.updatedAt.getTime()}`;
+    }
+
+    if (!coverUrl) {
+      return res.status(400).json({ success: false, error: 'No cover image file provided' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { coverImage: coverUrl } },
+      { new: true, runValidators: true }
+    ).select(
+      '-password -googleId -emailVerificationCodeHash -emailVerificationExpiresAt -emailVerificationSentAt -emailVerificationAttempts -resetPasswordToken -resetPasswordExpires'
+    );
+
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    res.json({ success: true, data: { user, coverUrl } });
+  } catch (err) {
+    console.error('Cover upload error:', err);
+    res.status(500).json({ success: false, error: 'Failed to upload cover photo' });
+  }
+};
+
+export const getCover = async (req, res) => {
+  try {
+    if (!/^[a-f\d]{24}$/i.test(req.params.userId)) {
+      return res.status(400).json({ success: false, error: 'Invalid user ID' });
+    }
+
+    const cover = await UserCover.findOne({ userId: req.params.userId })
+      .select('data contentType updatedAt');
+    if (!cover) return res.status(404).json({ success: false, error: 'Cover not found' });
+
+    res.set({
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Last-Modified': cover.updatedAt.toUTCString(),
+      'X-Content-Type-Options': 'nosniff',
+    });
+    res.type(cover.contentType);
+    res.send(cover.data);
+  } catch (err) {
+    console.error('Cover retrieval error:', err);
+    res.status(500).json({ success: false, error: 'Failed to retrieve cover photo' });
+  }
+};
+
+export const clearCover = async (req, res) => {
+  try {
+    await UserCover.deleteOne({ userId: req.user.id });
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { $set: { coverImage: '' } },
+      { new: true, runValidators: true }
+    ).select(
+      '-password -googleId -emailVerificationCodeHash -emailVerificationExpiresAt -emailVerificationSentAt -emailVerificationAttempts -resetPasswordToken -resetPasswordExpires'
+    );
+    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    res.json({ success: true, data: { user }, message: 'Cover photo removed' });
+  } catch (err) {
+    console.error('Cover clear error:', err);
+    res.status(500).json({ success: false, error: 'Failed to remove cover photo' });
   }
 };
 

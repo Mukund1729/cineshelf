@@ -11,17 +11,25 @@ import { HOME_DISCOVER_SYSTEM_PROMPT } from '../ai/cinemaPrompts.js';
 const router = express.Router();
 const DISCOVER_SYSTEM_PROMPT = HOME_DISCOVER_SYSTEM_PROMPT;
 
+let openaiClient = null;
+function getOpenAI() {
+  if (!process.env.OPENAI_API_KEY) return null;
+  if (!openaiClient) openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  return openaiClient;
+}
+
 // ── Unified AI caller ─────────────────────────────────────────────────────────
-async function callAI({ messages, temperature = 0.7, maxTokens = 1600 } = {}) {
+async function callAI({ messages, temperature = 0.7, maxTokens = 1600, json = false } = {}) {
+  const openai = getOpenAI();
   // PRIMARY: OpenAI GPT-4o-mini
-  if (process.env.OPENAI_API_KEY) {
+  if (openai) {
     try {
-      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
         messages,
         temperature,
         max_tokens: maxTokens,
+        ...(json ? { response_format: { type: 'json_object' } } : {}),
       });
       const reply = completion.choices[0].message.content;
       console.log('[AI] Served by OpenAI GPT-4o-mini');
@@ -34,9 +42,16 @@ async function callAI({ messages, temperature = 0.7, maxTokens = 1600 } = {}) {
   // FALLBACK: OpenRouter
   if (process.env.OPENROUTER_API_KEY) {
     const model = process.env.OPENROUTER_MODEL || 'mistralai/mistral-7b-instruct';
+    const payload = {
+      model,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+    };
+    if (json) payload.response_format = { type: 'json_object' };
     const res = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
-      { model, messages, temperature, max_tokens: maxTokens },
+      payload,
       {
         headers: {
           Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
@@ -70,7 +85,7 @@ Return ONLY a valid JSON object: { mood, themes: [], genres: [], example_keyword
   ];
 
   try {
-    const { reply } = await callAI({ messages, temperature: 0.5, maxTokens: 300 });
+    const { reply } = await callAI({ messages, temperature: 0.5, maxTokens: 300, json: true });
     res.status(200).json({ tags: JSON.parse(reply) });
   } catch (err) {
     console.error('MoodTags error:', err.message);
@@ -80,7 +95,7 @@ Return ONLY a valid JSON object: { mood, themes: [], genres: [], example_keyword
 
 // ── /gpt — movie recommendations ─────────────────────────────────────────────
 router.post('/gpt', async (req, res) => {
-  const { messages, prompt, temperature, max_tokens: maxTokensBody } = req.body;
+  const { messages, prompt, temperature, max_tokens: maxTokensBody, json } = req.body;
 
   let usedMessages;
 
@@ -103,6 +118,7 @@ router.post('/gpt', async (req, res) => {
       messages: usedMessages,
       temperature: typeof temperature === 'number' ? temperature : 0.8,
       maxTokens: typeof maxTokensBody === 'number' ? maxTokensBody : 1600,
+      json: Boolean(json),
     });
     res.status(200).json({ reply, source });
   } catch (err) {

@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required() { return !this.googleId && !this.isVerified; } },
   googleId: { type: String, unique: true, sparse: true },
   avatar:   { type: String, default: '' },
+  coverImage: { type: String, default: '' },
   bio:      { type: String, default: '' },
   socials:  {
     instagram: { type: String, default: '' },

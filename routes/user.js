@@ -9,6 +9,9 @@ import {
   updatePreferences,
   uploadAvatar,
   getAvatar,
+  uploadCover,
+  getCover,
+  clearCover,
   getFriends,
   searchUsers,
   getPublicProfile,
@@ -16,11 +19,11 @@ import {
 
 const router = express.Router();
 
-// Multer for avatar uploads
+// Multer for avatar / cover uploads
 const storage = multer.memoryStorage();
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 8 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     const allowedTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
     if (allowedTypes.has(file.mimetype)) cb(null, true);
@@ -48,6 +51,9 @@ router.get('/preferences', auth, getPreferences);
 router.put('/preferences', auth, updatePreferences);
 router.get('/avatar/:userId', getAvatar);
 router.post('/avatar', auth, upload.single('avatar'), handleMulterError, uploadAvatar);
+router.get('/cover/:userId', getCover);
+router.post('/cover', auth, upload.single('cover'), handleMulterError, uploadCover);
+router.delete('/cover', auth, clearCover);
 
 // Friends / Sakha routes
 router.get('/friends', auth, getFriends);

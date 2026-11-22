@@ -70,40 +70,56 @@ function parseMoviesJson(aiText) {
   throw new Error('Invalid movie list');
 }
 
-async function enrichWithTmdb(items) {
-  return (
-    await Promise.all(
-      items.slice(0, 8).map(async (item) => {
-        const titleRaw = typeof item === 'string' ? item : item.title;
-        if (!titleRaw) return null;
-        let title = titleRaw.replace(/\s*\(\d{4}\).*/, '').split(':')[0].trim();
-        const yearHint = item.year || (titleRaw.match(/\((\d{4})\)/)?.[1]);
-        try {
-          const tmdbRes = await searchMovies(title);
-          let best = tmdbRes.results?.[0];
-          if (yearHint && tmdbRes.results?.length) {
-            best =
-              tmdbRes.results.find(
-                m => m.release_date && m.release_date.startsWith(String(yearHint))
-              ) || best;
-          }
-          if (!best?.id) return null;
-          return {
-            id: best.id,
-            title: best.title,
-            year: best.release_date?.slice(0, 4) || yearHint || '',
-            posterUrl: best.poster_path ? tmdbImageUrl(best.poster_path, 'w500') : null,
-            rating: best.vote_average,
-            reason: item.reason || '',
-            director: item.director || '',
-            genre: item.genre || '',
-          };
-        } catch {
-          return null;
-        }
-      })
-    )
-  ).filter(Boolean);
+async function enrichOne(item) {
+  const titleRaw = typeof item === 'string' ? item : item.title;
+  if (!titleRaw) return null;
+  const title = titleRaw.replace(/\s*\(\d{4}\).*/, '').trim();
+  const yearHint = item.year || (titleRaw.match(/\((\d{4})\)/)?.[1]);
+  const yearNum = yearHint ? Number(yearHint) : undefined;
+  try {
+    const tmdbRes = await searchMovies(
+      title,
+      Number.isFinite(yearNum) ? { year: yearNum } : undefined
+    );
+    let best = tmdbRes.results?.[0];
+    if (yearHint && tmdbRes.results?.length) {
+      best =
+        tmdbRes.results.find(
+          m => m.release_date && m.release_date.startsWith(String(yearHint))
+        ) || best;
+    }
+    // Year filter can miss remakes / wrong year — one unfiltered retry.
+    if (!best?.id && yearNum) {
+      const fallback = await searchMovies(title);
+      best = fallback.results?.[0] || null;
+    }
+    if (!best?.id) return null;
+    return {
+      id: best.id,
+      title: best.title,
+      year: best.release_date?.slice(0, 4) || yearHint || '',
+      posterUrl: best.poster_path ? tmdbImageUrl(best.poster_path, 'w500') : null,
+      rating: best.vote_average,
+      reason: item.reason || '',
+      director: item.director || '',
+      genre: item.genre || '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function enrichWithTmdb(items, onPartial) {
+  const slice = items.slice(0, 5);
+  const slots = new Array(slice.length).fill(null);
+  await Promise.all(
+    slice.map(async (item, index) => {
+      const card = await enrichOne(item);
+      slots[index] = card;
+      if (onPartial) onPartial(slots.filter(Boolean));
+    })
+  );
+  return slots.filter(Boolean);
 }
 
 export default function Discover() {
@@ -189,11 +205,11 @@ export default function Discover() {
     }
   }, [selectedMood]);
 
-  const callLLM = useCallback(async (messages, temperature = 0.75, maxTokens = 1600) => {
+  const callLLM = useCallback(async (messages, temperature = 0.75, maxTokens = 1600, { json = false } = {}) => {
     const res = await fetch(apiUrl('/api/gpt'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, temperature, max_tokens: maxTokens }),
+      body: JSON.stringify({ messages, temperature, max_tokens: maxTokens, json }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'AI request failed');
@@ -237,25 +253,45 @@ export default function Discover() {
         { role: 'system', content: DISCOVER_SYSTEM(selectedMood, tasteHint) },
         { role: 'user', content: cleaned },
       ];
-      let raw = await callLLM(messages, 0.72, 1600);
+      // JSON mode + lower token budget = fewer retries and faster generation.
+      let raw = await callLLM(messages, 0.55, 700, { json: true });
       let list;
       try {
         list = parseMoviesJson(raw);
       } catch {
         messages[0].content += '\nReturn ONLY the JSON object with a "movies" array.';
-        raw = await callLLM(messages, 0.5);
+        raw = await callLLM(messages, 0.3, 700, { json: true });
         list = parseMoviesJson(raw);
       }
 
-      let enriched = await enrichWithTmdb(list);
+      // Show AI titles immediately; posters fill in as TMDB resolves (perceived speed).
+      const provisional = list.slice(0, 5).map((item, i) => ({
+        id: `pending-${i}`,
+        title: item.title || 'Film',
+        year: item.year || '',
+        posterUrl: null,
+        rating: 0,
+        reason: item.reason || '',
+        director: item.director || '',
+        genre: item.genre || '',
+        pending: true,
+      }));
+      setMovies(provisional);
+      setLoading(false);
+
+      let enriched = await enrichWithTmdb(list, partial => {
+        if (partial.length) setMovies(partial);
+      });
       if (enriched.length === 0 && selectedMood !== 'Any') {
         const retry = [
           { role: 'system', content: DISCOVER_SYSTEM('Any', tasteHint) },
           { role: 'user', content: cleaned },
         ];
-        const raw2 = await callLLM(retry, 0.72, 1600);
+        const raw2 = await callLLM(retry, 0.5, 700, { json: true });
         list = parseMoviesJson(raw2);
-        enriched = await enrichWithTmdb(list);
+        enriched = await enrichWithTmdb(list, partial => {
+          if (partial.length) setMovies(partial);
+        });
       }
 
       setMovies(enriched);
@@ -523,16 +559,25 @@ export default function Discover() {
               <span className="vc-section-label">Results</span>
               <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.75rem', marginBottom: '1.25rem' }}>Your picks</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem' }}>
-                {movies.map(m => (
-                  <Link key={m.id} to={`/movie/${m.id}`} style={{ textDecoration: 'none' }}>
-                    <div className="vc-poster-card" style={{ borderRadius: 8, overflow: 'hidden', background: 'var(--vc-bg-card)' }}>
-                      <div style={{ aspectRatio: '2/3', position: 'relative' }}>
-                        <img
-                          src={m.posterUrl || '/placeholder-movie.jpg'}
-                          alt={m.title}
-                          loading="lazy"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
+                {movies.map(m => {
+                  const card = (
+                    <div className="vc-poster-card" style={{ borderRadius: 8, overflow: 'hidden', background: 'var(--vc-bg-card)', opacity: m.pending ? 0.72 : 1 }}>
+                      <div style={{ aspectRatio: '2/3', position: 'relative', background: 'rgba(255,255,255,0.04)' }}>
+                        {m.posterUrl ? (
+                          <img
+                            src={m.posterUrl}
+                            alt={m.title}
+                            loading="lazy"
+                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '0.72rem', color: 'var(--vc-slate)', padding: '0.75rem', textAlign: 'center',
+                          }}>
+                            Matching poster…
+                          </div>
+                        )}
                         {m.rating > 0 && (
                           <span style={{
                             position: 'absolute', top: 8, right: 8,
@@ -549,8 +594,16 @@ export default function Discover() {
                         {m.reason && <p style={{ fontSize: '0.72rem', color: 'var(--vc-slate)', marginTop: '0.35rem', lineHeight: 1.4 }}>{m.reason}</p>}
                       </div>
                     </div>
-                  </Link>
-                ))}
+                  );
+                  if (m.pending || !m.id || String(m.id).startsWith('pending-')) {
+                    return <div key={m.id}>{card}</div>;
+                  }
+                  return (
+                    <Link key={m.id} to={`/movie/${m.id}`} style={{ textDecoration: 'none' }}>
+                      {card}
+                    </Link>
+                  );
+                })}
               </div>
             </>
           )}

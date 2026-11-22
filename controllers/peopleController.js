@@ -284,7 +284,7 @@ export const getPersonProfile = async (req, res) => {
     }
 
     const person = await User.findById(req.params.userId)
-      .select('username name avatar bio socials sakha favouriteGenres favouriteMovies preferences.privacy')
+      .select('username name avatar coverImage bio socials sakha favouriteGenres favouriteMovies preferences.privacy createdAt')
       .lean();
     if (!person) return res.status(404).json({ success: false, error: 'User not found' });
 

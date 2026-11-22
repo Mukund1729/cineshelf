@@ -1,12 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { apiUrl } from '../api/config';
-import { tmdbImageUrl } from '../api/tmdb';
+import { searchMovies, tmdbImageUrl } from '../api/tmdb';
 import { hasAuthSession } from '../api/session';
+import { buildCinemaTaste } from '../utils/cinemaTaste';
+
+const TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'reviews', label: 'Reviews' },
+  { id: 'diary', label: 'Diary' },
+  { id: 'watchlist', label: 'Watchlist' },
+  { id: 'lists', label: 'Lists' },
+  { id: 'communities', label: 'Communities' },
+];
+
+const emptySocials = { instagram: '', twitter: '', website: '' };
+
+function posterSrc(path, size = 'w185') {
+  if (!path) return '/placeholder-movie.jpg';
+  return tmdbImageUrl(path, size);
+}
+
+function formatJoinDate(value) {
+  if (!value) return null;
+  try {
+    return new Date(value).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  } catch {
+    return null;
+  }
+}
+
+function formatWatchedDate(value) {
+  try {
+    return new Date(value).toLocaleDateString(undefined, {
+      timeZone: 'UTC',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return '';
+  }
+}
+
+function Stars({ rating }) {
+  if (rating == null || !Number.isFinite(Number(rating))) return null;
+  const score = Number(rating);
+  return (
+    <span className="vc-profile-rating" title={`${score}/10`}>
+      ★ {score}/10
+    </span>
+  );
+}
+
+/** Soften ALL-CAPS names for display only — never mutates saved data. */
+function displayName(name) {
+  if (!name) return '';
+  const trimmed = String(name).trim();
+  if (trimmed.length > 2 && trimmed === trimmed.toUpperCase() && /[A-Z]/.test(trimmed)) {
+    return trimmed.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+  }
+  return trimmed;
+}
+
+function resolveMediaUrl(path) {
+  if (!path) return null;
+  if (path.startsWith('http') || path.startsWith('blob:') || path.startsWith('data:')) return path;
+  if (path.startsWith('/')) return apiUrl(path);
+  return path;
+}
 
 const Profile = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = TABS.some(t => t.id === searchParams.get('tab')) ? searchParams.get('tab') : 'overview';
+
   const [profile, setProfile] = useState(null);
   const [sakha, setSakha] = useState([]);
   const [watchlist, setWatchlist] = useState([]);
@@ -19,19 +88,43 @@ const Profile = () => {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [editing, setEditing] = useState(false);
+  const [tab, setTab] = useState(initialTab);
   const [editForm, setEditForm] = useState({
     name: '',
     username: '',
     bio: '',
     avatar: '',
-    socials: { instagram: '', twitter: '', website: '' }
+    coverImage: '',
+    socials: { ...emptySocials },
   });
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreview, setAvatarPreview] = useState('');
+  const [coverFile, setCoverFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState('');
+  const [clearCoverOnSave, setClearCoverOnSave] = useState(false);
+  const [editingTop4, setEditingTop4] = useState(false);
+  const [top4Draft, setTop4Draft] = useState([]);
+  const [top4Query, setTop4Query] = useState('');
+  const [top4Results, setTop4Results] = useState([]);
+  const [top4Saving, setTop4Saving] = useState(false);
+  const [shareNote, setShareNote] = useState('');
 
   useEffect(() => {
     fetchProfileData();
   }, []);
+
+  useEffect(() => {
+    const next = searchParams.get('tab');
+    if (TABS.some(t => t.id === next) && next !== tab) setTab(next);
+  }, [searchParams]);
+
+  const selectTab = (id) => {
+    setTab(id);
+    const next = new URLSearchParams(searchParams);
+    if (id === 'overview') next.delete('tab');
+    else next.set('tab', id);
+    setSearchParams(next, { replace: true });
+  };
 
   const fetchProfileData = async () => {
     try {
@@ -43,21 +136,19 @@ const Profile = () => {
       }
 
       const headers = { Authorization: `Bearer ${token}` };
-
-      // Fetch user profile
       const profileRes = await axios.get('/api/user/profile', { headers, withCredentials: true });
       const profileData = profileRes.data?.data || profileRes.data;
       const currentProfile = profileData?.user || profileData;
       setProfile(currentProfile);
-
-      // Initialize edit form
       setEditForm({
         name: currentProfile?.name || '',
         username: currentProfile?.username || '',
         bio: currentProfile?.bio || '',
         avatar: currentProfile?.avatar || '',
-        socials: currentProfile?.socials || { instagram: '', twitter: '', website: '' }
+        coverImage: currentProfile?.coverImage || '',
+        socials: currentProfile?.socials || { ...emptySocials },
       });
+      setTop4Draft((currentProfile?.favouriteMovies || []).slice(0, 4));
 
       const results = await Promise.allSettled([
         axios.get('/api/watchlist', { headers, withCredentials: true }),
@@ -88,7 +179,7 @@ const Profile = () => {
         setCommunities(communitiesResult.value.data?.communities || []);
       }
       if (results.some(result => result.status === 'rejected')) {
-        setActivityError('Some profile activity could not be loaded. Please refresh to try again.');
+        setActivityError('Some sections failed to load. Refresh and try again.');
       }
 
       setLoading(false);
@@ -99,13 +190,20 @@ const Profile = () => {
     }
   };
 
+  const taste = useMemo(
+    () => buildCinemaTaste({ profile, reviews, diary, watchlist }),
+    [profile, reviews, diary, watchlist]
+  );
+
+  const uniqueWatched = taste.uniqueWatched;
+
   const handleEditChange = (e) => {
     const { name, value } = e.target;
     if (name.startsWith('socials.')) {
       const socialKey = name.split('.')[1];
       setEditForm(prev => ({
         ...prev,
-        socials: { ...prev.socials, [socialKey]: value }
+        socials: { ...prev.socials, [socialKey]: value },
       }));
       return;
     }
@@ -113,21 +211,17 @@ const Profile = () => {
     setEditForm(prev => ({ ...prev, [name]: nextValue }));
   };
 
-  const handleAvatarUpload = async (e) => {
+  const handleAvatarUpload = (e) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith('image/')) {
         setError('Please select an image file');
         return;
       }
-
-      // Validate file size (5MB limit)
-      if (file.size > 5 * 1024 * 1024) {
-        setError('File size must be less than 5MB');
+      if (file.size > 8 * 1024 * 1024) {
+        setError('Avatar must be under 8 MB');
         return;
       }
-
       setAvatarFile(file);
       setAvatarPreview(URL.createObjectURL(file));
       setError('');
@@ -135,12 +229,26 @@ const Profile = () => {
     e.target.value = '';
   };
 
-  const getAvatarUrl = (avatar) => {
-    if (!avatar) return null;
-    if (avatar.startsWith('http')) return avatar;
-    if (avatar.startsWith('/')) return apiUrl(avatar);
-    return avatar;
+  const handleCoverUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file for your cover');
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        setError('Cover photo must be under 8 MB');
+        return;
+      }
+      setCoverFile(file);
+      setCoverPreview(URL.createObjectURL(file));
+      setClearCoverOnSave(false);
+      setError('');
+    }
+    e.target.value = '';
   };
+
+  const getAvatarUrl = (avatar) => resolveMediaUrl(avatar);
 
   const getDefaultAvatar = (name) => {
     const initials = name ? name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : 'U';
@@ -149,14 +257,18 @@ const Profile = () => {
         <rect width="120" height="120" fill="#1a1a1a"/>
         <circle cx="60" cy="40" r="15" fill="#4a5568"/>
         <path d="M10 100C10 85 22 73 37 73H83C98 73 110 85 110 100V110H10V100Z" fill="#4a5568"/>
-        <text x="60" y="65" font-family="DM Sans, Helvetica Neue, sans-serif" font-size="24" font-weight="bold" fill="#e2e8f0" text-anchor="middle">${initials}</text>
+        <text x="60" y="65" font-family="Manrope, Helvetica Neue, sans-serif" font-size="24" font-weight="bold" fill="#e2e8f0" text-anchor="middle">${initials}</text>
       </svg>
     `)}`;
   };
 
+  const authHeaders = () => {
+    const token = localStorage.getItem('token');
+    return { Authorization: `Bearer ${token}` };
+  };
+
   const handleSaveProfile = async () => {
     try {
-      const token = localStorage.getItem('token');
       if (!hasAuthSession()) {
         setError('No authentication token found. Please login again.');
         return;
@@ -173,31 +285,51 @@ const Profile = () => {
         return;
       }
 
-      const headers = { Authorization: `Bearer ${token}` };
+      const headers = authHeaders();
       let avatarUrl = editForm.avatar;
+      let coverUrl = editForm.coverImage;
 
-      // If there's a new avatar file, upload it first
       if (avatarFile) {
         const formData = new FormData();
         formData.append('avatar', avatarFile);
-
         try {
           const uploadRes = await axios.post('/api/user/avatar', formData, {
-            headers: { Authorization: `Bearer ${token}` },
+            headers,
             withCredentials: true,
-            timeout: 10000
+            timeout: 15000,
           });
           const uploadData = uploadRes.data?.data || uploadRes.data;
           avatarUrl = uploadData?.avatarUrl || uploadData?.user?.avatar || editForm.avatar;
         } catch (uploadErr) {
           console.error('Avatar upload failed:', uploadErr);
-          let errorMessage = 'Avatar upload failed';
-          if (uploadErr.response?.data?.error) {
-            errorMessage += `: ${uploadErr.response.data.error}`;
-          } else if (uploadErr.message) {
-            errorMessage += `: ${uploadErr.message}`;
-          }
-          setError(errorMessage);
+          setError(`Avatar upload failed: ${uploadErr.response?.data?.error || uploadErr.message}`);
+          return;
+        }
+      }
+
+      if (clearCoverOnSave) {
+        try {
+          const clearRes = await axios.delete('/api/user/cover', { headers, withCredentials: true });
+          const cleared = clearRes.data?.data?.user;
+          if (cleared) coverUrl = '';
+        } catch (clearErr) {
+          setError(clearErr.response?.data?.error || 'Could not remove cover photo');
+          return;
+        }
+      } else if (coverFile) {
+        const formData = new FormData();
+        formData.append('cover', coverFile);
+        try {
+          const uploadRes = await axios.post('/api/user/cover', formData, {
+            headers,
+            withCredentials: true,
+            timeout: 20000,
+          });
+          const uploadData = uploadRes.data?.data || uploadRes.data;
+          coverUrl = uploadData?.coverUrl || uploadData?.user?.coverImage || editForm.coverImage;
+        } catch (uploadErr) {
+          console.error('Cover upload failed:', uploadErr);
+          setError(`Cover upload failed: ${uploadErr.response?.data?.error || uploadErr.message}`);
           return;
         }
       }
@@ -208,10 +340,10 @@ const Profile = () => {
         username: nextUsername,
         bio: editForm.bio.trim(),
         avatar: avatarUrl,
+        coverImage: (coverUrl || '').trim(),
       };
 
       const profileRes = await axios.put('/api/user/profile', updateData, { headers, withCredentials: true });
-
       const profileData = profileRes.data?.data || profileRes.data;
       const savedProfile = profileData?.user || profileData;
       setProfile(savedProfile);
@@ -219,583 +351,712 @@ const Profile = () => {
       const updatedUser = { ...cachedUser, ...savedProfile };
       localStorage.setItem('user', JSON.stringify(updatedUser));
       window.dispatchEvent(new CustomEvent('profile-updated', { detail: updatedUser }));
-      setMessage('Profile updated successfully!');
+      setMessage('Profile updated');
       setEditing(false);
       setAvatarFile(null);
       setAvatarPreview('');
-
+      setCoverFile(null);
+      setCoverPreview('');
+      setClearCoverOnSave(false);
       setTimeout(() => setMessage(''), 3000);
     } catch (err) {
       console.error('Error updating profile:', err);
-      const errorMessage = err.response?.data?.error || err.message || 'Failed to update profile';
-      setError(errorMessage);
+      setError(err.response?.data?.error || err.message || 'Failed to update profile');
       setTimeout(() => setError(''), 5000);
     }
   };
 
+  const searchTop4 = async (query) => {
+    setTop4Query(query);
+    if (!query.trim()) {
+      setTop4Results([]);
+      return;
+    }
+    try {
+      const res = await searchMovies(query.trim());
+      setTop4Results((res.results || []).slice(0, 8));
+    } catch {
+      setTop4Results([]);
+    }
+  };
+
+  const addTop4Movie = (movie) => {
+    if (!movie?.id) return;
+    const rawPoster = movie.poster_path || movie.posterPath || movie.poster || '';
+    // Prefer a TMDB relative path when the client already expanded it to a proxy URL.
+    const posterMatch = String(rawPoster).match(/\/([^/?]+\.(?:jpg|jpeg|png|webp))(?:\?|$)/i);
+    const poster = posterMatch ? `/${posterMatch[1]}` : rawPoster;
+    setTop4Draft(prev => {
+      if (prev.some(m => Number(m.tmdbId) === Number(movie.id))) return prev;
+      if (prev.length >= 4) return prev;
+      return [
+        ...prev,
+        {
+          tmdbId: movie.id,
+          title: movie.title,
+          poster,
+        },
+      ];
+    });
+    setTop4Query('');
+    setTop4Results([]);
+  };
+
+  const removeTop4Movie = (tmdbId) => {
+    setTop4Draft(prev => prev.filter(m => Number(m.tmdbId) !== Number(tmdbId)));
+  };
+
+  const saveTop4 = async () => {
+    if (!hasAuthSession()) return;
+    setTop4Saving(true);
+    try {
+      const headers = authHeaders();
+      const profileRes = await axios.put(
+        '/api/user/profile',
+        { favouriteMovies: top4Draft.slice(0, 4) },
+        { headers, withCredentials: true }
+      );
+      const profileData = profileRes.data?.data || profileRes.data;
+      const savedProfile = profileData?.user || profileData;
+      setProfile(savedProfile);
+      setTop4Draft((savedProfile?.favouriteMovies || []).slice(0, 4));
+      setEditingTop4(false);
+      setMessage('Top 4 saved.');
+      setTimeout(() => setMessage(''), 2500);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not save Top 4');
+      setTimeout(() => setError(''), 4000);
+    } finally {
+      setTop4Saving(false);
+    }
+  };
+
+  const shareProfile = async () => {
+    if (!profile?._id) return;
+    const url = `${window.location.origin}/people/${profile._id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareNote('Profile link copied');
+    } catch {
+      setShareNote(url);
+    }
+    setTimeout(() => setShareNote(''), 2500);
+  };
+
+  const coverUrl = clearCoverOnSave
+    ? null
+    : (coverPreview || resolveMediaUrl(profile?.coverImage));
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-          <p className="text-cyan-200">Loading your profile...</p>
-        </div>
+      <div className="vc-profile-page" style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)' }}>Loading profile…</p>
       </div>
     );
   }
 
-  if (error && !profile) {
+  if ((error && !profile) || !profile) {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="vc-container" style={{ textAlign: 'center' }}>
-          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2rem', color: 'var(--vc-red)', marginBottom: '1rem' }}>Error</h2>
-          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', marginBottom: '1rem' }}>{error}</p>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2rem', color: 'var(--vc-red)', marginBottom: '1rem' }}>
+            {error || 'Profile Not Found'}
+          </h2>
           <Link to="/" style={{ color: 'var(--vc-gold)', textDecoration: 'none' }}>Go back to home</Link>
         </div>
       </div>
     );
   }
 
-  if (!profile) {
+  const top4 = (profile.favouriteMovies || []).slice(0, 4);
+  const joinDate = formatJoinDate(profile.createdAt);
+
+  const SectionHead = ({ title, to, actionLabel = 'View all' }) => (
+    <div className="vc-profile-section-head">
+      <h3 className="vc-profile-section-title">{title}</h3>
+      {to && (
+        <Link to={to} className="vc-profile-section-link">
+          {actionLabel}
+        </Link>
+      )}
+    </div>
+  );
+
+  const WatchlistGrid = ({ items, limit }) => {
+    const list = limit ? items.slice(0, limit) : items;
+    if (!list.length) {
+      return <p className="vc-profile-empty">Watchlist is empty.</p>;
+    }
     return (
-      <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="vc-container" style={{ textAlign: 'center' }}>
-          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2rem', color: 'var(--vc-red)', marginBottom: '1rem' }}>Profile Not Found</h2>
-          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', marginBottom: '1rem' }}>Please login to view your profile</p>
-          <Link to="/" style={{ color: 'var(--vc-gold)', textDecoration: 'none' }}>Go back to home</Link>
-        </div>
+      <div className="vc-profile-poster-row">
+        {list.map(movie => (
+          <Link
+            key={`${movie.tmdbId || movie.id}-${movie.mediaType || 'movie'}`}
+            to={`/${movie.mediaType === 'tv' ? 'tv' : 'movie'}/${movie.tmdbId || movie.id}`}
+            className="vc-profile-poster-card"
+          >
+            <img src={posterSrc(movie.posterUrl || movie.poster)} alt={movie.title} loading="lazy" />
+            <div className="vc-profile-poster-meta">
+              <span>{movie.title}</span>
+              {movie.releaseDate && <small>{String(movie.releaseDate).slice(0, 4)}</small>}
+            </div>
+          </Link>
+        ))}
       </div>
     );
-  }
+  };
+
+  const ReviewsList = ({ items, limit }) => {
+    const list = limit ? items.slice(0, limit) : items;
+    if (!list.length) {
+      return <p className="vc-profile-empty">No reviews yet.</p>;
+    }
+    return (
+      <div className="vc-profile-review-list">
+        {list.map(review => (
+          <article key={review._id} className="vc-profile-review-card">
+            <Link
+              to={`/${review.mediaType === 'tv' ? 'tv' : 'movie'}/${review.source === 'original' ? review.originalId : review.tmdbId}`}
+              className="vc-profile-review-poster"
+            >
+              <img src={posterSrc(review.poster, 'w92')} alt="" loading="lazy" />
+            </Link>
+            <div className="vc-profile-review-body">
+              <div className="vc-profile-review-top">
+                <Link
+                  to={`/${review.mediaType === 'tv' ? 'tv' : 'movie'}/${review.source === 'original' ? review.originalId : review.tmdbId}`}
+                  className="vc-profile-review-title"
+                >
+                  {review.title || 'Untitled'}
+                </Link>
+                <Stars rating={review.rating} />
+              </div>
+              {review.review ? (
+                <p className="vc-profile-review-text">{review.review}</p>
+              ) : (
+                <p className="vc-profile-muted">Rating only</p>
+              )}
+              <div className="vc-profile-review-foot">
+                <span className="vc-profile-muted">
+                  {review.createdAt ? new Date(review.createdAt).toLocaleDateString() : ''}
+                </span>
+                <Link to={`/review/${review._id}`} className="vc-profile-section-link">Open</Link>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  };
+
+  const DiaryTimeline = ({ items, limit }) => {
+    const list = limit ? items.slice(0, limit) : items;
+    if (!list.length) {
+      return <p className="vc-profile-empty">No diary entries yet.</p>;
+    }
+    return (
+      <div className="vc-profile-diary-list">
+        {list.map(entry => (
+          <div key={entry._id} className="vc-profile-diary-item">
+            {entry.poster && <img src={posterSrc(entry.poster, 'w92')} alt="" className="vc-profile-diary-poster" loading="lazy" />}
+            <div className="vc-profile-diary-body">
+              <Link
+                to={`/${entry.mediaType === 'tv' ? 'tv' : 'movie'}/${entry.source === 'original' ? entry.originalId : entry.tmdbId}`}
+                className="vc-profile-review-title"
+              >
+                {entry.title}
+              </Link>
+              <p className="vc-profile-muted">
+                Watched {formatWatchedDate(entry.watchedAt)}
+                {entry.rating != null && ` · ★ ${entry.rating}/10`}
+              </p>
+              {entry.note && <p className="vc-profile-note">{entry.note}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const ListsGrid = ({ items, limit }) => {
+    const list = limit ? items.slice(0, limit) : items;
+    if (!list.length) {
+      return <p className="vc-profile-empty">No lists yet.</p>;
+    }
+    return (
+      <div className="vc-profile-lists-grid">
+        {list.map(listItem => (
+          <Link key={listItem._id} to="/lists" className="vc-profile-list-card">
+            <div className="vc-profile-list-cover" aria-hidden="true" />
+            <div className="vc-profile-list-title">{listItem.name}</div>
+            {listItem.description && <p className="vc-profile-muted">{listItem.description}</p>}
+            <div className="vc-profile-muted vc-profile-list-meta">
+              {listItem.items?.length || 0} titles · {listItem.isPublic ? 'Public' : 'Private'}
+            </div>
+          </Link>
+        ))}
+      </div>
+    );
+  };
+
+  const CommunitiesGrid = ({ items, limit }) => {
+    const list = limit ? items.slice(0, limit) : items;
+    if (!list.length) {
+      return <p className="vc-profile-empty">No communities yet.</p>;
+    }
+    return (
+      <div className="vc-profile-lists-grid">
+        {list.map(community => (
+          <Link key={community._id} to={`/community/${community.slug}`} className="vc-profile-list-card">
+            <div className="vc-profile-list-title">{community.name}</div>
+            <p className="vc-profile-muted">{community.description}</p>
+            <div className="vc-profile-muted vc-profile-list-meta">
+              {community.role || 'member'} · {community.memberCount || 0} members
+            </div>
+          </Link>
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div className="vc-profile-page" style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)', width: '100%' }}>
+    <div className="vc-profile-page" style={{ minHeight: '100vh', background: '#0D0D0F', color: 'var(--vc-cream)' }}>
       <Navbar />
 
-      <section className="vc-profile-hero" style={{
-        paddingTop: '6rem',
-        paddingBottom: '3rem',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        background: 'linear-gradient(135deg, #060912 0%, #0a0f1a 50%, #0d1420 100%)',
-      }}>
-        <div className="vc-container">
-          <div className="vc-profile-heading">
-            <img
-              className="vc-profile-avatar"
-              src={getAvatarUrl(profile.avatar) || getDefaultAvatar(profile.name || profile.username)}
-              alt={`${profile.name || profile.username}'s profile`}
-              onError={e => { e.currentTarget.src = getDefaultAvatar(profile.name || profile.username); }}
-            />
-            <div className="vc-profile-heading-copy">
-              <span className="vc-section-label">Your Profile</span>
-              <h1 className="vc-profile-name">
-                {profile.name || profile.username}
-              </h1>
-              {profile.username && (
-                <p className="vc-profile-username">@{profile.username}</p>
-              )}
-              <p className="vc-profile-bio">
-                {profile.bio || 'Cinematic journey and preferences'}
-              </p>
-              <div className="vc-profile-actions">
+      <header className="vc-profile-cover">
+        <div
+          className="vc-profile-cover-bg"
+          style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
+          aria-hidden="true"
+        />
+        <div className="vc-profile-cover-shade" aria-hidden="true" />
+        <div className="vc-container vc-profile-cover-inner">
+          <img
+            className="vc-profile-avatar"
+            src={getAvatarUrl(profile.avatar) || getDefaultAvatar(profile.name || profile.username)}
+            alt={`${profile.name || profile.username}'s profile`}
+            onError={e => { e.currentTarget.src = getDefaultAvatar(profile.name || profile.username); }}
+          />
+          <div className="vc-profile-heading-copy">
+            <h1 className="vc-profile-name">{displayName(profile.name || profile.username)}</h1>
+            {profile.username && <p className="vc-profile-username">@{profile.username}</p>}
+            {profile.bio?.trim() && (
+              <p className="vc-profile-bio">{profile.bio.trim()}</p>
+            )}
+            {joinDate && <p className="vc-profile-joined">Joined {joinDate}</p>}
+            <div className="vc-profile-actions">
+              <button type="button" className="vc-btn vc-btn-primary" onClick={() => setEditing(v => !v)}>
+                {editing ? 'Cancel' : 'Edit profile'}
+              </button>
+              <button type="button" className="vc-btn vc-btn-outline" onClick={shareProfile}>
+                Share profile
+              </button>
+              {shareNote && <span className="vc-profile-share-note">{shareNote}</span>}
+            </div>
+            {(profile.socials?.instagram || profile.socials?.twitter || profile.socials?.website) && (
+              <div className="vc-profile-socials">
+                {profile.socials?.instagram && (
+                  <a href={profile.socials.instagram} target="_blank" rel="noopener noreferrer">Instagram</a>
+                )}
+                {profile.socials?.twitter && (
+                  <a href={profile.socials.twitter} target="_blank" rel="noopener noreferrer">Twitter</a>
+                )}
+                {profile.socials?.website && (
+                  <a href={profile.socials.website} target="_blank" rel="noopener noreferrer">Website</a>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      <div className="vc-container vc-profile-stats-wrap">
+        <div className="vc-profile-stats" role="navigation" aria-label="Profile statistics">
+          <button type="button" className="vc-profile-stat" onClick={() => selectTab('diary')}>
+            <div className="vc-profile-stat-value">{uniqueWatched}</div>
+            <div className="vc-profile-stat-label">Watched</div>
+          </button>
+          <button type="button" className="vc-profile-stat" onClick={() => selectTab('reviews')}>
+            <div className="vc-profile-stat-value">{reviews.length}</div>
+            <div className="vc-profile-stat-label">Reviews</div>
+          </button>
+          <button type="button" className="vc-profile-stat" onClick={() => selectTab('watchlist')}>
+            <div className="vc-profile-stat-value">{watchlist.length}</div>
+            <div className="vc-profile-stat-label">Watchlist</div>
+          </button>
+          <button type="button" className="vc-profile-stat" onClick={() => selectTab('diary')}>
+            <div className="vc-profile-stat-value">{diary.length}</div>
+            <div className="vc-profile-stat-label">Diary</div>
+          </button>
+          <button type="button" className="vc-profile-stat" onClick={() => selectTab('lists')}>
+            <div className="vc-profile-stat-value">{lists.length}</div>
+            <div className="vc-profile-stat-label">Lists</div>
+          </button>
+          <button type="button" className="vc-profile-stat" onClick={() => selectTab('overview')}>
+            <div className="vc-profile-stat-value">{sakha.length}</div>
+            <div className="vc-profile-stat-label">Friends</div>
+          </button>
+        </div>
+        {activityError && <p role="status" className="vc-profile-activity-error">{activityError}</p>}
+      </div>
+
+      {(message || error) && (
+        <div className="vc-container" style={{ marginBottom: '1rem' }}>
+          {message && <p className="vc-profile-toast ok">{message}</p>}
+          {error && <p className="vc-profile-toast err">{error}</p>}
+        </div>
+      )}
+
+      {editing && (
+        <div className="vc-container mb-8">
+          <div className="vc-profile-form vc-card">
+            <h3 className="vc-section-heading" style={{ marginBottom: '1.25rem' }}>Edit profile</h3>
+            <div className="space-y-4">
+              <div className="vc-avatar-picker">
+                <img
+                  src={avatarPreview || getAvatarUrl(editForm.avatar) || getDefaultAvatar(editForm.name)}
+                  alt="Profile preview"
+                  className="vc-profile-avatar"
+                  onError={e => { e.currentTarget.src = getDefaultAvatar(editForm.name); }}
+                />
+                <div>
+                  <label className="vc-profile-label" htmlFor="profile-avatar">Profile photo</label>
+                  <input id="profile-avatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif" onChange={handleAvatarUpload} className="vc-input vc-avatar-input" />
+                  <p className="vc-profile-hint">JPG, PNG, WebP or GIF · max 8 MB</p>
+                </div>
+              </div>
+              <div className="vc-cover-picker">
+                <div
+                  className="vc-cover-picker-preview"
+                  style={{
+                    backgroundImage: `url(${coverPreview || resolveMediaUrl(editForm.coverImage) || ''})`,
+                  }}
+                >
+                  {!coverPreview && !editForm.coverImage && !clearCoverOnSave && (
+                    <span>No cover</span>
+                  )}
+                  {clearCoverOnSave && <span>Cover will be removed</span>}
+                </div>
+                <div>
+                  <label className="vc-profile-label" htmlFor="profile-cover-file">Cover photo</label>
+                  <input
+                    id="profile-cover-file"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    onChange={handleCoverUpload}
+                    className="vc-input vc-avatar-input"
+                  />
+                  <p className="vc-profile-hint">Pick a photo from your device · max 8 MB</p>
+                  {(editForm.coverImage || coverPreview) && !clearCoverOnSave && (
+                    <button
+                      type="button"
+                      className="vc-profile-section-link"
+                      style={{ marginTop: '0.5rem' }}
+                      onClick={() => {
+                        setCoverFile(null);
+                        setCoverPreview('');
+                        setClearCoverOnSave(true);
+                        setEditForm(prev => ({ ...prev, coverImage: '' }));
+                      }}
+                    >
+                      Remove cover
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="vc-profile-label" htmlFor="profile-name">Full Name</label>
+                <input id="profile-name" type="text" name="name" value={editForm.name} onChange={handleEditChange} className="vc-input" />
+              </div>
+              <div>
+                <label className="vc-profile-label" htmlFor="profile-username">Username</label>
+                <div className="vc-username-field">
+                  <span className="vc-username-prefix" aria-hidden="true">@</span>
+                  <input
+                    id="profile-username"
+                    type="text"
+                    name="username"
+                    value={editForm.username}
+                    onChange={handleEditChange}
+                    className="vc-input"
+                    maxLength={30}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="vc-profile-label" htmlFor="profile-bio">Bio</label>
+                <textarea id="profile-bio" name="bio" value={editForm.bio} onChange={handleEditChange} rows={3} className="vc-input vc-textarea" />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="vc-profile-label" htmlFor="profile-instagram">Instagram</label>
+                  <input id="profile-instagram" type="url" name="socials.instagram" value={editForm.socials.instagram || ''} onChange={handleEditChange} className="vc-input" />
+                </div>
+                <div>
+                  <label className="vc-profile-label" htmlFor="profile-twitter">Twitter</label>
+                  <input id="profile-twitter" type="url" name="socials.twitter" value={editForm.socials.twitter || ''} onChange={handleEditChange} className="vc-input" />
+                </div>
+                <div>
+                  <label className="vc-profile-label" htmlFor="profile-website">Website</label>
+                  <input id="profile-website" type="url" name="socials.website" value={editForm.socials.website || ''} onChange={handleEditChange} className="vc-input" />
+                </div>
+              </div>
+              <div className="flex gap-4 pt-4">
+                <button type="button" onClick={handleSaveProfile} className="vc-btn vc-btn-primary">Save Changes</button>
                 <button
                   type="button"
-                  onClick={() => setEditing(!editing)}
-                  className="vc-btn vc-btn-primary"
+                  className="vc-btn vc-btn-ghost"
+                  onClick={() => {
+                    setEditing(false);
+                    setAvatarFile(null);
+                    setAvatarPreview('');
+                    setCoverFile(null);
+                    setCoverPreview('');
+                    setClearCoverOnSave(false);
+                    setEditForm({
+                      name: profile.name || '',
+                      username: profile.username || '',
+                      bio: profile.bio || '',
+                      avatar: profile.avatar || '',
+                      coverImage: profile.coverImage || '',
+                      socials: profile.socials || { ...emptySocials },
+                    });
+                  }}
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"} />
-                  </svg>
-                  {editing ? 'Cancel Edit' : 'Edit Profile'}
+                  Cancel
                 </button>
               </div>
             </div>
           </div>
         </div>
-      </section>
+      )}
 
-      <div className="vc-container vc-profile-stats-wrap">
-        <div className="vc-profile-stats">
-          <div className="vc-profile-stat">
-            <div className="vc-profile-stat-value">{watchlist.length}</div>
-            <div className="vc-profile-stat-label">Watchlist</div>
-          </div>
-          <div className="vc-profile-stat">
-            <div className="vc-profile-stat-value">{reviews.length}</div>
-            <div className="vc-profile-stat-label">Reviews</div>
-          </div>
-          <div className="vc-profile-stat">
-            <div className="vc-profile-stat-value">{diary.length}</div>
-            <div className="vc-profile-stat-label">Diary logs</div>
-          </div>
-          <div className="vc-profile-stat">
-            <div className="vc-profile-stat-value">{lists.length}</div>
-            <div className="vc-profile-stat-label">Lists</div>
-          </div>
-          <div className="vc-profile-stat">
-            <div className="vc-profile-stat-value">{sakha.length}</div>
-            <div className="vc-profile-stat-label">Friends</div>
-          </div>
-        </div>
-        {activityError && <p role="status" className="vc-profile-activity-error">{activityError}</p>}
+      <nav className="vc-container vc-profile-tabs" aria-label="Profile sections">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            type="button"
+            className={`vc-profile-tab${tab === t.id ? ' is-active' : ''}`}
+            onClick={() => selectTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
 
-        {(profile.socials?.instagram || profile.socials?.twitter || profile.socials?.website) && (
-          <div className="vc-profile-socials">
-            {profile.socials?.instagram && (
-              <a href={profile.socials.instagram} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-gray-300 hover:text-cyan-400 transition-colors group">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                </svg>
-                <span className="group-hover:underline">Instagram</span>
-              </a>
-            )}
-            {profile.socials?.twitter && (
-              <a href={profile.socials.twitter} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-gray-300 hover:text-cyan-400 transition-colors group">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z" />
-                </svg>
-                <span className="group-hover:underline">Twitter</span>
-              </a>
-            )}
-            {profile.socials?.website && (
-              <a href={profile.socials.website} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-gray-300 hover:text-cyan-400 transition-colors group">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9m0-9c-4.97 0-9 4.03-9 9s4.03 9 9 9 9-4.03 9-9-4.03-9-9-9z"} />
-                </svg>
-                <span className="group-hover:underline">Website</span>
-              </a>
-            )}
-          </div>
-        )}
-      </div>
-
-  {/* Messages */ }
-{
-  message && (
-    <div className="max-w-4xl mx-auto px-6 mb-6">
-      <div className="bg-green-600/20 border border-green-500/50 text-green-300 p-4 rounded-lg text-center backdrop-blur-sm">
-        {message}
-      </div>
-    </div>
-  )
-}
-
-{
-  error && (
-    <div className="max-w-4xl mx-auto px-6 mb-6">
-      <div className="bg-red-600/20 border border-red-500/50 text-red-300 p-4 rounded-lg text-center backdrop-blur-sm">
-        {error}
-      </div>
-    </div>
-  )
-}
-
-{/* Edit Form */ }
-{
-  editing && (
-    <div className="vc-container mb-8">
-      <div className="vc-profile-form vc-card">
-        <h3 className="vc-section-heading" style={{ marginBottom: '1.5rem' }}>Edit Profile</h3>
-        <div className="space-y-4">
-          <div className="vc-avatar-picker">
-            <img
-              src={avatarPreview || getAvatarUrl(editForm.avatar) || getDefaultAvatar(editForm.name)}
-              alt="Profile preview"
-              className="vc-profile-avatar"
-              onError={e => { e.currentTarget.src = getDefaultAvatar(editForm.name); }}
-            />
-            <div>
-              <label className="vc-profile-label" htmlFor="profile-avatar">Profile photo</label>
-              <input
-                id="profile-avatar"
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarUpload}
-                className="vc-input vc-avatar-input"
-              />
-              <p className="vc-profile-hint">Choose an image up to 5 MB.</p>
-            </div>
-          </div>
-          <div>
-            <label className="vc-profile-label" htmlFor="profile-name">Full Name</label>
-            <input
-              id="profile-name"
-              type="text"
-              name="name"
-              value={editForm.name}
-              onChange={handleEditChange}
-              className="vc-input"
-              placeholder="Your full name"
-            />
-          </div>
-
-          <div>
-            <label className="vc-profile-label" htmlFor="profile-username">Username</label>
-            <div className="vc-username-field">
-              <span className="vc-username-prefix" aria-hidden="true">@</span>
-              <input
-                id="profile-username"
-                type="text"
-                name="username"
-                value={editForm.username}
-                onChange={handleEditChange}
-                className="vc-input"
-                placeholder="travis"
-                autoComplete="username"
-                maxLength={30}
-              />
-            </div>
-            <p className="vc-profile-hint">3–30 characters. Letters, numbers, dots, underscores, or hyphens.</p>
-          </div>
-
-          <div>
-            <label className="vc-profile-label" htmlFor="profile-bio">Bio</label>
-            <textarea
-              id="profile-bio"
-              name="bio"
-              value={editForm.bio}
-              onChange={handleEditChange}
-              rows={3}
-              className="vc-input vc-textarea"
-              placeholder="Tell us about yourself..."
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="vc-profile-label" htmlFor="profile-instagram">Instagram</label>
-              <input
-                id="profile-instagram"
-                type="url"
-                name="socials.instagram"
-                value={editForm.socials.instagram}
-                onChange={handleEditChange}
-                className="vc-input"
-                placeholder="Instagram URL"
-              />
-            </div>
-
-            <div>
-              <label className="vc-profile-label" htmlFor="profile-twitter">Twitter</label>
-              <input
-                id="profile-twitter"
-                type="url"
-                name="socials.twitter"
-                value={editForm.socials.twitter}
-                onChange={handleEditChange}
-                className="vc-input"
-                placeholder="Twitter URL"
-              />
-            </div>
-
-            <div>
-              <label className="vc-profile-label" htmlFor="profile-website">Website</label>
-              <input
-                id="profile-website"
-                type="url"
-                name="socials.website"
-                value={editForm.socials.website}
-                onChange={handleEditChange}
-                className="vc-input"
-                placeholder="Website URL"
-              />
-            </div>
-          </div>
-
-          <div className="flex gap-4 pt-4">
-            <button
-              type="button"
-              onClick={handleSaveProfile}
-              className="vc-btn vc-btn-primary"
-            >
-              Save Changes
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(false);
-                setAvatarFile(null);
-                setAvatarPreview('');
-                setEditForm({
-                  name: profile.name || '',
-                  username: profile.username || '',
-                  bio: profile.bio || '',
-                  avatar: profile.avatar || '',
-                  socials: profile.socials || { instagram: '', twitter: '', website: '' }
-                });
-              }}
-              className="vc-btn vc-btn-ghost"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-{/* Content Grid */ }
-<div className="max-w-7xl mx-auto px-6 pb-16">
-  <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-    {/* Left Column - Friends */}
-    <div className="lg:col-span-1">
-      <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border border-slate-700/50">
-        <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-lg flex items-center justify-center">
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"} />
-            </svg>
-          </div>
-          Friends
-        </h3>
-        {sakha.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"} />
-              </svg>
-            </div>
-            <p className="text-gray-400 text-sm">No friends added yet.</p>
-            <p className="text-gray-500 text-xs mt-1">Connect with other cinephiles</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {sakha.map((friend, index) => (
-              <div key={friend._id || friend.id || `friend-${index}`} className="flex items-center gap-3 p-3 rounded-xl hover:bg-slate-700/30 transition-all duration-200 group cursor-pointer">
-                <img
-                  src={getAvatarUrl(friend.avatar) || getDefaultAvatar(friend.name || friend.username)}
-                  alt={friend.name || friend.username || 'Friend'}
-                  className="w-12 h-12 rounded-full object-cover border-2 border-slate-600 group-hover:border-cyan-400/50 transition-colors"
-                  onError={(e) => {
-                    e.target.src = getDefaultAvatar(friend.name || friend.username);
-                  }}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-white font-semibold group-hover:text-cyan-300 transition-colors truncate">{friend.name || friend.username}</p>
-                  <p className="text-gray-400 text-sm truncate">@{friend.username}</p>
+      <div className="vc-container vc-profile-body">
+        {tab === 'overview' && (
+          <div className="vc-profile-layout">
+            <div className="vc-profile-main">
+              <section className="vc-profile-panel">
+                <div className="vc-profile-section-head">
+                  <h3 className="vc-profile-section-title">Top 4</h3>
+                  <button
+                    type="button"
+                    className="vc-profile-section-link"
+                    onClick={() => {
+                      setTop4Draft((profile.favouriteMovies || []).slice(0, 4));
+                      setEditingTop4(v => !v);
+                    }}
+                  >
+                    {editingTop4 ? 'Done' : 'Edit'}
+                  </button>
                 </div>
-                <svg className="w-4 h-4 text-gray-500 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M9 5l7 7-7 7"} />
-                </svg>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-
-    {/* Right Column - Content */}
-    <div className="lg:col-span-2 space-y-8">
-      {/* Watchlist */}
-      <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-slate-700/50">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="text-2xl font-bold text-white flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
-              </svg>
-            </div>
-            Watchlist
-          </h3>
-          <Link to="/watchlist" className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors flex items-center gap-1 group">
-            View All
-            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M9 5l7 7-7 7"} />
-            </svg>
-          </Link>
-        </div>
-        {watchlist.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"} />
-              </svg>
-            </div>
-            <p className="text-gray-400 text-lg mb-2">Your watchlist is empty</p>
-            <p className="text-gray-500 text-sm">Start adding movies you want to watch</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {watchlist.slice(0, 10).map(movie => (
-              <Link
-                key={movie.tmdbId || movie.id}
-                to={`/${movie.mediaType === 'tv' ? 'tv' : 'movie'}/${movie.tmdbId || movie.id}`}
-                className="group"
-              >
-                <div className="relative overflow-hidden rounded-xl">
-                  <img
-                    src={(movie.posterUrl || movie.poster) ? tmdbImageUrl(movie.posterUrl || movie.poster, 'w185') : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iMTIwIiB2aWV3Qm94PSIwIDAgODAgMTIwIiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8cmVjdCB3aWR0aD0iODAiIGhlaWdodD0iMTIwIiBmaWxsPSIjMzM0MTU1Ii8+Cjx0ZXh0IHg9IjQwIiB5PSI2MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjEwIiBmaWxsPSIjOWNhM2EzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+Tm8gSW1hZ2U8L3RleHQ+Cjwvc3ZnPgo='}
-                    alt={movie.title}
-                    className="w-full aspect-[2/3] object-cover group-hover:scale-110 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="absolute bottom-0 left-0 right-0 p-3 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <p className="text-white text-sm font-semibold line-clamp-2">{movie.title}</p>
-                  </div>
-                </div>
-                <div className="mt-3">
-                  <p className="text-white text-sm font-semibold truncate group-hover:text-cyan-300 transition-colors">{movie.title}</p>
-                  {movie.releaseDate && (
-                    <p className="text-gray-400 text-xs">({movie.releaseDate.slice(0, 4)})</p>
-                  )}
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Reviews */}
-      <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-slate-700/50">
-        <div className="flex justify-between items-center mb-8">
-          <h3 className="text-2xl font-bold text-white flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            </div>
-            Recent Reviews
-          </h3>
-          <Link to="/reviews" className="text-cyan-400 hover:text-cyan-300 text-sm font-medium transition-colors flex items-center gap-1 group">
-            View All
-            <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={"M9 5l7 7-7 7"} />
-            </svg>
-          </Link>
-        </div>
-        {reviews.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-20 h-20 bg-slate-700/50 rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-              </svg>
-            </div>
-            <p className="text-gray-400 text-lg mb-2">No reviews yet</p>
-            <p className="text-gray-500 text-sm">Share your thoughts on the movies you watch</p>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {reviews.slice(0, 3).map(review => (
-              <div key={review._id} className="bg-slate-700/30 rounded-xl p-6 hover:bg-slate-700/50 transition-colors">
-                <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-3">
-                      <Link to={`/${review.mediaType === 'tv' ? 'tv' : 'movie'}/${review.source === 'original' ? review.originalId : review.tmdbId}`} className="text-white font-bold text-lg hover:text-cyan-300">
-                        {review.title || 'Untitled'}
-                      </Link>
-                      {review.rating !== undefined && review.rating !== null && (
-                        <div className="flex items-center gap-1 bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full">
-                          <span className="text-sm">★</span>
-                          <span className="text-sm font-bold">{review.rating}/10</span>
-                        </div>
-                      )}
+                {!editingTop4 && (
+                  top4.length ? (
+                    <div className="vc-profile-top4">
+                      {top4.map(movie => (
+                        <Link key={movie.tmdbId} to={`/movie/${movie.tmdbId}`} className="vc-profile-top4-card">
+                          <img src={posterSrc(movie.poster, 'w342')} alt={movie.title} loading="lazy" />
+                          <div>
+                            <strong>{movie.title}</strong>
+                          </div>
+                        </Link>
+                      ))}
                     </div>
-                    {review.review ? (
-                      <p className="text-gray-300 text-sm leading-relaxed line-clamp-3">{review.review}</p>
-                    ) : (
-                      <p className="text-gray-400 text-sm">Rating only</p>
+                  ) : (
+                    <p className="vc-profile-empty">Add up to 4 favourite films.</p>
+                  )
+                )}
+                {editingTop4 && (
+                  <div className="vc-profile-top4-editor">
+                    <div className="vc-profile-top4">
+                      {[0, 1, 2, 3].map(slot => {
+                        const movie = top4Draft[slot];
+                        return (
+                          <div key={slot} className="vc-profile-top4-slot">
+                            {movie ? (
+                              <>
+                                <img src={posterSrc(movie.poster, 'w185')} alt={movie.title} />
+                                <button type="button" onClick={() => removeTop4Movie(movie.tmdbId)}>Remove</button>
+                                <span>{movie.title}</span>
+                              </>
+                            ) : (
+                              <span className="vc-profile-muted">Empty</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {top4Draft.length < 4 && (
+                      <div className="vc-profile-top4-search">
+                        <input
+                          className="vc-input"
+                          value={top4Query}
+                          onChange={e => searchTop4(e.target.value)}
+                          placeholder="Search for a movie…"
+                        />
+                        {top4Results.length > 0 && (
+                          <ul className="vc-profile-top4-results">
+                            {top4Results.map(movie => (
+                              <li key={movie.id}>
+                                <button type="button" onClick={() => addTop4Movie(movie)}>
+                                  {movie.title}{movie.release_date ? ` (${String(movie.release_date).slice(0, 4)})` : ''}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
                     )}
+                    <button type="button" className="vc-btn vc-btn-primary" disabled={top4Saving} onClick={saveTop4}>
+                      {top4Saving ? 'Saving…' : 'Save'}
+                    </button>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                )}
+              </section>
 
-      {/* Movie Diary */}
-      <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-slate-700/50">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-white">Movie Diary</h3>
-          <Link to="/diary" className="text-cyan-400 hover:text-cyan-300 text-sm font-medium">Log a movie · View all</Link>
-        </div>
-        {diary.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-gray-400 text-lg mb-2">Your diary is empty</p>
-            <p className="text-gray-500 text-sm">Log a movie by date, with an optional rating or note.</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {diary.slice(0, 5).map(entry => (
-              <div key={entry._id} className="flex items-center gap-4 rounded-xl bg-slate-700/30 p-4">
-                {entry.poster && <img src={tmdbImageUrl(entry.poster, 'w92')} alt="" className="h-16 w-11 rounded object-cover" />}
-                <div className="min-w-0 flex-1">
-                  <Link to={`/${entry.mediaType === 'tv' ? 'tv' : 'movie'}/${entry.source === 'original' ? entry.originalId : entry.tmdbId}`} className="font-semibold text-white hover:text-cyan-300">
-                    {entry.title}
-                  </Link>
-                  <p className="mt-1 text-xs text-gray-400">
-                    Watched {new Date(entry.watchedAt).toLocaleDateString(undefined, { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' })}
-                    {entry.rating != null && ` · ★ ${entry.rating}/10`}
+              <section className="vc-profile-panel">
+                <SectionHead title="Watchlist" to="/watchlist" />
+                <WatchlistGrid items={watchlist} limit={8} />
+              </section>
+
+              <section className="vc-profile-panel">
+                <SectionHead title="Reviews" to="/reviews" />
+                <ReviewsList items={reviews} limit={3} />
+              </section>
+
+              <section className="vc-profile-panel">
+                <SectionHead title="Diary" to="/diary" actionLabel="View all" />
+                <DiaryTimeline items={diary} limit={5} />
+              </section>
+
+              <section className="vc-profile-panel">
+                <SectionHead title="Lists" to="/lists" />
+                <ListsGrid items={lists} limit={4} />
+              </section>
+
+              <section className="vc-profile-panel">
+                <SectionHead title="Communities" to="/community" actionLabel="Browse" />
+                <CommunitiesGrid items={communities} limit={4} />
+              </section>
+            </div>
+
+            <aside className="vc-profile-side">
+              <section className="vc-profile-panel">
+                <SectionHead title="Friends" to="/people" actionLabel="View all" />
+                {sakha.length === 0 ? (
+                  <p className="vc-profile-empty">No friends yet.</p>
+                ) : (
+                  <ul className="vc-profile-friends">
+                    {sakha.slice(0, 8).map((friend, index) => (
+                      <li key={friend._id || friend.id || `friend-${index}`}>
+                        <Link to={`/people/${friend._id || friend.id}`} className="vc-profile-friend">
+                          <img
+                            src={getAvatarUrl(friend.avatar) || getDefaultAvatar(friend.name || friend.username)}
+                            alt=""
+                            onError={e => { e.currentTarget.src = getDefaultAvatar(friend.name || friend.username); }}
+                          />
+                          <div>
+                            <strong>{friend.name || friend.username}</strong>
+                            <span>@{friend.username}</span>
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className="vc-profile-panel">
+                <h3 className="vc-profile-section-title">Stats</h3>
+                {!taste.hasSignal ? (
+                  <p className="vc-profile-empty">
+                    Stats show up after you rate films or add diary entries.
                   </p>
-                  {entry.note && <p className="mt-1 truncate text-sm text-gray-300">{entry.note}</p>}
-                </div>
-              </div>
-            ))}
+                ) : (
+                  <dl className="vc-profile-taste">
+                    {taste.averageRating != null && (
+                      <>
+                        <dt>Avg rating</dt>
+                        <dd>{taste.averageRating}/10 · {taste.reviewCount} reviews</dd>
+                      </>
+                    )}
+                    {taste.favouriteGenres.length > 0 && (
+                      <>
+                        <dt>Genres</dt>
+                        <dd>{taste.favouriteGenres.join(', ')}</dd>
+                      </>
+                    )}
+                    {taste.mostWatchedGenres.length > 0 && (
+                      <>
+                        <dt>Watchlist genres</dt>
+                        <dd>{taste.mostWatchedGenres.map(g => g.name).join(', ')}</dd>
+                      </>
+                    )}
+                    {taste.favouriteLanguages.length > 0 && (
+                      <>
+                        <dt>Languages</dt>
+                        <dd>{taste.favouriteLanguages.join(', ')}</dd>
+                      </>
+                    )}
+                    {taste.topDecade && (
+                      <>
+                        <dt>Decade</dt>
+                        <dd>{taste.topDecade}</dd>
+                      </>
+                    )}
+                    <dt>Diary</dt>
+                    <dd>{taste.uniqueWatched} films · {taste.diaryEntries} entries</dd>
+                  </dl>
+                )}
+              </section>
+            </aside>
           </div>
         )}
-      </div>
 
-      {/* Custom Lists */}
-      <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-slate-700/50">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-white">My Lists</h3>
-          <Link to="/lists" className="text-cyan-400 hover:text-cyan-300 text-sm font-medium">View all lists</Link>
-        </div>
-        {lists.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-gray-400 text-lg mb-2">No lists yet</p>
-            <p className="text-gray-500 text-sm">Create a list to collect movies and shows.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {lists.slice(0, 6).map(list => (
-              <Link key={list._id} to="/lists" className="rounded-xl border border-slate-700/60 bg-slate-700/30 p-4 transition-colors hover:border-cyan-400/40">
-                <div className="font-semibold text-white">{list.name}</div>
-                {list.description && <p className="mt-1 line-clamp-2 text-sm text-gray-400">{list.description}</p>}
-                <div className="mt-2 text-xs text-gray-400">{list.items?.length || 0} titles · {list.isPublic ? 'Public' : 'Private'}</div>
-              </Link>
-            ))}
-          </div>
+        {tab === 'reviews' && (
+          <section className="vc-profile-panel">
+            <SectionHead title="Reviews" to="/reviews" />
+            <ReviewsList items={reviews} />
+          </section>
         )}
-      </div>
-
-      {/* Communities */}
-      <div className="bg-slate-800/30 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-slate-700/50">
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-2xl font-bold text-white">Communities</h3>
-          <Link to="/community" className="text-cyan-400 hover:text-cyan-300 text-sm font-medium">Explore society</Link>
-        </div>
-        {communities.length === 0 ? (
-          <div className="text-center py-10">
-            <p className="text-gray-400 text-lg mb-2">No communities yet</p>
-            <p className="text-gray-500 text-sm">Join a cinematic society to appear here.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {communities.slice(0, 8).map(community => (
-              <Link
-                key={community._id}
-                to={`/community/${community.slug}`}
-                className="rounded-xl border border-slate-700/60 bg-slate-700/30 p-4 transition-colors hover:border-cyan-400/40"
-              >
-                <div className="font-semibold text-white">{community.name}</div>
-                <p className="mt-1 line-clamp-2 text-sm text-gray-400">{community.description}</p>
-                <div className="mt-2 text-xs text-gray-400">
-                  {community.role || 'member'} · {community.memberCount || 0} members · {community.discussionCount || 0} discussions
-                </div>
-              </Link>
-            ))}
-          </div>
+        {tab === 'diary' && (
+          <section className="vc-profile-panel">
+            <SectionHead title="Diary" to="/diary" actionLabel="View all" />
+            <DiaryTimeline items={diary} />
+          </section>
+        )}
+        {tab === 'watchlist' && (
+          <section className="vc-profile-panel">
+            <SectionHead title="Watchlist" to="/watchlist" />
+            <WatchlistGrid items={watchlist} />
+          </section>
+        )}
+        {tab === 'lists' && (
+          <section className="vc-profile-panel">
+            <SectionHead title="Lists" to="/lists" />
+            <ListsGrid items={lists} />
+          </section>
+        )}
+        {tab === 'communities' && (
+          <section className="vc-profile-panel">
+            <SectionHead title="Communities" to="/community" actionLabel="Browse" />
+            <CommunitiesGrid items={communities} />
+          </section>
         )}
       </div>
     </div>
-  </div>
-</div>
-    </div >
   );
 };
 

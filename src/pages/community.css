@@ -6,8 +6,8 @@
   --cs-muted: #a6a09a;
   --cs-accent: #8f343a;
   --cs-gold: #b59a76;
-  --cs-serif: var(--vc-font-display, 'Newsreader', Georgia, serif);
-  --cs-sans: var(--vc-font-body, 'DM Sans', 'Helvetica Neue', sans-serif);
+  --cs-serif: var(--vc-font-display, 'Cormorant', Georgia, serif);
+  --cs-sans: var(--vc-font-body, 'Manrope', 'Helvetica Neue', sans-serif);
   min-height: 100vh;
   background: var(--cs-bg);
   color: var(--cs-text);
