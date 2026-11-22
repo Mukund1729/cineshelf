@@ -30,6 +30,20 @@
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 0.75rem;
   margin: 1rem 0 0;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Person box-office cards: keep text readable when stacked on mobile */
+.md-page.person-page .md-bo-card {
+  min-width: 0;
+}
+
+.md-page.person-page .md-bo-card strong,
+.md-page.person-page .md-bo-card small {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: normal;
 }
 
 .md-bo-table-wrap {
@@ -237,10 +251,28 @@
 }
 
 @media (max-width: 768px) {
+  /*
+   * Movie mobile hero uses display:contents + 2 columns.
+   * Person bio/stats were landing in the narrow left column — force full width.
+   */
+  .md-page.person-page {
+    overflow-x: clip;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .md-page.person-page .md-shell {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .md-page.person-page .md-hero {
-    grid-template-columns: 112px minmax(0, 1fr);
-    gap: 0.85rem 0.75rem;
+    grid-template-columns: minmax(0, 1fr) 112px;
+    column-gap: 0.75rem;
+    row-gap: 0.85rem;
     margin-top: -2.5rem;
+    width: 100%;
+    max-width: 100%;
   }
 
   .md-page.person-page .md-poster {
@@ -248,9 +280,51 @@
     width: 112px;
   }
 
+  .md-page.person-page .md-hero-intro {
+    min-width: 0;
+    padding-right: 0.15rem;
+  }
+
   .md-page.person-page .md-title {
     font-family: var(--md-sans);
-    font-size: clamp(1.4rem, 6.5vw, 1.75rem);
+    font-size: clamp(1.35rem, 6.2vw, 1.7rem);
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  /* Full-bleed blocks under the name/poster row */
+  .md-page.person-page .md-bio,
+  .md-page.person-page .md-meta,
+  .md-page.person-page .md-readmore,
+  .md-page.person-page .md-hero-actions,
+  .md-page.person-page .md-person-stats,
+  .md-page.person-page .md-person-search {
+    grid-column: 1 / -1;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .md-page.person-page .md-bio {
+    max-width: none;
+    font-size: 0.94rem;
+    line-height: 1.6;
+  }
+
+  .md-page.person-page .md-person-search {
+    margin: 0 0 1rem;
+    width: 100%;
+  }
+
+  .md-page.person-page .md-hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .md-page.person-page .md-hero-actions .md-btn {
+    flex: 1 1 calc(50% - 0.5rem);
+    justify-content: center;
   }
 
   .md-bo-table th,
@@ -260,6 +334,29 @@
   }
 
   .md-person-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+    margin-top: 0.85rem;
+  }
+
+  .md-bo-card strong {
+    font-size: 1.35rem;
+    white-space: normal;
+  }
+
+  .md-page.person-page .md-poster-rail {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+  }
+
+  .md-page.person-page .md-section {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .md-page.person-page .md-shell {
+    padding-bottom: 5.5rem; /* clear chat FAB */
   }
 }
