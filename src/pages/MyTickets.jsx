@@ -68,19 +68,19 @@ export default function MyTickets() {
 
       <div style={{ maxWidth: 740, margin: '0 auto', padding: '2rem 1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '2rem', margin: 0 }}>
+          <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2rem', margin: 0 }}>
             🎟 My Tickets
           </h1>
           <Link to="/popular-movies" style={{
             padding: '0.45rem 1.1rem',
             background: 'linear-gradient(135deg,#d4af37,#f5cc50)',
-            borderRadius: 8, fontFamily: 'Outfit, sans-serif', fontWeight: 700,
+            borderRadius: 8, fontFamily: 'var(--vc-font-body)', fontWeight: 700,
             fontSize: '0.8rem', color: '#0a0f1a', textDecoration: 'none',
           }}>
             + Book More
           </Link>
         </div>
-        <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.45)', marginBottom: '2rem' }}>
+        <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'rgba(245,240,232,0.45)', marginBottom: '2rem' }}>
           {tickets.length} demo ticket{tickets.length !== 1 ? 's' : ''} saved
         </p>
 
@@ -91,7 +91,7 @@ export default function MyTickets() {
           border: '1px solid rgba(212,175,55,0.25)',
           borderRadius: 10,
           color: 'rgba(245,240,232,0.78)',
-          fontFamily: 'Outfit, sans-serif',
+          fontFamily: 'var(--vc-font-body)',
           fontSize: '0.8rem',
           lineHeight: 1.5,
         }}>
@@ -105,16 +105,16 @@ export default function MyTickets() {
             border: '1px solid rgba(255,255,255,0.06)',
           }}>
             <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🎬</div>
-            <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.3rem', marginBottom: '0.5rem' }}>
+            <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.3rem', marginBottom: '0.5rem' }}>
               No tickets yet
             </div>
-            <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.45)', marginBottom: '1.5rem' }}>
+            <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'rgba(245,240,232,0.45)', marginBottom: '1.5rem' }}>
               Try the cinema demo or find real showtimes on BookMyShow.
             </p>
             <Link to="/popular-movies" style={{
               display: 'inline-flex', padding: '0.6rem 1.5rem',
               background: 'linear-gradient(135deg,#d4af37,#f5cc50)',
-              borderRadius: 8, fontFamily: 'Outfit, sans-serif', fontWeight: 700,
+              borderRadius: 8, fontFamily: 'var(--vc-font-body)', fontWeight: 700,
               fontSize: '0.85rem', color: '#0a0f1a', textDecoration: 'none',
             }}>
               Browse Movies
@@ -150,20 +150,20 @@ export default function MyTickets() {
                     />
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontFamily: 'Playfair Display, serif', fontWeight: 700, fontSize: '1rem', marginBottom: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <div style={{ fontFamily: 'var(--vc-font-display)', fontWeight: 700, fontSize: '1rem', marginBottom: '0.2rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {ticket.movieTitle}
                     </div>
-                    <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'rgba(245,240,232,0.55)', lineHeight: 1.5 }}>
+                    <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'rgba(245,240,232,0.55)', lineHeight: 1.5 }}>
                       {ticket.theatre} · {ticket.city} · {ticket.time} · {ticket.format}<br />
                       Seats: {ticket.seats.join(', ')}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 700, color: '#d4af37', fontSize: '1rem' }}>
+                    <div style={{ fontFamily: 'var(--vc-font-body)', fontWeight: 700, color: '#d4af37', fontSize: '1rem' }}>
                       ₹{ticket.total}
                     </div>
                     <div style={{
-                      fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem',
+                      fontFamily: 'var(--vc-font-body)', fontSize: '0.68rem',
                       color: 'rgba(245,240,232,0.35)', marginTop: '0.2rem',
                     }}>
                       {formatDate(ticket.bookedAt)}
@@ -191,7 +191,7 @@ export default function MyTickets() {
                       {/* QR */}
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                         <QRCode ticketId={ticket.id} size={110} />
-                        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.62rem', color: 'rgba(245,240,232,0.35)', letterSpacing: '0.06em' }}>
+                        <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.62rem', color: 'rgba(245,240,232,0.35)', letterSpacing: '0.06em' }}>
                           DEMO ONLY — NOT VALID FOR ENTRY
                         </div>
                       </div>
@@ -214,7 +214,7 @@ export default function MyTickets() {
                               padding: '0.4rem 0.9rem',
                               background: 'rgba(255,255,255,0.06)',
                               border: '1px solid rgba(255,255,255,0.12)',
-                              borderRadius: 6, fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem',
+                              borderRadius: 6, fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem',
                               color: 'rgba(245,240,232,0.75)', textDecoration: 'none',
                             }}
                           >
@@ -226,7 +226,7 @@ export default function MyTickets() {
                               padding: '0.4rem 0.9rem',
                               background: 'rgba(252,129,129,0.08)',
                               border: '1px solid rgba(252,129,129,0.2)',
-                              borderRadius: 6, fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem',
+                              borderRadius: 6, fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem',
                               color: '#fc8181', cursor: 'pointer',
                             }}
                           >
@@ -251,13 +251,13 @@ function Detail({ label, value, gold, mono }) {
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
       padding: '0.4rem 0', borderBottom: '1px solid rgba(255,255,255,0.04)',
-      fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', gap: '1rem',
+      fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', gap: '1rem',
     }}>
       <span style={{ color: 'rgba(245,240,232,0.45)', flexShrink: 0 }}>{label}</span>
       <span style={{
         color: gold ? '#d4af37' : '#f5f0e8',
         fontWeight: gold ? 700 : 400,
-        fontFamily: mono ? 'monospace' : 'Outfit, sans-serif',
+        fontFamily: mono ? 'var(--vc-font-mono)' : 'var(--vc-font-body)',
         textAlign: 'right', wordBreak: 'break-all',
       }}>
         {value}

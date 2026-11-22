@@ -204,14 +204,150 @@ export const getIndianDaywiseBoxOffice = async (req, res) => {
   }
 };
 
+function shapeHistoryAsMovieBoxOffice(history) {
+  if (!history) return null;
+  const source = history.source || 'box-office-history';
+  const sourceUrl = history.sourceUrl || null;
+  const reports = [];
+  const push = (collectionType, amount) => {
+    if (amount == null || !Number.isFinite(Number(amount))) return;
+    reports.push({
+      collectionType,
+      amount: Number(amount),
+      currency: history.currency || 'USD',
+      source,
+      sourceUrl,
+      isEstimate: false,
+      verificationStatus: 'provider-reported',
+      sourceReportedValue: null,
+    });
+  };
+  push('domestic_gross', history.lifetimeDomesticGross);
+  push('international_gross', history.lifetimeInternationalGross);
+  push('worldwide_gross', history.lifetimeWorldwideGross);
+
+  const daily = Array.isArray(history.daily) ? history.daily : [];
+  return {
+    tmdbId: history.tmdbId || null,
+    sourceMovieKey: null,
+    title: history.title || null,
+    reports,
+    indiaNet: null,
+    worldwideGross: history.lifetimeWorldwideGross != null ? {
+      value: history.lifetimeWorldwideGross,
+      currency: history.currency || 'USD',
+      source,
+      sourceUrl,
+      lastUpdated: null,
+    } : null,
+    daywiseCollection: daily.length ? {
+      value: daily.map((day, index) => ({
+        day: index + 1,
+        date: day.date,
+        amount: day.gross,
+        cumulativeAmount: day.cumulativeGross,
+        currency: day.currency || 'USD',
+        source: day.source || source,
+        sourceUrl: day.sourceUrl || sourceUrl,
+        isEstimate: Boolean(day.isEstimate),
+        sourceReportedValue: null,
+        sourceReportedCumulativeValue: null,
+      })),
+      source,
+      sourceUrl,
+      lastUpdated: daily[daily.length - 1]?.date || null,
+    } : null,
+    coverage: 'US domestic / worldwide totals from Box Office History when India publisher data is unavailable.',
+  };
+}
+
+function shapeTmdbAsMovieBoxOffice(movie, tmdbId) {
+  if (!movie) return null;
+  const budget = Number(movie.budget) || 0;
+  const revenue = Number(movie.revenue) || 0;
+  if (budget <= 0 && revenue <= 0) return null;
+
+  const sourceUrl = `https://www.themoviedb.org/movie/${tmdbId}`;
+  const reports = [];
+  if (budget > 0) {
+    reports.push({
+      collectionType: 'budget',
+      amount: budget,
+      currency: 'USD',
+      source: 'tmdb',
+      sourceUrl,
+      isEstimate: false,
+      verificationStatus: 'provider-reported',
+      sourceReportedValue: null,
+    });
+  }
+  if (revenue > 0) {
+    reports.push({
+      collectionType: 'worldwide_gross',
+      amount: revenue,
+      currency: 'USD',
+      source: 'tmdb',
+      sourceUrl,
+      isEstimate: false,
+      verificationStatus: 'provider-reported',
+      sourceReportedValue: null,
+    });
+  }
+
+  return {
+    tmdbId,
+    sourceMovieKey: null,
+    title: movie.title || null,
+    reports,
+    indiaNet: null,
+    worldwideGross: revenue > 0 ? {
+      value: revenue,
+      currency: 'USD',
+      source: 'tmdb',
+      sourceUrl,
+      lastUpdated: null,
+    } : null,
+    daywiseCollection: null,
+    coverage: 'TMDB budget/revenue when India publisher data and Box Office History are unavailable.',
+  };
+}
+
 export const getMovieBoxOffice = async (req, res) => {
   try {
     const tmdbId = Number(req.params.tmdbId);
     if (!Number.isSafeInteger(tmdbId) || tmdbId <= 0) {
       return res.status(400).json({ success: false, error: 'invalid_tmdb_id' });
     }
-    const data = await getMovieBoxOfficeReports(tmdbId);
-    if (!data) return res.status(404).json({ success: false, error: 'box_office_data_unavailable' });
+
+    let data = await getMovieBoxOfficeReports(tmdbId);
+    if (!data || (!data.reports?.length && !data.daywiseCollection?.value?.length)) {
+      try {
+        const history = await getBoxOfficeHistoryMovie(tmdbId);
+        const shaped = shapeHistoryAsMovieBoxOffice(history);
+        if (shaped?.reports?.length || shaped?.daywiseCollection?.value?.length) {
+          data = shaped;
+        }
+      } catch (historyError) {
+        if (historyError?.status !== 404 && historyError?.code !== 'history_resource_not_found') {
+          console.warn('[Box Office] History fallback failed:', historyError.code || historyError.message);
+        }
+      }
+    }
+
+    if (!data || (!data.reports?.length && !data.daywiseCollection?.value?.length)) {
+      try {
+        const movie = await fetchTmdb(`movie/${tmdbId}`);
+        data = shapeTmdbAsMovieBoxOffice(movie, tmdbId);
+      } catch (tmdbError) {
+        if (tmdbError?.status !== 404) {
+          console.warn('[Box Office] TMDB revenue fallback failed:', tmdbError.code || tmdbError.message);
+        }
+      }
+    }
+
+    if (!data || (!data.reports?.length && !data.daywiseCollection?.value?.length)) {
+      return res.status(404).json({ success: false, error: 'box_office_data_unavailable' });
+    }
     res.json(data);
   } catch (err) {
     sendBoxOfficeError(res, err, 'movie_box_office_unavailable');

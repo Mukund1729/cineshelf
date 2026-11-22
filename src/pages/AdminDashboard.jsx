@@ -110,7 +110,7 @@ export default function AdminDashboard() {
       <Navbar />
       <div className="vc-container" style={{ paddingTop: '5rem', textAlign: 'center' }}>
         <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔒</div>
-        <h1 style={{ fontFamily: 'Playfair Display, serif', marginBottom: '1rem' }}>Access Denied</h1>
+        <h1 style={{ fontFamily: 'var(--vc-font-display)', marginBottom: '1rem' }}>Access Denied</h1>
         <p style={{ color: 'var(--vc-slate)', marginBottom: '2rem' }}>{error}</p>
         <Link to="/" className="vc-btn vc-btn-outline">← Back to Home</Link>
       </div>
@@ -125,7 +125,7 @@ export default function AdminDashboard() {
       <section style={{ padding: '3rem 0 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'var(--vc-bg-surface)' }}>
         <div className="vc-container">
           <span className="vc-section-label">Administration</span>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '2rem', fontWeight: 900 }}>
+          <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2rem', fontWeight: 900 }}>
             Admin Dashboard
           </h1>
         </div>
@@ -140,7 +140,7 @@ export default function AdminDashboard() {
               onClick={() => setTab(t)}
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
-                fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem',
+                fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem',
                 color: tab === t ? 'var(--vc-gold)' : 'var(--vc-slate)',
                 fontWeight: tab === t ? 700 : 400,
                 padding: '1rem 1.25rem',
@@ -176,8 +176,8 @@ export default function AdminDashboard() {
                   ].map((card, i) => (
                     <div key={i} style={{ background: 'var(--vc-bg-card)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 12, padding: '1.5rem' }}>
                       <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>{card.icon}</div>
-                      <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.75rem', fontWeight: 700, color: 'var(--vc-gold)' }}>{card.value}</div>
-                      <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.8rem', color: 'var(--vc-slate)', marginTop: '0.25rem' }}>{card.label}</div>
+                      <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.75rem', fontWeight: 700, color: 'var(--vc-gold)' }}>{card.value}</div>
+                      <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.8rem', color: 'var(--vc-slate)', marginTop: '0.25rem' }}>{card.label}</div>
                     </div>
                   ))}
                 </div>
@@ -201,13 +201,13 @@ export default function AdminDashboard() {
                     onChange={e => setSearch(e.target.value)}
                     style={{ maxWidth: '360px' }}
                   />
-                  <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-slate)' }}>
+                  <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-slate)' }}>
                     {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
                   </span>
                 </div>
 
                 <div className="vc-mobile-table-wrap" style={{ overflowX: 'auto' }}>
-                  <table className="vc-mobile-table-admin" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem' }}>
+                  <table className="vc-mobile-table-admin" style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem' }}>
                     <thead>
                       <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                         {['User', 'Email', 'Joined', 'Admin', 'Actions'].map(h => (
@@ -267,13 +267,13 @@ export default function AdminDashboard() {
             {/* Picks */}
             {tab === 'picks' && (
               <div>
-                <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', marginBottom: '1.5rem' }}>
+                <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', marginBottom: '1.5rem' }}>
                   Manage Cinematic Picks — curated collections shown on the Picks page.
                 </p>
                 <Link to="/cinematic-picks" className="vc-btn vc-btn-outline">
                   View Cinematic Picks →
                 </Link>
-                <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate-dark)', fontSize: '0.82rem', marginTop: '1rem' }}>
+                <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate-dark)', fontSize: '0.82rem', marginTop: '1rem' }}>
                   Picks CRUD management UI coming soon. Use the API directly for now: POST /api/picks (admin token required).
                 </p>
               </div>
@@ -284,7 +284,7 @@ export default function AdminDashboard() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
                   <div>
                     <span className="vc-section-label">MongoDB · Medium · Mukund Mangal</span>
-                    <h2 style={{ margin: '0.35rem 0', fontFamily: 'Playfair Display, serif' }}>THE JOURNAL</h2>
+                    <h2 style={{ margin: '0.35rem 0', fontFamily: 'var(--vc-font-display)' }}>THE JOURNAL</h2>
                     <p style={{ maxWidth: 700, color: 'var(--vc-slate)', lineHeight: 1.65 }}>
                       New Medium stories are synced from RSS hourly. Review community article submissions in the Blog Studio.
                       The public RSS feed only exposes its latest 10 stories, so it cannot backfill older Medium articles.
@@ -317,7 +317,7 @@ export default function AdminDashboard() {
                         ['Missing metadata', journalStatus?.missingMetadata ?? 0],
                       ].map(([label, value]) => (
                         <div key={label} style={{ background: 'var(--vc-bg-card)', border: '1px solid rgba(255,255,255,.07)', borderRadius: 12, padding: '1rem' }}>
-                          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.6rem', color: 'var(--vc-gold)' }}>{value}</div>
+                          <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.6rem', color: 'var(--vc-gold)' }}>{value}</div>
                           <div style={{ color: 'var(--vc-slate)', fontSize: '.78rem' }}>{label}</div>
                         </div>
                       ))}

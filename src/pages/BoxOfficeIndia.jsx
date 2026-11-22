@@ -73,7 +73,7 @@ function SectionHeading({ eyebrow, title, note, action }) {
     <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.9rem', alignItems: 'end' }}>
       <div>
         <span className="vc-section-label">{eyebrow}</span>
-        <h2 style={{ margin: '0.2rem 0 0', fontFamily: 'Playfair Display, serif', fontSize: '1.55rem' }}>{title}</h2>
+        <h2 style={{ margin: '0.2rem 0 0', fontFamily: 'var(--vc-font-display)', fontSize: '1.55rem' }}>{title}</h2>
         {note && <p style={{ margin: '0.35rem 0 0', color: 'var(--vc-slate)', fontSize: '0.8rem', maxWidth: 720 }}>{note}</p>}
       </div>
       {action}
@@ -244,7 +244,7 @@ function MovieTable({
       border: '1px solid rgba(255,255,255,0.07)',
       background: 'var(--vc-bg-card)',
     }}>
-      <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif', fontSize: '0.82rem' }}>
+      <table style={{ width: '100%', minWidth: 760, borderCollapse: 'collapse', fontFamily: 'var(--vc-font-body)', fontSize: '0.82rem' }}>
         <thead>
           <tr style={{ color: 'var(--vc-gold)', background: 'var(--vc-bg-elevated)', textAlign: 'left' }}>
             <th style={{ padding: '0.8rem' }}>#</th>

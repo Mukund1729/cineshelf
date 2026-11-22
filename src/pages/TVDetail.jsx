@@ -4,6 +4,7 @@ import axios from 'axios';
 import { searchMovies, searchPeople, tmdbClient, tmdbImageUrl } from '../api/tmdb';
 import EpisodeList from '../components/EpisodeList';
 import Navbar from '../components/Navbar';
+import TrailerEmbed from '../components/TrailerEmbed';
 import { hasAuthSession } from '../api/session';
 import './movie-detail.css';
 
@@ -12,6 +13,13 @@ const getTodayDate = () => {
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
   return date.toISOString().slice(0, 10);
 };
+
+const CREW_SECTIONS = [
+  { label: 'Created by', fromCreatedBy: true },
+  { label: 'Written by', jobs: ['Writer', 'Screenplay', 'Teleplay'] },
+  { label: 'Produced by', jobs: ['Executive Producer', 'Producer'] },
+  { label: 'Music by', jobs: ['Original Music Composer', 'Music'] },
+];
 
 export default function TVDetail() {
   const { id } = useParams();
@@ -399,37 +407,12 @@ export default function TVDetail() {
     return null;
   };
 
-  if (loading) {
-    return (
-      <div className="md-page movie-detail-page">
-        <Navbar />
-        <div className="md-shell">
-          <div className="md-status" aria-live="polite">
-            <div className="md-skeleton" style={{ height: 220, marginBottom: 12 }} />
-            Loading TV show…
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !show) {
-    return (
-      <div className="md-page movie-detail-page">
-        <Navbar />
-        <div className="md-shell">
-          <p className="md-status is-error" role="alert">{error || 'TV show not found.'}</p>
-        </div>
-      </div>
-    );
-  }
-
-  const title = show.name || show.original_name || 'Untitled TV show';
-  const releaseYear = show.first_air_date ? show.first_air_date.slice(0, 4) : '';
-  const runtimeLabel = show.episode_run_time?.[0] > 0 ? `${show.episode_run_time[0]} min / ep` : '';
-  const overviewText = show.overview || 'No overview available.';
+  const title = show?.name || show?.original_name || 'Untitled TV show';
+  const releaseYear = show?.first_air_date ? show.first_air_date.slice(0, 4) : '';
+  const runtimeLabel = show?.episode_run_time?.[0] > 0 ? `${show.episode_run_time[0]} min / ep` : '';
+  const overviewText = show?.overview || 'No overview available.';
   const overviewNeedsToggle = overviewText.length > 280;
-  const watchRegion = show['watch/providers']?.results?.IN || show['watch/providers']?.results?.US || null;
+  const watchRegion = show?.['watch/providers']?.results?.IN || show?.['watch/providers']?.results?.US || null;
   const providerList = [
     ...(watchRegion?.flatrate || []),
     ...(watchRegion?.rent || []),
@@ -438,13 +421,24 @@ export default function TVDetail() {
     list.findIndex(item => item.provider_id === provider.provider_id) === index
   ));
   const watchShowUrl = ottLinks.preferredUrl || '';
-  const trailer = show.videos?.results?.find(video => video.site === 'YouTube' && video.type === 'Trailer')
-    || show.videos?.results?.find(video => video.site === 'YouTube' && video.type === 'Teaser');
-  const creators = show.created_by || [];
-  const writers = (show.credits?.crew || []).filter(person => ['Writer', 'Screenplay', 'Teleplay'].includes(person.job));
-  const backdropUrl = show.backdrop_path
+  const trailer = show?.videos?.results?.find(video => video.site === 'YouTube' && video.type === 'Trailer')
+    || show?.videos?.results?.find(video => video.site === 'YouTube' && video.type === 'Teaser');
+  const creators = show?.created_by || [];
+  const crewSections = CREW_SECTIONS
+    .map(section => {
+      if (section.fromCreatedBy) {
+        return { label: section.label, people: creators };
+      }
+      const people = (show?.credits?.crew || []).filter(person => section.jobs.includes(person.job));
+      const unique = people.filter((person, index, list) => (
+        list.findIndex(item => item.id === person.id) === index
+      ));
+      return { label: section.label, people: unique };
+    })
+    .filter(section => section.people.length > 0);
+  const backdropUrl = show?.backdrop_path
     ? tmdbImageUrl(show.backdrop_path, 'original')
-    : (show.poster_path ? tmdbImageUrl(show.poster_path, 'original') : '');
+    : (show?.poster_path ? tmdbImageUrl(show.poster_path, 'original') : '');
 
   return (
     <div className="md-page movie-detail-page">
@@ -512,6 +506,18 @@ export default function TVDetail() {
       )}
 
       <div className="md-shell movie-detail-content">
+        {loading && (
+          <div className="md-status" aria-live="polite">
+            <div className="md-skeleton" style={{ height: 220, marginBottom: 12 }} />
+            Loading TV show…
+          </div>
+        )}
+        {!loading && (error || !show) && (
+          <p className="md-status is-error" role="alert">{error || 'TV show not found.'}</p>
+        )}
+
+        {show && (
+        <>
         <section className="md-hero" aria-label="TV show introduction">
           <div className="md-poster-col">
             <img
@@ -574,6 +580,7 @@ export default function TVDetail() {
                     className="md-btn md-btn-danger md-btn-trailer"
                     onClick={() => setShowTrailer(current => !current)}
                     aria-expanded={showTrailer}
+                    aria-controls="tv-trailer-player"
                   >
                     {showTrailer ? 'Hide Trailer' : 'Play Trailer'}
                   </button>
@@ -634,31 +641,20 @@ export default function TVDetail() {
               </button>
             )}
 
-            {(creators.length > 0 || writers.length > 0) && (
+            {crewSections.length > 0 && (
               <div className="md-crew">
                 <p className="md-section-label">Crew</p>
-                {creators.length > 0 && (
-                  <div className="md-crew-row">
-                    <span className="md-crew-label">Created by</span>
-                    {creators.map((creator, index) => (
-                      <React.Fragment key={creator.id}>
+                {crewSections.map(({ label, people }) => (
+                  <div className="md-crew-row" key={label}>
+                    <span className="md-crew-label">{label}</span>
+                    {people.slice(0, 6).map((person, index) => (
+                      <React.Fragment key={`${person.id}-${person.job || label}-${index}`}>
                         {index > 0 && ', '}
-                        <Link to={`/person/${creator.id}`}>{creator.name}</Link>
+                        <Link to={`/person/${person.id}`}>{person.name}</Link>
                       </React.Fragment>
                     ))}
                   </div>
-                )}
-                {writers.length > 0 && (
-                  <div className="md-crew-row">
-                    <span className="md-crew-label">Written by</span>
-                    {writers.slice(0, 6).map((writer, index) => (
-                      <React.Fragment key={`${writer.id}-${writer.job}`}>
-                        {index > 0 && ', '}
-                        <Link to={`/person/${writer.id}`}>{writer.name}</Link>
-                      </React.Fragment>
-                    ))}
-                  </div>
-                )}
+                ))}
               </div>
             )}
 
@@ -681,16 +677,8 @@ export default function TVDetail() {
         </section>
 
         {trailer && showTrailer && (
-          <div className="md-trailer-wrap">
-            <div className="mx-auto aspect-video w-full max-w-3xl overflow-hidden border border-[rgba(245,240,232,0.12)]">
-              <iframe
-                src={`https://www.youtube.com/embed/${trailer.key}`}
-                title={`${title} trailer`}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="h-full w-full"
-              />
-            </div>
+          <div id="tv-trailer-player" className="md-trailer-wrap">
+            <TrailerEmbed trailerUrl={trailer.key} movieTitle={title} />
           </div>
         )}
 
@@ -713,21 +701,6 @@ export default function TVDetail() {
                   <div className="md-cast-name">{actor.name}</div>
                   <div className="md-cast-role">{actor.character}</div>
                 </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {show.production_companies?.length > 0 && (
-          <section className="md-section" aria-label="Production">
-            <div className="md-section-head">
-              <div>
-                <h2>Production</h2>
-              </div>
-            </div>
-            <div className="md-genres">
-              {show.production_companies.map(company => (
-                <span key={company.id} className="md-chip">{company.name}</span>
               ))}
             </div>
           </section>
@@ -777,7 +750,7 @@ export default function TVDetail() {
                     placeholder="8"
                     aria-label="Rating out of 10"
                   />
-                  <span style={{ color: '#d4af37', fontWeight: 700 }}>★ / 10</span>
+                  <span style={{ color: '#d5b23d', fontWeight: 700 }}>★ / 10</span>
                 </div>
               </label>
 
@@ -830,7 +803,7 @@ export default function TVDetail() {
                   <span className="md-section-label">Community rating</span>
                   <strong>
                     {ratingCount ? averageRating.toFixed(1) : '—'}
-                    <span style={{ fontSize: '0.9rem', color: '#94a3b8', marginLeft: 4 }}>/ 10</span>
+                    <span style={{ fontSize: '0.9rem', color: '#9a958c', marginLeft: 4 }}>/ 10</span>
                   </strong>
                 </div>
                 <span className="md-empty" style={{ fontStyle: 'normal' }}>
@@ -918,6 +891,8 @@ export default function TVDetail() {
               ))}
             </div>
           </section>
+        )}
+        </>
         )}
       </div>
     </div>

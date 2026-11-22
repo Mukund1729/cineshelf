@@ -157,7 +157,7 @@ export default function PeopleProfile() {
                 </div>
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h1 style={{ margin: 0, fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.6rem, 4vw, 2.3rem)' }}>
+                <h1 style={{ margin: 0, fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.6rem, 4vw, 2.3rem)' }}>
                   {profile.name || profile.username}
                 </h1>
                 <div style={{ color: 'var(--vc-slate)', fontSize: '0.9rem', marginTop: '0.25rem' }}>@{profile.username}</div>
@@ -182,7 +182,7 @@ export default function PeopleProfile() {
             {notice && <p role="status" style={{ color: 'var(--vc-gold)', marginTop: '-1rem', marginBottom: '1.5rem' }}>{notice}</p>}
 
             <section style={{ marginBottom: '2rem' }}>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem' }}>Favourite genres</h2>
+              <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.25rem' }}>Favourite genres</h2>
               {profile.favouriteGenres?.length ? (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                   {profile.favouriteGenres.map(genre => (
@@ -194,7 +194,7 @@ export default function PeopleProfile() {
 
             {!!profile.favouriteMovies?.length && (
               <section style={{ marginBottom: '2rem' }}>
-                <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem' }}>Favourite movies</h2>
+                <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.25rem' }}>Favourite movies</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem' }}>
                   {profile.favouriteMovies.map((movie, index) => <MediaCard key={`${movie.tmdbId || movie.title}-${index}`} item={movie} />)}
                 </div>
@@ -202,7 +202,7 @@ export default function PeopleProfile() {
             )}
 
             <section style={{ marginBottom: '2rem' }}>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem' }}>Watchlist</h2>
+              <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.25rem' }}>Watchlist</h2>
               {!data.watchlistVisible ? (
                 <p style={{ color: 'var(--vc-slate)' }}>This member keeps their watchlist private.</p>
               ) : data.watchlist.length ? (
@@ -213,7 +213,7 @@ export default function PeopleProfile() {
             </section>
 
             <section style={{ marginBottom: '2rem' }}>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem' }}>Reviews</h2>
+              <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.25rem' }}>Reviews</h2>
               {!data.reviewsVisible ? (
                 <p style={{ color: 'var(--vc-slate)' }}>This member keeps their reviews private.</p>
               ) : data.reviews.length ? (
@@ -226,7 +226,7 @@ export default function PeopleProfile() {
             </section>
 
             <section>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem' }}>Communities</h2>
+              <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.25rem' }}>Communities</h2>
               {communities.length ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem' }}>
                   {communities.map(community => (

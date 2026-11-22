@@ -111,11 +111,11 @@ export default function Watchlist() {
         <div className="vc-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <span className="vc-section-label">Your Queue</span>
-            <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900 }}>
+            <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900 }}>
               Watchlist
             </h1>
             {!loading && !error && (
-              <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', marginTop: '0.4rem', fontSize: '0.9rem' }}>
+              <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', marginTop: '0.4rem', fontSize: '0.9rem' }}>
                 {movies.length} film{movies.length !== 1 ? 's' : ''} queued
               </p>
             )}
@@ -135,7 +135,7 @@ export default function Watchlist() {
       {showAdd && (
         <div style={{ background: 'var(--vc-bg-surface)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '1.5rem 0' }}>
           <div className="vc-container" style={{ maxWidth: '560px' }}>
-            <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1rem', marginBottom: '0.75rem' }}>Search for a film</h3>
+            <h3 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1rem', marginBottom: '0.75rem' }}>Search for a film</h3>
             <div style={{ position: 'relative' }}>
               <input
                 className="vc-input"
@@ -171,10 +171,10 @@ export default function Watchlist() {
                         <div style={{ width: 36, height: 54, background: 'var(--vc-bg-card)', borderRadius: 4, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>🎬</div>
                       )}
                       <div>
-                        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.88rem', color: 'var(--vc-cream)', fontWeight: 500 }}>
+                        <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.88rem', color: 'var(--vc-cream)', fontWeight: 500 }}>
                           {m.title || m.name}
                         </div>
-                        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-slate)' }}>
+                        <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-slate)' }}>
                           {(m.release_date || m.first_air_date || m.releaseYear || '').toString().slice(0, 4)}
                           {m.vote_average > 0 ? ` · ★ ${m.vote_average.toFixed(1)}` : ''}
                         </div>
@@ -193,10 +193,10 @@ export default function Watchlist() {
                     style={{ width: 50, height: 75, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
                 )}
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.95rem', color: 'var(--vc-cream)', marginBottom: '0.25rem' }}>
+                  <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.95rem', color: 'var(--vc-cream)', marginBottom: '0.25rem' }}>
                     {selectedMovie.title || selectedMovie.name}
                   </div>
-                  <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
+                  <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
                     {(selectedMovie.release_date || selectedMovie.first_air_date || selectedMovie.releaseYear || '').toString().slice(0, 4)}
                   </div>
                 </div>
@@ -235,8 +235,8 @@ export default function Watchlist() {
         ) : movies.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '5rem 2rem', color: 'var(--vc-slate)' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎬</div>
-            <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem', color: 'var(--vc-cream)', marginBottom: '0.5rem' }}>Your watchlist is empty.</p>
-            <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem', marginBottom: '2rem' }}>
+            <p style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.25rem', color: 'var(--vc-cream)', marginBottom: '0.5rem' }}>Your watchlist is empty.</p>
+            <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.9rem', marginBottom: '2rem' }}>
               Add films you want to watch using the "+ Add Film" button above.
             </p>
             <Link to="/discover" className="vc-btn vc-btn-primary">Discover Films</Link>
@@ -256,13 +256,13 @@ export default function Watchlist() {
                       {poster ? (
                         <img src={tmdbImageUrl(poster, 'w300')} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       ) : (
-                        <div style={{ width: '100%', height: '100%', background: 'var(--vc-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vc-slate)', fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', textAlign: 'center', padding: '0.75rem' }}>
+                        <div style={{ width: '100%', height: '100%', background: 'var(--vc-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vc-slate)', fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', textAlign: 'center', padding: '0.75rem' }}>
                           {title}
                         </div>
                       )}
                       <div className="vc-overlay">
-                        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: '0.2rem', lineHeight: 1.3 }}>{title}</div>
-                        {year && <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year}</div>}
+                        <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: '0.2rem', lineHeight: 1.3 }}>{title}</div>
+                        {year && <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year}</div>}
                       </div>
                     </div>
                   </Link>

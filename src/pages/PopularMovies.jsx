@@ -15,21 +15,21 @@ function PosterCard({ movie }) {
         {img ? (
           <img src={img} alt={movie.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <div style={{ width: '100%', height: '100%', background: 'var(--vc-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vc-slate)', fontFamily: 'Outfit, sans-serif', fontSize: '0.8rem', textAlign: 'center', padding: '1rem' }}>
+          <div style={{ width: '100%', height: '100%', background: 'var(--vc-bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--vc-slate)', fontFamily: 'var(--vc-font-body)', fontSize: '0.8rem', textAlign: 'center', padding: '1rem' }}>
             {movie.title}
           </div>
         )}
         <div className="vc-overlay">
-          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: '0.25rem', lineHeight: 1.3 }}>
+          <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.9rem', fontWeight: 700, color: '#fff', marginBottom: '0.25rem', lineHeight: 1.3 }}>
             {movie.title}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             {movie.vote_average > 0 && (
-              <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'var(--vc-gold)' }}>
+              <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'var(--vc-gold)' }}>
                 ★ {movie.vote_average.toFixed(1)}
               </span>
             )}
-            {year && <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-slate)' }}>{year}</span>}
+            {year && <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-slate)' }}>{year}</span>}
           </div>
         </div>
       </div>
@@ -73,10 +73,10 @@ export default function PopularMovies() {
       <section style={{ padding: '4rem 0 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'linear-gradient(135deg, #060912 0%, #0a0f1a 50%, #0d1420 100%)' }}>
         <div className="vc-container">
           <span className="vc-section-label">TMDB Charts</span>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900, marginBottom: '0.5rem' }}>
+          <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900, marginBottom: '0.5rem' }}>
             Popular Movies
           </h1>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', fontSize: '0.95rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', fontSize: '0.95rem' }}>
             The films everyone is watching right now.
           </p>
         </div>
@@ -106,7 +106,7 @@ export default function PopularMovies() {
                 >
                   ← Prev
                 </button>
-                <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-slate)', padding: '0 0.5rem' }}>
+                <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-slate)', padding: '0 0.5rem' }}>
                   Page {page} of {totalPages}
                 </span>
                 <button

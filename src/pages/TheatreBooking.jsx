@@ -1410,7 +1410,7 @@ export default function TheatreBooking() {
           background: '#07090f', zIndex: 100,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <div style={{ textAlign: 'center', color: '#f5f0e8', fontFamily: 'Outfit, sans-serif' }}>
+          <div style={{ textAlign: 'center', color: '#f5f0e8', fontFamily: 'var(--vc-font-body)' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎬</div>
             <p style={{ color: 'rgba(245,240,232,0.6)' }}>Loading…</p>
           </div>
@@ -1445,7 +1445,7 @@ export default function TheatreBooking() {
               }}>
                 {step > s ? '✓' : s}
               </div>
-              <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
+              <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', whiteSpace: 'nowrap' }}>
                 {STEP_LABELS[s]}
               </span>
             </div>
@@ -1453,7 +1453,7 @@ export default function TheatreBooking() {
           </React.Fragment>
         ))}
         <div style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <span style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.9rem', fontWeight: 700 }}>
+          <span style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.9rem', fontWeight: 700 }}>
             {movie?.title}
           </span>
         </div>
@@ -1472,7 +1472,7 @@ export default function TheatreBooking() {
             borderBottom: '1px solid rgba(255,255,255,0.05)',
             display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center',
           }}>
-            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem', color: 'rgba(245,240,232,0.6)' }}>
+            <label style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontFamily: 'var(--vc-font-body)', fontSize: '0.68rem', color: 'rgba(245,240,232,0.6)' }}>
               City in India
               <input
                 value={cityInput}
@@ -1485,7 +1485,7 @@ export default function TheatreBooking() {
                 aria-label="Search cinemas by Indian city"
                 style={{
                   background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-                  borderRadius: 8, color: '#f5f0e8', fontFamily: 'Outfit, sans-serif',
+                  borderRadius: 8, color: '#f5f0e8', fontFamily: 'var(--vc-font-body)',
                   fontSize: '0.82rem', padding: '0.4rem 0.8rem',
                 }}
               />
@@ -1508,7 +1508,7 @@ export default function TheatreBooking() {
               disabled={!cityTheatres.length}
               style={{
                 background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 8, color: '#f5f0e8', fontFamily: 'Outfit, sans-serif',
+                borderRadius: 8, color: '#f5f0e8', fontFamily: 'var(--vc-font-body)',
                 fontSize: '0.82rem', padding: '0.4rem 0.8rem', cursor: 'pointer',
               }}
             >
@@ -1523,7 +1523,7 @@ export default function TheatreBooking() {
                 </option>
               )}
             </select>
-            <span role="status" style={{ fontFamily: 'Outfit, sans-serif', color: 'rgba(245,240,232,0.65)', fontSize: '0.72rem' }}>
+            <span role="status" style={{ fontFamily: 'var(--vc-font-body)', color: 'rgba(245,240,232,0.65)', fontSize: '0.72rem' }}>
               {mappedTheatres.length ? `${mappedTheatres.length} mapped cinemas within 50 km` : 'Sample preview only'}
             </span>
             {mappedTheatres.length > 0 && (
@@ -1531,7 +1531,7 @@ export default function TheatreBooking() {
                 href="https://www.openstreetmap.org/copyright"
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ color: 'rgba(245,240,232,0.55)', fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem' }}
+                style={{ color: 'rgba(245,240,232,0.55)', fontFamily: 'var(--vc-font-body)', fontSize: '0.68rem' }}
               >
                 © OpenStreetMap contributors
               </a>
@@ -1545,7 +1545,7 @@ export default function TheatreBooking() {
                   background: showIdx === i ? 'rgba(212,175,55,0.15)' : 'rgba(255,255,255,0.05)',
                   border: showIdx === i ? '1px solid #d4af37' : '1px solid rgba(255,255,255,0.1)',
                   color: showIdx === i ? '#d4af37' : 'rgba(245,240,232,0.75)',
-                  fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', cursor: 'pointer',
+                  fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', cursor: 'pointer',
                 }}>
                   <div style={{ fontWeight: 700 }}>{s.time}</div>
                   <div style={{ fontSize: '0.68rem', opacity: 0.8 }}>{s.format}</div>
@@ -1567,7 +1567,7 @@ export default function TheatreBooking() {
             background: 'rgba(212,175,55,0.08)',
             borderBottom: '1px solid rgba(212,175,55,0.16)',
             color: 'rgba(245,240,232,0.72)',
-            fontFamily: 'Outfit, sans-serif',
+            fontFamily: 'var(--vc-font-body)',
             fontSize: '0.75rem',
           }}>
             {mappedTheatres.length
@@ -1576,7 +1576,7 @@ export default function TheatreBooking() {
           </div>
 
           {theatreLookupError && !mappedTheatres.length && (
-            <p role="status" style={{ margin: '0.5rem 1.5rem', color: '#f0d060', fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem' }}>
+            <p role="status" style={{ margin: '0.5rem 1.5rem', color: '#f0d060', fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem' }}>
               Map lookup failed: {theatreLookupError} A clearly labeled sample seat preview is available; use BookMyShow for actual cinemas and shows.
             </p>
           )}
@@ -1598,7 +1598,7 @@ export default function TheatreBooking() {
                   background: currentPreset === name ? 'rgba(212,175,55,0.2)' : 'rgba(0,0,0,0.6)',
                   border: currentPreset === name ? '1px solid #d4af37' : '1px solid rgba(255,255,255,0.15)',
                   borderRadius: 6, color: currentPreset === name ? '#d4af37' : 'rgba(245,240,232,0.7)',
-                  fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', cursor: 'pointer',
+                  fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', cursor: 'pointer',
                   textTransform: 'capitalize', backdropFilter: 'blur(8px)',
                 }}>
                   {name === 'birdsEye' ? "Bird's Eye" : name === 'fromStage' ? 'From Stage' : name.charAt(0).toUpperCase() + name.slice(1)}
@@ -1613,7 +1613,7 @@ export default function TheatreBooking() {
                 background: isAuto ? 'rgba(212,175,55,0.2)' : 'rgba(0,0,0,0.6)',
                 border: isAuto ? '1px solid #d4af37' : '1px solid rgba(255,255,255,0.15)',
                 borderRadius: 6, color: isAuto ? '#d4af37' : 'rgba(245,240,232,0.7)',
-                fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', cursor: 'pointer',
+                fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', cursor: 'pointer',
                 backdropFilter: 'blur(8px)',
               }}>
                 {isAuto ? '⏹ Stop Tour' : '▶ Auto Tour'}
@@ -1625,7 +1625,7 @@ export default function TheatreBooking() {
               position: 'absolute', bottom: 54, left: '50%', transform: 'translateX(-50%)',
               display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.7rem 1.2rem', zIndex: 10,
               maxWidth: 'calc(100% - 24px)',
-              fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem',
+              fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem',
               color: 'rgba(245,240,232,0.6)',
             }} className="theatre-seat-legend">
               {[
@@ -1649,7 +1649,7 @@ export default function TheatreBooking() {
                 position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
                 background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.4)',
                 borderRadius: 8, padding: '0.4rem 1rem',
-                fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: '#d4af37',
+                fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', color: '#d4af37',
                 zIndex: 10, backdropFilter: 'blur(8px)', whiteSpace: 'nowrap',
               }}>
                 👁 View from seat {seatView.rowId}{seatView.seatNum} · {CAT_LABEL[seatView.cat]}
@@ -1673,16 +1673,16 @@ export default function TheatreBooking() {
                     width: '100%', borderRadius: 8, marginBottom: '0.75rem', aspectRatio: '2/3', objectFit: 'cover',
                   }} />
                 )}
-                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.9rem', marginBottom: '0.4rem' }}>{movie?.title}</div>
-                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'rgba(245,240,232,0.6)', marginBottom: '0.5rem' }}>
+                <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>{movie?.title}</div>
+                <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'rgba(245,240,232,0.6)', marginBottom: '0.5rem' }}>
                   {show?.time} · {show?.format}<br/>
                   {theatre?.name}
                 </div>
-                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', marginBottom: '0.75rem' }}>
+                <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', marginBottom: '0.75rem' }}>
                   <span style={{ color: 'rgba(245,240,232,0.6)' }}>Seats: </span>
                   {selectedSeats.join(', ')}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem' }}>
                   <span>Total</span>
                   <span style={{ color: '#d4af37', fontWeight: 700 }}>₹{seatTotal}</span>
                 </div>
@@ -1692,7 +1692,7 @@ export default function TheatreBooking() {
                     width: '100%', padding: '0.45rem',
                     background: 'rgba(212,175,55,0.08)',
                     border: '1px solid rgba(212,175,55,0.3)', borderRadius: 8, cursor: 'pointer',
-                    fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '0.78rem',
+                    fontFamily: 'var(--vc-font-body)', fontWeight: 600, fontSize: '0.78rem',
                     color: '#d4af37', marginBottom: '0.5rem',
                   }}
                 >
@@ -1704,7 +1704,7 @@ export default function TheatreBooking() {
                     width: '100%', padding: '0.55rem',
                     background: 'linear-gradient(135deg,#d4af37,#f5cc50)',
                     border: 'none', borderRadius: 8, cursor: 'pointer',
-                    fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: '0.82rem',
+                    fontFamily: 'var(--vc-font-body)', fontWeight: 700, fontSize: '0.82rem',
                     color: '#0a0f1a',
                   }}
                 >
@@ -1716,7 +1716,7 @@ export default function TheatreBooking() {
             {/* Drag hint */}
             <div style={{
               position: 'absolute', bottom: 30, right: 14, zIndex: 10,
-              fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem',
+              fontFamily: 'var(--vc-font-body)', fontSize: '0.68rem',
               color: 'rgba(245,240,232,0.35)', pointerEvents: 'none',
             }}>
               Drag to rotate · Click seat to select
@@ -1730,10 +1730,10 @@ export default function TheatreBooking() {
       ═══════════════════════════════════════════════════════════════ */}
       {step === 2 && (
         <div style={{ maxWidth: 740, margin: '0 auto', padding: '1.5rem 1rem' }}>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.6rem', marginBottom: '0.4rem' }}>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.6rem', marginBottom: '0.4rem' }}>
             🍿 Add Snacks
           </h2>
-          <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.55)', marginBottom: '1.5rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'rgba(245,240,232,0.55)', marginBottom: '1.5rem' }}>
             Pre-order at the counter price — no queues!
           </p>
 
@@ -1750,22 +1750,22 @@ export default function TheatreBooking() {
                   loading="lazy"
                 />
                 <div style={{ padding: '0 1rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1 }}>
-                  <div style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</div>
-                  <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'rgba(245,240,232,0.5)' }}>{item.desc}</div>
+                  <div style={{ fontFamily: 'var(--vc-font-body)', fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</div>
+                  <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'rgba(245,240,232,0.5)' }}>{item.desc}</div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
-                    <span style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 700, color: '#d4af37' }}>₹{item.price}</span>
+                    <span style={{ fontFamily: 'var(--vc-font-body)', fontWeight: 700, color: '#d4af37' }}>₹{item.price}</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       {cart[item.id] ? (
                         <>
                           <button onClick={() => removeSnack(item.id)} style={qtyBtnStyle}>−</button>
-                          <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem', minWidth: 20, textAlign: 'center' }}>{cart[item.id]}</span>
+                          <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.9rem', minWidth: 20, textAlign: 'center' }}>{cart[item.id]}</span>
                           <button onClick={() => addSnack(item.id)} style={qtyBtnStyle}>+</button>
                         </>
                       ) : (
                         <button onClick={() => addSnack(item.id)} style={{
                           padding: '0.3rem 0.9rem', background: 'rgba(212,175,55,0.1)',
                           border: '1px solid rgba(212,175,55,0.3)', borderRadius: 6,
-                          color: '#d4af37', fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', cursor: 'pointer',
+                          color: '#d4af37', fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', cursor: 'pointer',
                         }}>Add</button>
                       )}
                     </div>
@@ -1779,7 +1779,7 @@ export default function TheatreBooking() {
             <button onClick={() => setStep(1)} style={backBtnStyle}>← Back</button>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
               {snackTotal > 0 && (
-                <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.6)' }}>
+                <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'rgba(245,240,232,0.6)' }}>
                   Snacks: <strong style={{ color: '#d4af37' }}>₹{snackTotal}</strong>
                 </span>
               )}
@@ -1794,7 +1794,7 @@ export default function TheatreBooking() {
       ═══════════════════════════════════════════════════════════════ */}
       {step === 3 && (
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '1.5rem 1rem' }}>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.6rem', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.6rem', marginBottom: '1.5rem' }}>
             📋 Order Summary
           </h2>
 
@@ -1808,8 +1808,8 @@ export default function TheatreBooking() {
               <img src={tmdbImageUrl(movie.poster_path, 'w92')} alt="" style={{ width: 56, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
             )}
             <div>
-              <div style={{ fontFamily: 'Playfair Display, serif', fontWeight: 700, fontSize: '1.05rem' }}>{movie?.title}</div>
-              <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.8rem', color: 'rgba(245,240,232,0.6)', marginTop: '0.3rem' }}>
+              <div style={{ fontFamily: 'var(--vc-font-display)', fontWeight: 700, fontSize: '1.05rem' }}>{movie?.title}</div>
+              <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.8rem', color: 'rgba(245,240,232,0.6)', marginTop: '0.3rem' }}>
                 {theatre?.name} · {theatre?.city}<br />
                 {show?.time} · {show?.format}
               </div>
@@ -1828,7 +1828,7 @@ export default function TheatreBooking() {
             margin: '1rem 0', padding: '0.9rem 1rem',
             background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 10,
             display: 'flex', justifyContent: 'space-between',
-            fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: '1rem',
+            fontFamily: 'var(--vc-font-body)', fontWeight: 700, fontSize: '1rem',
           }}>
             <span>Grand Total</span>
             <span style={{ color: '#d4af37' }}>₹{grandTotal}</span>
@@ -1846,8 +1846,8 @@ export default function TheatreBooking() {
       ═══════════════════════════════════════════════════════════════ */}
       {step === 4 && (
         <div style={{ maxWidth: 480, margin: '0 auto', padding: '1.5rem 1rem' }}>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.6rem', marginBottom: '0.5rem' }}>🎟 Demo checkout</h2>
-          <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.5)', marginBottom: '1.5rem' }}>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.6rem', marginBottom: '0.5rem' }}>🎟 Demo checkout</h2>
+          <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'rgba(245,240,232,0.5)', marginBottom: '1.5rem' }}>
             No live ticket inventory or payment provider is connected. This only creates a sample ticket in this browser.
           </p>
 
@@ -1856,7 +1856,7 @@ export default function TheatreBooking() {
             background: 'rgba(212,175,55,0.08)',
             border: '1px solid rgba(212,175,55,0.25)',
             borderRadius: 10,
-            fontFamily: 'Outfit, sans-serif',
+            fontFamily: 'var(--vc-font-body)',
             fontSize: '0.85rem',
             lineHeight: 1.6,
           }}>
@@ -1870,7 +1870,7 @@ export default function TheatreBooking() {
             margin: '1.5rem 0', padding: '0.9rem 1rem',
             background: 'rgba(212,175,55,0.08)', border: '1px solid rgba(212,175,55,0.2)', borderRadius: 10,
             display: 'flex', justifyContent: 'space-between',
-            fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: '1rem',
+            fontFamily: 'var(--vc-font-body)', fontWeight: 700, fontSize: '1rem',
           }}>
             <span>Sample total (not charged)</span>
             <span style={{ color: '#d4af37' }}>₹{grandTotal}</span>
@@ -1904,10 +1904,10 @@ export default function TheatreBooking() {
       {step === 5 && ticket && (
         <div style={{ maxWidth: 480, margin: '0 auto', padding: '1.5rem 1rem', textAlign: 'center' }}>
           <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🎉</div>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.8rem', marginBottom: '0.3rem' }}>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.8rem', marginBottom: '0.3rem' }}>
             Demo ticket created
           </h2>
-          <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'rgba(245,240,232,0.72)', marginBottom: '2rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'rgba(245,240,232,0.72)', marginBottom: '2rem' }}>
             This is a sample only—not a real booking or entry ticket. Ticket ID: <strong style={{ color: '#d4af37' }}>{ticket.id}</strong>
           </p>
 
@@ -1929,8 +1929,8 @@ export default function TheatreBooking() {
                 <img src={ticket.moviePoster} alt="" style={{ width: 64, borderRadius: 8, flexShrink: 0, objectFit: 'cover', aspectRatio: '2/3' }} />
               )}
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontFamily: 'Playfair Display, serif', fontWeight: 700, fontSize: '1.1rem' }}>{ticket.movieTitle}</div>
-                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: 'rgba(245,240,232,0.6)', marginTop: '0.3rem', lineHeight: 1.6 }}>
+                <div style={{ fontFamily: 'var(--vc-font-display)', fontWeight: 700, fontSize: '1.1rem' }}>{ticket.movieTitle}</div>
+                <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', color: 'rgba(245,240,232,0.6)', marginTop: '0.3rem', lineHeight: 1.6 }}>
                   {ticket.theatre}<br />
                   {ticket.time} · {ticket.format}<br />
                   Seats: <strong style={{ color: '#f5f0e8' }}>{ticket.seats.join(', ')}</strong>
@@ -1939,7 +1939,7 @@ export default function TheatreBooking() {
             </div>
 
             {ticket.snacks.length > 0 && (
-              <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'rgba(245,240,232,0.5)', textAlign: 'left', marginBottom: '1rem' }}>
+              <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'rgba(245,240,232,0.5)', textAlign: 'left', marginBottom: '1rem' }}>
                 🍿 {ticket.snacks.join(' · ')}
               </div>
             )}
@@ -1948,7 +1948,7 @@ export default function TheatreBooking() {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
               <QRCode ticketId={ticket.id} size={130} />
             </div>
-            <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'rgba(245,240,232,0.4)', letterSpacing: '0.08em' }}>
+            <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'rgba(245,240,232,0.4)', letterSpacing: '0.08em' }}>
               DEMO QR — NOT VALID FOR ENTRY · {ticket.id}
             </div>
           </div>
@@ -1969,7 +1969,7 @@ function ReviewLine({ label, value, gold }) {
     <div style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
       padding: '0.55rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)',
-      fontFamily: 'Outfit, sans-serif', fontSize: '0.84rem',
+      fontFamily: 'var(--vc-font-body)', fontSize: '0.84rem',
     }}>
       <span style={{ color: 'rgba(245,240,232,0.6)' }}>{label}</span>
       <span style={{ color: gold ? '#d4af37' : '#f5f0e8', fontWeight: gold ? 700 : 400, textAlign: 'right', maxWidth: '55%', wordBreak: 'break-word' }}>{value}</span>
@@ -1982,7 +1982,7 @@ const primaryBtnStyle = {
   padding: '0.6rem 1.5rem',
   background: 'linear-gradient(135deg,#d4af37,#f5cc50)',
   border: 'none', borderRadius: 8, cursor: 'pointer',
-  fontFamily: 'Outfit, sans-serif', fontWeight: 700, fontSize: '0.85rem',
+  fontFamily: 'var(--vc-font-body)', fontWeight: 700, fontSize: '0.85rem',
   color: '#0a0f1a', textDecoration: 'none',
 };
 
@@ -1991,7 +1991,7 @@ const backBtnStyle = {
   padding: '0.6rem 1.2rem',
   background: 'rgba(255,255,255,0.06)',
   border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, cursor: 'pointer',
-  fontFamily: 'Outfit, sans-serif', fontSize: '0.82rem',
+  fontFamily: 'var(--vc-font-body)', fontSize: '0.82rem',
   color: 'rgba(245,240,232,0.75)', textDecoration: 'none',
 };
 
@@ -1999,6 +1999,6 @@ const qtyBtnStyle = {
   width: 26, height: 26, borderRadius: 6,
   background: 'rgba(255,255,255,0.08)',
   border: '1px solid rgba(255,255,255,0.15)',
-  color: '#f5f0e8', cursor: 'pointer', fontFamily: 'Outfit, sans-serif', fontSize: '1rem',
+  color: '#f5f0e8', cursor: 'pointer', fontFamily: 'var(--vc-font-body)', fontSize: '1rem',
   display: 'flex', alignItems: 'center', justifyContent: 'center',
 };

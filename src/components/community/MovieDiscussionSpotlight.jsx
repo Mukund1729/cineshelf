@@ -53,7 +53,7 @@ export default function MovieDiscussionSpotlight({ spotlight, posts = [], onStar
             )}
             <div>
               <span className="cs-chip">TMDB · {spotlight.tmdbId}</span>
-              <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.8rem', margin: '0.55rem 0 0.25rem' }}>
+              <h3 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.8rem', margin: '0.55rem 0 0.25rem' }}>
                 <Link to={`/movie/${spotlight.tmdbId}`} style={{ color: 'inherit', textDecoration: 'none' }}>
                   {spotlight.title}
                 </Link>

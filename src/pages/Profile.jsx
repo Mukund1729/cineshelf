@@ -149,7 +149,7 @@ const Profile = () => {
         <rect width="120" height="120" fill="#1a1a1a"/>
         <circle cx="60" cy="40" r="15" fill="#4a5568"/>
         <path d="M10 100C10 85 22 73 37 73H83C98 73 110 85 110 100V110H10V100Z" fill="#4a5568"/>
-        <text x="60" y="65" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#e2e8f0" text-anchor="middle">${initials}</text>
+        <text x="60" y="65" font-family="DM Sans, Helvetica Neue, sans-serif" font-size="24" font-weight="bold" fill="#e2e8f0" text-anchor="middle">${initials}</text>
       </svg>
     `)}`;
   };
@@ -248,8 +248,8 @@ const Profile = () => {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="vc-container" style={{ textAlign: 'center' }}>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '2rem', color: 'var(--vc-red)', marginBottom: '1rem' }}>Error</h2>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', marginBottom: '1rem' }}>{error}</p>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2rem', color: 'var(--vc-red)', marginBottom: '1rem' }}>Error</h2>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', marginBottom: '1rem' }}>{error}</p>
           <Link to="/" style={{ color: 'var(--vc-gold)', textDecoration: 'none' }}>Go back to home</Link>
         </div>
       </div>
@@ -260,8 +260,8 @@ const Profile = () => {
     return (
       <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div className="vc-container" style={{ textAlign: 'center' }}>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '2rem', color: 'var(--vc-red)', marginBottom: '1rem' }}>Profile Not Found</h2>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', marginBottom: '1rem' }}>Please login to view your profile</p>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2rem', color: 'var(--vc-red)', marginBottom: '1rem' }}>Profile Not Found</h2>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', marginBottom: '1rem' }}>Please login to view your profile</p>
           <Link to="/" style={{ color: 'var(--vc-gold)', textDecoration: 'none' }}>Go back to home</Link>
         </div>
       </div>

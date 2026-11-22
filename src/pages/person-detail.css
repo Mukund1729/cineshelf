@@ -1,0 +1,265 @@
+/* Person + person box-office pages — shares movie-detail tokens via .md-page */
+
+.md-page.person-page .md-poster {
+  max-width: 200px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+}
+
+.md-page.person-page .md-hero {
+  grid-template-columns: 200px minmax(0, 1fr);
+}
+
+.md-bio {
+  margin: 0;
+  max-width: 42rem;
+  color: #ddd6cb;
+  font-size: 0.96rem;
+  line-height: 1.65;
+}
+
+.md-bio.is-clamped {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.md-person-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+}
+
+.md-bo-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--md-border);
+  background: var(--md-surface);
+}
+
+.md-bo-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+}
+
+.md-bo-table th,
+.md-bo-table td {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--md-border);
+  vertical-align: middle;
+}
+
+.md-bo-table th {
+  color: var(--md-cyan);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  background: rgba(10, 15, 26, 0.45);
+}
+
+.md-bo-table td {
+  color: #d8d1c4;
+  font-size: 0.9rem;
+}
+
+.md-bo-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.md-bo-table tr:hover td {
+  background: rgba(1, 180, 228, 0.06);
+}
+
+.md-bo-table a {
+  color: var(--md-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.md-bo-table a:hover {
+  color: var(--md-accent);
+}
+
+.md-bo-amount {
+  color: var(--md-accent);
+  font-family: var(--md-serif);
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.md-bo-amount.is-pending {
+  color: var(--md-muted);
+  font-family: var(--md-sans);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.md-person-search {
+  position: relative;
+  width: min(420px, 100%);
+  margin: 0 0 1.25rem;
+}
+
+.md-person-search input {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--md-border);
+  background: rgba(10, 15, 26, 0.72);
+  color: var(--md-text);
+  font: 500 0.92rem var(--md-sans);
+}
+
+.md-person-search input:focus {
+  outline: 2px solid var(--md-cyan);
+  outline-offset: 1px;
+}
+
+.md-person-suggest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 0.35rem);
+  z-index: 30;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--md-border);
+  background: #121926;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.md-person-suggest button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border: 0;
+  border-bottom: 1px solid rgba(245, 240, 232, 0.06);
+  background: transparent;
+  color: var(--md-text);
+  text-align: left;
+  cursor: pointer;
+  font: 500 0.88rem var(--md-sans);
+}
+
+.md-person-suggest button:hover {
+  background: rgba(1, 180, 228, 0.1);
+}
+
+.md-person-suggest img,
+.md-person-suggest-fallback {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--md-elevated);
+}
+
+.md-person-suggest-fallback {
+  display: grid;
+  place-items: center;
+  color: var(--md-accent);
+  font-family: var(--md-serif);
+}
+
+.md-film-list {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.md-film-list-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem;
+  border: 1px solid var(--md-border);
+  background: var(--md-surface);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+
+.md-film-list-item:hover {
+  border-color: rgba(1, 180, 228, 0.45);
+  transform: translateY(-1px);
+}
+
+.md-film-list-item img {
+  width: 44px;
+  height: 66px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--md-elevated);
+}
+
+.md-film-list-item strong {
+  display: block;
+  font-size: 0.9rem;
+  color: var(--md-text);
+}
+
+.md-film-list-item span {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: var(--md-muted);
+}
+
+.md-search-hero {
+  display: grid;
+  place-items: center;
+  min-height: min(70vh, 560px);
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.md-search-hero h1 {
+  margin: 0 0 0.45rem;
+  font-family: var(--md-serif);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  color: var(--md-text);
+}
+
+.md-search-hero p {
+  margin: 0 0 1.25rem;
+  color: var(--md-muted);
+  max-width: 28rem;
+}
+
+.md-search-hero .md-person-search {
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  .md-page.person-page .md-hero {
+    grid-template-columns: 112px minmax(0, 1fr);
+    gap: 0.85rem 0.75rem;
+    margin-top: -2.5rem;
+  }
+
+  .md-page.person-page .md-poster {
+    max-width: 112px;
+    width: 112px;
+  }
+
+  .md-page.person-page .md-title {
+    font-family: var(--md-sans);
+    font-size: clamp(1.4rem, 6.5vw, 1.75rem);
+  }
+
+  .md-bo-table th,
+  .md-bo-table td {
+    padding: 0.7rem 0.75rem;
+    font-size: 0.82rem;
+  }
+
+  .md-person-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

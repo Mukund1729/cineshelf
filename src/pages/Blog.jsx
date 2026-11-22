@@ -41,7 +41,7 @@ function ArticleCard({ article, featured = false }) {
         <Link to={`/journal/${article.slug}`} style={{ color: 'var(--vc-cream)', textDecoration: 'none' }}>
           <h2 style={{
             margin: 0,
-            fontFamily: 'Playfair Display, serif',
+            fontFamily: 'var(--vc-font-display)',
             fontSize: featured ? 'clamp(1.7rem, 3vw, 2.45rem)' : '1.35rem',
             lineHeight: 1.2,
           }}>{article.title}</h2>
@@ -134,13 +134,13 @@ export default function Blog() {
             <span className="vc-section-label">Visual Cineaste · Mukund Mangal</span>
             <h1 style={{
               margin: '1rem 0 0.3rem',
-              fontFamily: 'Playfair Display, serif',
+              fontFamily: 'var(--vc-font-display)',
               fontSize: 'clamp(3rem, 9vw, 7rem)',
               fontWeight: 800,
               letterSpacing: '-0.045em',
               lineHeight: 1,
             }}>THE JOURNAL<span style={{ color: 'var(--vc-gold)' }}>.</span></h1>
-            <p style={{ margin: '1.25rem 0 0', color: 'var(--vc-gold)', fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.2rem, 2.5vw, 1.75rem)', fontStyle: 'italic' }}>
+            <p style={{ margin: '1.25rem 0 0', color: 'var(--vc-gold)', fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.2rem, 2.5vw, 1.75rem)', fontStyle: 'italic' }}>
               Beyond the Frames.
             </p>
             <p style={{ maxWidth: 650, margin: '0.85rem 0 0', color: 'var(--vc-slate)', fontSize: '1rem', lineHeight: 1.8 }}>
@@ -156,7 +156,7 @@ export default function Blog() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
             <div>
               <span className="vc-section-label">The archive</span>
-              <h2 style={{ margin: '0.35rem 0 0', fontFamily: 'Playfair Display, serif', fontSize: '2rem' }}>Words, ideas and everything in between.</h2>
+              <h2 style={{ margin: '0.35rem 0 0', fontFamily: 'var(--vc-font-display)', fontSize: '2rem' }}>Words, ideas and everything in between.</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
               <span style={{ color: 'var(--vc-slate)', fontSize: '0.85rem' }}>

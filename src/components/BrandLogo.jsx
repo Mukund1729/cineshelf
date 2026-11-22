@@ -25,7 +25,7 @@ export default function BrandLogo({ className, style, imageStyle }) {
         aria-hidden="true"
         style={{ display: 'block', width: '2rem', height: '2rem', objectFit: 'contain', ...imageStyle }}
       />
-      <span style={{ fontFamily: '"Playfair Display", serif', fontSize: '1.05rem', fontWeight: 700, color: '#f5f0e8', letterSpacing: '0.01em' }}>
+      <span style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.05rem', fontWeight: 600, color: '#f5f0e8', letterSpacing: '-0.01em' }}>
         visual<span style={{ color: 'var(--vc-gold)' }}>.</span>cineaste
       </span>
     </Link>

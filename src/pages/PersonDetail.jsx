@@ -1,140 +1,173 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import axios from 'axios';
-import LoadingSpinner from '../components/LoadingSpinner';
+import Navbar from '../components/Navbar';
 import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
-import BrandLogo from '../components/BrandLogo';
+import './movie-detail.css';
+import './person-detail.css';
 
 export default function PersonDetail() {
   const { id } = useParams();
   const [person, setPerson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [bioExpanded, setBioExpanded] = useState(false);
   const isOriginalPerson = !/^\d+$/.test(id || '');
 
   useEffect(() => {
+    let active = true;
     async function fetchPerson() {
       setLoading(true);
       setError(null);
       setPerson(null);
+      setBioExpanded(false);
       try {
         const data = isOriginalPerson
           ? (await axios.get(`/api/original-films/people/${encodeURIComponent(id)}`)).data?.data
-          : await tmdbGet(`/person/${id}`, { append_to_response: 'movie_credits,images' });
+          : await tmdbGet(`/person/${id}`, { append_to_response: 'movie_credits,tv_credits,images' });
+        if (!active) return;
         if (!data) throw new Error('Person was not found.');
         setPerson(data);
-      } catch (err) {
-        setError('Could not load person details.');
+      } catch {
+        if (active) setError('Could not load person details.');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
     fetchPerson();
+    return () => { active = false; };
   }, [id, isOriginalPerson]);
 
-  if (loading) return <LoadingSpinner />;
-  if (error) return <div className="text-center text-red-400 py-12">{error}</div>;
-  if (!person) return null;
+  const knownFor = (person?.movie_credits?.cast || [])
+    .filter(movie => movie.poster_path)
+    .sort((a, b) => (b.popularity || 0) - (a.popularity || 0))
+    .slice(0, 12);
+
+  const biography = person?.biography || 'No biography available.';
+  const bioNeedsToggle = biography.length > 420;
+  const profileUrl = person?.profile_path ? tmdbImageUrl(person.profile_path, 'w500') : '/actor-placeholder.jpg';
+  const backdropUrl = person?.profile_path ? tmdbImageUrl(person.profile_path, 'original') : '';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-[#181c24] to-[#1a1333] text-white font-lato relative overflow-x-hidden">
-      {/* Header Row (no logo, homepage style) */}
-      <div className="fixed top-0 left-0 right-0 z-30 flex items-center w-full px-6 py-4 bg-gradient-to-b from-black/80 via-[#181c24]/60 to-transparent backdrop-blur-md">
-        <BrandLogo style={{ width: 190 }} />
-        <span className="ml-4 text-base md:text-lg font-semibold text-gray-300 tracking-wide select-none">Person Details</span>
-      </div>
-      <div className="pt-24 pb-16 container mx-auto px-4">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
-          <img
-            src={person.profile_path ? tmdbImageUrl(person.profile_path, 'w400') : '/actor-placeholder.jpg'}
-            alt={person.name}
-            className="rounded-2xl shadow-2xl w-[120px] md:w-[180px] object-cover aspect-[2/3] border-2 border-[#232526] bg-[#181c24]"
-          />
-          <div className="flex-1">
-            <h2 className="text-2xl md:text-3xl font-bold mb-1 font-playfair text-cyan-200">{person.name}</h2>
-            <p className="text-cyan-400 mb-1 text-sm md:text-base italic">{person.known_for_department}</p>
-            {!isOriginalPerson && (
-              <div className="mb-2 text-gray-300 text-sm md:text-base">
-                <span className="font-semibold text-cyan-300">Birthday:</span> {person.birthday || 'N/A'}
-                {person.place_of_birth && <span className="ml-4 font-semibold text-cyan-300">Place:</span>} {person.place_of_birth || ''}
+    <div className="md-page person-page">
+      {backdropUrl ? (
+        <div className="md-backdrop" style={{ backgroundImage: `url(${backdropUrl})` }} aria-hidden="true" />
+      ) : null}
+      <div className="md-backdrop-shade" aria-hidden="true" />
+      <Navbar />
+
+      <div className="md-shell">
+        {loading && (
+          <div className="md-status" aria-live="polite">
+            <div className="md-skeleton" style={{ height: 220, marginBottom: 12 }} />
+            Loading person…
+          </div>
+        )}
+        {!loading && error && <p className="md-status is-error" role="alert">{error}</p>}
+
+        {!loading && person && (
+          <>
+            <section className="md-hero" aria-label="Person introduction">
+              <div className="md-poster-col">
+                <img className="md-poster" src={profileUrl} alt={person.name} />
               </div>
-            )}
-            {person.homepage && (
-              <a href={person.homepage} target="_blank" rel="noopener noreferrer" className="text-pink-300 underline hover:text-pink-400 text-sm md:text-base">Official Website</a>
-            )}
-            <p className={`mt-3 mb-4 text-gray-200 text-sm md:text-base ${isOriginalPerson ? 'whitespace-pre-line' : 'line-clamp-5'}`}>{person.biography || 'No biography available.'}</p>
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-2 text-cyan-200">Known For</h3>
-              <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-transparent vc-mobile-grid">
-                {person.movie_credits?.cast?.slice(0, 10).map(movie => (
-                  <Link to={`/movie/${movie.id}`} key={movie.id} className="block min-w-[90px] max-w-[90px]">
-                    <img
-                      src={movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w200') : '/placeholder.jpg'}
-                      alt={movie.title}
-                      className="rounded-lg shadow w-full aspect-[2/3] object-cover border border-[#232526] bg-[#181c24]"
-                    />
-                    <span className="block text-xs text-center text-gray-200 line-clamp-2 mt-1">{movie.title}</span>
-                  </Link>
-                ))}
+
+              <div className="md-hero-copy">
+                <div className="md-hero-intro">
+                  <h1 className="md-title">{person.name}</h1>
+                  {person.known_for_department ? (
+                    <p className="md-directed">
+                      <span className="md-directed-label">Known for </span>
+                      {person.known_for_department}
+                    </p>
+                  ) : null}
+                </div>
+
+                {!isOriginalPerson && (person.birthday || person.place_of_birth) && (
+                  <div className="md-meta">
+                    {person.birthday ? <span>Born {new Date(`${person.birthday}T00:00:00`).toLocaleDateString()}</span> : null}
+                    {person.deathday ? <span>Died {new Date(`${person.deathday}T00:00:00`).toLocaleDateString()}</span> : null}
+                    {person.place_of_birth ? <span>{person.place_of_birth}</span> : null}
+                  </div>
+                )}
+
+                <p className={`md-bio${bioNeedsToggle && !bioExpanded ? ' is-clamped' : ''}`}>{biography}</p>
+                {bioNeedsToggle && (
+                  <button type="button" className="md-readmore" onClick={() => setBioExpanded(current => !current)}>
+                    {bioExpanded ? 'Show less' : 'Read more'}
+                  </button>
+                )}
+
+                <div className="md-hero-actions">
+                  {!isOriginalPerson && (
+                    <>
+                      <Link to={`/person/${id}/filmography`} className="md-btn md-btn-ghost">
+                        Full Filmography
+                      </Link>
+                      <Link to={`/person/${id}/boxoffice`} className="md-btn md-btn-accent">
+                        Box Office
+                      </Link>
+                    </>
+                  )}
+                  {person.homepage && (
+                    <a className="md-btn md-btn-ghost" href={person.homepage} target="_blank" rel="noopener noreferrer">
+                      Official site
+                    </a>
+                  )}
+                </div>
               </div>
-            </div>
-            {isOriginalPerson && person.filmography?.length > 0 && (
-              <div className="mt-8">
-                <h3 className="text-lg font-semibold mb-3 text-cyan-200">Filmography</h3>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {person.filmography.map(film => (
-                    <Link
-                      to={`/movie/${film.id}`}
-                      key={film.id}
-                      className="flex items-center gap-3 rounded-xl border border-cyan-900/30 bg-[#10111a]/70 p-3 hover:border-cyan-500/60"
-                    >
-                      <img
-                        src={film.poster_path ? tmdbImageUrl(film.poster_path, 'w92') : '/placeholder.jpg'}
-                        alt=""
-                        className="h-16 w-11 rounded object-cover"
-                      />
+            </section>
+
+            {knownFor.length > 0 && (
+              <section className="md-section" aria-label="Known for">
+                <div className="md-section-head">
+                  <div>
+                    <h2>Known For</h2>
+                    <p>Popular titles from their filmography.</p>
+                  </div>
+                </div>
+                <div className="md-poster-rail">
+                  {knownFor.map(movie => (
+                    <Link key={movie.id} to={`/movie/${movie.id}`} className="md-poster-card">
+                      <img src={tmdbImageUrl(movie.poster_path, 'w342')} alt="" loading="lazy" />
+                      <strong>{movie.title}</strong>
                       <span>
-                        <span className="block font-semibold text-white">{film.title}</span>
-                        <span className="block text-xs text-gray-400">
-                          {[film.releaseYear, film.role].filter(Boolean).join(' · ')}
-                        </span>
+                        {movie.release_date ? movie.release_date.slice(0, 4) : '—'}
+                        {movie.character ? ` · ${movie.character}` : ''}
                       </span>
                     </Link>
                   ))}
                 </div>
-              </div>
+              </section>
             )}
-            {/* Filmography and Box Office Section */}
-            {!isOriginalPerson && (
-              <div className="mt-10 flex flex-col md:flex-row gap-4">
-                <div>
-                  <h3 className="text-base font-semibold mb-2 text-cyan-200">Full Filmography</h3>
-                  <Link
-                    to={`/person/${id}/filmography`}
-                    className="inline-block px-4 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-lg font-semibold shadow transition mt-2 text-sm"
-                  >
-                    View Full Filmography
-                  </Link>
+
+            {isOriginalPerson && person.filmography?.length > 0 && (
+              <section className="md-section" aria-label="Filmography">
+                <div className="md-section-head">
+                  <div>
+                    <h2>Filmography</h2>
+                    <p>Credits on original Visual.Cineaste titles.</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-semibold mb-2 text-cyan-200">Box Office Collection</h3>
-                  <Link
-                    to={`/person/${id}/boxoffice`}
-                    className="inline-block px-4 py-2 bg-cyan-700 hover:bg-cyan-800 text-white rounded-lg font-semibold shadow transition mt-2 text-sm"
-                  >
-                    View Box Office Collection
-                  </Link>
+                <div className="md-film-list">
+                  {person.filmography.map(film => (
+                    <Link to={`/movie/${film.id}`} key={film.id} className="md-film-list-item">
+                      <img
+                        src={film.poster_path ? tmdbImageUrl(film.poster_path, 'w92') : '/placeholder.jpg'}
+                        alt=""
+                      />
+                      <span>
+                        <strong>{film.title}</strong>
+                        <span>{[film.releaseYear, film.role].filter(Boolean).join(' · ')}</span>
+                      </span>
+                    </Link>
+                  ))}
                 </div>
-              </div>
+              </section>
             )}
-          </div>
-        </div>
+          </>
+        )}
       </div>
-      <footer className="bg-gray-800 py-2 w-full fixed bottom-0 left-0 z-50">
-        <div className="container mx-auto px-4 text-center">
-          <p className="text-xs text-gray-400 font-lato">© {new Date().getFullYear()} visual.cineaste. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   );
 }

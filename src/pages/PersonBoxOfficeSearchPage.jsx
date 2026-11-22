@@ -1,78 +1,85 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import Navbar from '../components/Navbar';
 import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
-import BrandLogo from '../components/BrandLogo';
+import './movie-detail.css';
+import './person-detail.css';
 
 export default function PersonBoxOfficeSearchPage() {
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const navigate = useNavigate();
 
-  // Person search handler
-  const handleSearchChange = async (e) => {
-    setSearch(e.target.value);
-    if (e.target.value.length > 1) {
-      const data = await tmdbGet('/search/person', { query: e.target.value });
-      setSuggestions(data.results || []);
-      setShowSuggestions(true);
+  const handleSearchChange = async event => {
+    const value = event.target.value;
+    setSearch(value);
+    if (value.trim().length > 1) {
+      try {
+        const data = await tmdbGet('/search/person', { query: value.trim() });
+        setSuggestions(data.results || []);
+        setShowSuggestions(true);
+      } catch {
+        setSuggestions([]);
+      }
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
     }
   };
-  const handleSuggestionClick = (personId) => {
+
+  const handleSuggestionClick = personId => {
     setShowSuggestions(false);
-    setSearch("");
+    setSearch('');
     navigate(`/person/${personId}/boxoffice`);
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-[#0a1833] via-[#181c24] to-black text-white font-sans relative overflow-x-hidden">
-      {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-40 flex items-center w-full px-8 py-4 bg-gradient-to-b from-black/90 via-[#181c24]/80 to-transparent backdrop-blur-xl border-b border-[#232526]/40 shadow-lg">
-        <BrandLogo style={{ width: 190 }} />
-      </div>
-      <div className="pt-28 pb-8 flex flex-col items-center justify-center flex-1">
-        <h1 className="text-2xl md:text-3xl font-bold text-white text-center mb-2 font-sans tracking-tight">Search Person Box Office</h1>
-        <p className="text-sm text-gray-300 font-normal text-center mb-4 max-w-md mx-auto font-sans">Find any actor, director, or crew and view their box office collection.</p>
-        <form className="w-full max-w-xl flex items-center bg-[#181c24] rounded-full shadow-xl border border-[#232526] focus-within:ring-2 focus-within:ring-cyan-400 px-3 py-2 mb-2">
-          <input
-            type="text"
-            value={search}
-            onChange={handleSearchChange}
-            placeholder="Search person for box office..."
-            className="flex-1 bg-transparent outline-none px-2 py-1 text-base font-sans text-white rounded-full placeholder:text-gray-400"
-            style={{ fontFamily: 'Inter, Poppins, Source Sans Pro, sans-serif' }}
-            onFocus={() => setShowSuggestions(suggestions.length > 0)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          />
-          <button
-            type="submit"
-            className="ml-1 text-cyan-400 text-xl p-1 rounded-full hover:bg-[#232526]/60 transition flex items-center justify-center"
-            aria-label="Search"
-            tabIndex={-1}
-            onMouseDown={e => e.preventDefault()}
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
-            </svg>
-          </button>
-        </form>
-        {showSuggestions && suggestions.length > 0 && (
-          <div className="absolute left-0 right-0 mt-2 bg-[#232526] rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto border border-cyan-900 w-full max-w-xl mx-auto">
-            {suggestions.map(s => (
-              <div
-                key={s.id}
-                className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-cyan-900/40"
-                onMouseDown={() => handleSuggestionClick(s.id)}
-              >
-                <img src={s.profile_path ? tmdbImageUrl(s.profile_path, 'w45') : '/actor-placeholder.jpg'} alt={s.name} className="w-8 h-8 rounded-full object-cover bg-gray-700" />
-                <span className="text-white text-sm">{s.name}</span>
+    <div className="md-page person-page">
+      <div className="md-backdrop-shade" aria-hidden="true" />
+      <Navbar />
+      <div className="md-shell">
+        <div className="md-search-hero">
+          <h1>Person Box Office</h1>
+          <p>Find any actor, director, or crew member and open their worldwide gross list.</p>
+          <div className="md-person-search">
+            <input
+              type="text"
+              value={search}
+              onChange={handleSearchChange}
+              placeholder="Search person…"
+              autoFocus
+              onFocus={() => setShowSuggestions(suggestions.length > 0)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              aria-label="Search person for box office"
+            />
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="md-person-suggest" role="listbox">
+                {suggestions.slice(0, 10).map(suggestion => (
+                  <button
+                    key={suggestion.id}
+                    type="button"
+                    onMouseDown={() => handleSuggestionClick(suggestion.id)}
+                  >
+                    {suggestion.profile_path ? (
+                      <img src={tmdbImageUrl(suggestion.profile_path, 'w45')} alt="" />
+                    ) : (
+                      <span className="md-person-suggest-fallback">{(suggestion.name || '?')[0]}</span>
+                    )}
+                    <span>
+                      {suggestion.name}
+                      {suggestion.known_for_department ? (
+                        <span style={{ display: 'block', color: '#94a3b8', fontSize: '0.75rem' }}>
+                          {suggestion.known_for_department}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                ))}
               </div>
-            ))}
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

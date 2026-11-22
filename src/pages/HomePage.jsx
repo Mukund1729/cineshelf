@@ -58,7 +58,7 @@ function PosterCard({ movie, size = 'normal' }) {
             position: 'absolute', top: 6, right: 6,
             background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)',
             borderRadius: 4, padding: '2px 6px',
-            fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem', fontWeight: 700,
+            fontFamily: 'var(--vc-font-body)', fontSize: '0.68rem', fontWeight: 700,
             color: rating >= 7 ? '#d4af37' : rating >= 5 ? '#f5f0e8' : '#94a3b8',
           }}>
             ★ {rating}
@@ -71,8 +71,8 @@ function PosterCard({ movie, size = 'normal' }) {
           opacity: hovered ? 1 : 0, transition: 'opacity 220ms',
           display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '0.75rem',
         }}>
-          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.82rem', fontWeight: 700, color: '#f5f0e8', lineHeight: 1.3, marginBottom: 2 }}>{title}</div>
-          <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.68rem', color: '#94a3b8' }}>{year}{!isMovie ? ' · TV' : ''}</div>
+          <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.82rem', fontWeight: 700, color: '#f5f0e8', lineHeight: 1.3, marginBottom: 2 }}>{title}</div>
+          <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.68rem', color: '#94a3b8' }}>{year}{!isMovie ? ' · TV' : ''}</div>
         </div>
       </div>
     </Link>
@@ -90,10 +90,10 @@ function Strip({ title, label, items = [], linkTo, size = 'normal' }) {
       <div className="vc-container vc-strip-heading" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
         <div>
           {label && <span className="vc-section-label">{label}</span>}
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)', fontWeight: 700, margin: 0 }}>{title}</h2>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)', fontWeight: 700, margin: 0 }}>{title}</h2>
         </div>
         <div className="vc-strip-controls" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {linkTo && <Link to={linkTo} style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.8rem', color: 'var(--vc-gold)', textDecoration: 'none', letterSpacing: '0.08em' }}>See all →</Link>}
+          {linkTo && <Link to={linkTo} style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.8rem', color: 'var(--vc-gold)', textDecoration: 'none', letterSpacing: '0.08em' }}>See all →</Link>}
           <button className="vc-strip-scroll-button" onClick={() => scroll(-1)} style={{ background: 'var(--vc-bg-elevated)', border: 'none', borderRadius: 4, color: 'var(--vc-slate)', width: 28, height: 28, cursor: 'pointer', fontSize: '0.8rem' }}>‹</button>
           <button className="vc-strip-scroll-button" onClick={() => scroll(1)}  style={{ background: 'var(--vc-bg-elevated)', border: 'none', borderRadius: 4, color: 'var(--vc-slate)', width: 28, height: 28, cursor: 'pointer', fontSize: '0.8rem' }}>›</button>
         </div>
@@ -145,7 +145,7 @@ function EditorialGrid({ items = [] }) {
               {/* Rank overlay */}
               <div style={{
                 position: 'absolute', top: 8, left: 8,
-                fontFamily: 'Outfit, sans-serif', fontSize: '0.65rem', fontWeight: 800,
+                fontFamily: 'var(--vc-font-body)', fontSize: '0.65rem', fontWeight: 800,
                 color: 'rgba(0,0,0,0.8)', background: 'var(--vc-gold)',
                 borderRadius: 3, padding: '2px 5px', lineHeight: 1,
               }}>{idx + 1}</div>
@@ -154,13 +154,13 @@ function EditorialGrid({ items = [] }) {
                   position: 'absolute', top: 8, right: 8,
                   background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)',
                   borderRadius: 4, padding: '2px 5px',
-                  fontFamily: 'Outfit, sans-serif', fontSize: '0.65rem', fontWeight: 700,
+                  fontFamily: 'var(--vc-font-body)', fontSize: '0.65rem', fontWeight: 700,
                   color: rating >= 7 ? '#d4af37' : '#f5f0e8',
                 }}>★ {rating}</div>
               )}
               <div className="vc-overlay">
-                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: 2, lineHeight: 1.3 }}>{title}</div>
-                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year}</div>
+                <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: 2, lineHeight: 1.3 }}>{title}</div>
+                <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year}</div>
               </div>
             </div>
           </Link>
@@ -223,10 +223,10 @@ function AIDiscoverBlock() {
     <section style={{ padding: '4rem 0', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="vc-container">
         <span className="vc-section-label">AI-Powered · GPT-4o</span>
-        <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 800, marginBottom: '0.5rem' }}>
+        <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 800, marginBottom: '0.5rem' }}>
           Discover by Vibe
         </h2>
-        <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', fontSize: '0.9rem', marginBottom: '1.75rem', maxWidth: 520 }}>
+        <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', fontSize: '0.9rem', marginBottom: '1.75rem', maxWidth: 520 }}>
           Describe a feeling, director, era, or aesthetic — and get cinephile-grade recommendations.
         </p>
 
@@ -260,7 +260,7 @@ function AIDiscoverBlock() {
                 style={{
                   background: 'var(--vc-bg-elevated)', border: '1px solid rgba(255,255,255,0.08)',
                   borderRadius: 4, padding: '0.35rem 0.75rem',
-                  fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'var(--vc-slate)',
+                  fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'var(--vc-slate)',
                   cursor: 'pointer', transition: 'all 150ms',
                 }}
                 onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--vc-gold)'; e.currentTarget.style.color = 'var(--vc-gold)'; }}
@@ -272,7 +272,7 @@ function AIDiscoverBlock() {
           </div>
         )}
 
-        {error && <p style={{ color: '#fc8181', fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</p>}
+        {error && <p style={{ color: '#fc8181', fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</p>}
 
         {/* Loading */}
         {loading && (
@@ -287,7 +287,7 @@ function AIDiscoverBlock() {
         {results.length > 0 && (
           <>
             {source && (
-              <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'var(--vc-slate)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-slate)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <span style={{ width: 6, height: 6, borderRadius: '50%', background: source === 'openai' ? '#48bb78' : '#d4af37', display: 'inline-block' }} />
                 {source === 'openai' ? 'Powered by GPT-4o-mini' : 'Powered by Mistral (fallback)'}
               </div>
@@ -319,11 +319,11 @@ function AIFilmCard({ film }) {
     >
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
         <div>
-          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '1rem', fontWeight: 700, color: 'var(--vc-cream)', lineHeight: 1.3 }}>
+          <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1rem', fontWeight: 700, color: 'var(--vc-cream)', lineHeight: 1.3 }}>
             {film.title}
           </div>
           {film.year && film.director && (
-            <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-slate)', marginTop: 2 }}>
+            <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-slate)', marginTop: 2 }}>
               {film.year} · {film.director}
             </div>
           )}
@@ -333,7 +333,7 @@ function AIFilmCard({ film }) {
         )}
       </div>
       {film.description && (
-        <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.82rem', color: 'var(--vc-slate)', lineHeight: 1.6, margin: '0 0 0.75rem' }}>
+        <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.82rem', color: 'var(--vc-slate)', lineHeight: 1.6, margin: '0 0 0.75rem' }}>
           {film.description}
         </p>
       )}
@@ -369,12 +369,12 @@ function HeroFeatured({ movie }) {
       >
         {backdrop && <img src={backdrop} alt={title} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />}
         <div style={{ padding: '0.875rem' }}>
-          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.95rem', fontWeight: 700, color: 'var(--vc-cream)', marginBottom: '0.25rem', lineHeight: 1.3 }}>{title}</div>
+          <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.95rem', fontWeight: 700, color: 'var(--vc-cream)', marginBottom: '0.25rem', lineHeight: 1.3 }}>{title}</div>
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-            {year && <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year}</span>}
-            {rating > 0 && <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'var(--vc-gold)', fontWeight: 700 }}>★ {rating}</span>}
+            {year && <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year}</span>}
+            {rating > 0 && <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-gold)', fontWeight: 700 }}>★ {rating}</span>}
           </div>
-          {overview && <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-slate)', lineHeight: 1.55, margin: 0 }}>{overview}…</p>}
+          {overview && <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-slate)', lineHeight: 1.55, margin: 0 }}>{overview}…</p>}
         </div>
       </div>
     </Link>
@@ -490,7 +490,7 @@ export default function HomePage() {
 
           {/* Headline */}
           <h1 className="vc-home-hero-title" style={{
-            fontFamily: 'Playfair Display, serif',
+            fontFamily: 'var(--vc-font-display)',
             fontSize: 'clamp(3rem, 7vw, 6rem)',
             fontWeight: 900, lineHeight: 1.05, marginBottom: '1.5rem',
             letterSpacing: '-0.03em', maxWidth: 800,
@@ -502,7 +502,7 @@ export default function HomePage() {
           </h1>
 
           <p className="vc-home-hero-description" style={{
-            fontFamily: 'Outfit, sans-serif', fontSize: 'clamp(1.1rem, 1.8vw, 1.25rem)',
+            fontFamily: 'var(--vc-font-body)', fontSize: 'clamp(1.1rem, 1.8vw, 1.25rem)',
             color: 'var(--vc-slate)', maxWidth: 520, lineHeight: 1.8, marginBottom: '3rem',
             fontWeight: 400,
           }}>
@@ -574,14 +574,14 @@ export default function HomePage() {
                         : <div style={{ width: 32, height: 48, background: 'var(--vc-bg-card)', borderRadius: 3, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>🎬</div>
                       }
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.875rem', color: 'var(--vc-cream)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-                        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year || (isPerson ? 'Person' : '')}{isPerson ? ' · Person' : isTV ? ' · TV' : ' · Film'}</div>
+                        <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.875rem', color: 'var(--vc-cream)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
+                        <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year || (isPerson ? 'Person' : '')}{isPerson ? ' · Person' : isTV ? ' · TV' : ' · Film'}</div>
                       </div>
-                      {r.vote_average > 0 && <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-gold)', fontWeight: 700, flexShrink: 0 }}>★ {r.vote_average.toFixed(1)}</span>}
+                      {r.vote_average > 0 && <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-gold)', fontWeight: 700, flexShrink: 0 }}>★ {r.vote_average.toFixed(1)}</span>}
                     </Link>
                   );
                 })}
-                <Link to="/discover" onClick={() => { setSearchQ(''); setSearchRes([]); }} style={{ display: 'block', padding: '0.6rem 0.875rem', textAlign: 'center', fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: 'var(--vc-gold)', textDecoration: 'none', background: 'rgba(212,175,55,0.05)' }}>
+                <Link to="/discover" onClick={() => { setSearchQ(''); setSearchRes([]); }} style={{ display: 'block', padding: '0.6rem 0.875rem', textAlign: 'center', fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', color: 'var(--vc-gold)', textDecoration: 'none', background: 'rgba(212,175,55,0.05)' }}>
                   Advanced search & filters →
                 </Link>
               </div>
@@ -652,9 +652,9 @@ export default function HomePage() {
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
             <div>
               <span className="vc-section-label">🏆 Charts</span>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.5rem, 2.8vw, 2rem)', fontWeight: 700, margin: 0 }}>Top Rated</h2>
+              <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.5rem, 2.8vw, 2rem)', fontWeight: 700, margin: 0 }}>Top Rated</h2>
             </div>
-            <Link to="/top-movies" style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-gold)', textDecoration: 'none', letterSpacing: '0.1em', fontWeight: 600 }}>See all →</Link>
+            <Link to="/top-movies" style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-gold)', textDecoration: 'none', letterSpacing: '0.1em', fontWeight: 600 }}>See all →</Link>
           </div>
           <EditorialGrid items={topRated} />
         </div>
@@ -682,10 +682,10 @@ export default function HomePage() {
       }}>
         <div className="vc-container">
           <span className="vc-section-label" style={{ display: 'block', textAlign: 'center', marginBottom: '0.75rem' }}>Your Film Life</span>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', fontWeight: 800, marginBottom: '1rem' }}>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', fontWeight: 800, marginBottom: '1rem' }}>
             Track. Review. Discover.
           </h2>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', fontSize: '0.95rem', marginBottom: '2rem', maxWidth: 400, margin: '0 auto 2rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', fontSize: '0.95rem', marginBottom: '2rem', maxWidth: 400, margin: '0 auto 2rem' }}>
             Join visual.cineaste and build a record of everything you've watched, loved, and want to see.
           </p>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>

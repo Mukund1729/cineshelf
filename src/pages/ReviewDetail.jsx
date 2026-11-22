@@ -202,7 +202,7 @@ export default function ReviewDetail() {
           </div>
         ) : error ? (
           <section role="alert" style={{ padding: '4rem 1rem', textAlign: 'center' }}>
-            <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '2rem' }}>Review unavailable</h1>
+            <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2rem' }}>Review unavailable</h1>
             <p style={{ color: 'var(--vc-slate)' }}>{error}</p>
             <Link to="/" className="vc-btn vc-btn-outline">Back to CineShelf</Link>
           </section>
@@ -233,7 +233,7 @@ export default function ReviewDetail() {
                 <span className="vc-section-label">Community review</span>
                 <h1 style={{
                   margin: '0.35rem 0 0.6rem',
-                  fontFamily: 'Playfair Display, serif',
+                  fontFamily: 'var(--vc-font-display)',
                   fontSize: 'clamp(1.5rem, 4vw, 2.4rem)',
                   lineHeight: 1.2,
                 }}>
@@ -307,7 +307,7 @@ export default function ReviewDetail() {
               )}
               <div style={{
                 color: 'var(--vc-cream)',
-                fontFamily: 'Lato, sans-serif',
+                fontFamily: 'var(--vc-font-body)',
                 fontSize: '1.08rem',
                 lineHeight: 1.9,
                 whiteSpace: 'pre-wrap',
@@ -328,7 +328,7 @@ export default function ReviewDetail() {
                 {likeError && <p role="alert" style={{ color: '#fc8181', fontSize: '0.85rem' }}>{likeError}</p>}
 
                 <div style={{ marginTop: '2rem' }}>
-                  <h2 style={{ margin: '0 0 1rem', fontFamily: 'Playfair Display, serif', fontSize: '1.4rem' }}>
+                  <h2 style={{ margin: '0 0 1rem', fontFamily: 'var(--vc-font-display)', fontSize: '1.4rem' }}>
                     Comments ({review.commentCount ?? comments.length})
                   </h2>
                   <form onSubmit={submitComment}>

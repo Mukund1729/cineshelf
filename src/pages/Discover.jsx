@@ -251,7 +251,7 @@ export default function Discover() {
     border: active ? '1px solid var(--vc-gold)' : '1px solid rgba(255,255,255,0.1)',
     background: active ? 'rgba(212,175,55,0.15)' : 'var(--vc-bg-elevated)',
     color: active ? 'var(--vc-gold-light)' : 'var(--vc-slate)',
-    fontFamily: 'Outfit, sans-serif',
+    fontFamily: 'var(--vc-font-body)',
     fontSize: '0.8rem',
     fontWeight: 600,
     cursor: 'pointer',
@@ -284,14 +284,14 @@ export default function Discover() {
         <div className="vc-container">
           <span className="vc-section-label">AI · Discover</span>
           <h1 style={{
-            fontFamily: 'Playfair Display, serif',
+            fontFamily: 'var(--vc-font-display)',
             fontSize: 'clamp(2rem, 4vw, 3rem)',
             fontWeight: 800,
             marginBottom: '0.75rem',
           }}>
             Find films by <em style={{ color: 'var(--vc-gold)', fontStyle: 'italic' }}>feeling</em>
           </h1>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
             Describe a vibe, reference a film, or ask a cinema question — curated for cinephiles, powered by GPT-4o-mini.
           </p>
 
@@ -345,7 +345,7 @@ export default function Discover() {
           )}
 
           {error && (
-            <p style={{ color: 'var(--vc-red)', fontFamily: 'Outfit, sans-serif', fontSize: '0.875rem', marginTop: '0.75rem' }}>{error}</p>
+            <p style={{ color: 'var(--vc-red)', fontFamily: 'var(--vc-font-body)', fontSize: '0.875rem', marginTop: '0.75rem' }}>{error}</p>
           )}
         </div>
       </section>
@@ -394,8 +394,8 @@ export default function Discover() {
               <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
                 {askMessages.length === 0 && (
                   <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--vc-slate)' }}>
-                    <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '1rem', marginBottom: '0.5rem' }}>Start a conversation about cinema</p>
-                    <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem' }}>Ask about directors, films, box office, or recommendations</p>
+                    <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '1rem', marginBottom: '0.5rem' }}>Start a conversation about cinema</p>
+                    <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem' }}>Ask about directors, films, box office, or recommendations</p>
                   </div>
                 )}
                 {askMessages.map((m, i) => (
@@ -414,7 +414,7 @@ export default function Discover() {
                     <div style={{ fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--vc-gold)', marginBottom: '0.35rem' }}>
                       {m.role === 'user' ? 'You' : 'Cineaste AI'}
                     </div>
-                    <div style={{ fontFamily: 'Outfit, sans-serif', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                    <div style={{ fontFamily: 'var(--vc-font-body)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{m.content}</div>
                   </div>
                 ))}
                 {loading && (
@@ -432,7 +432,7 @@ export default function Discover() {
           {mode === 'discover' && movies.length > 0 && (
             <>
               <span className="vc-section-label">Results</span>
-              <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.75rem', marginBottom: '1.25rem' }}>Your picks</h2>
+              <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.75rem', marginBottom: '1.25rem' }}>Your picks</h2>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem' }}>
                 {movies.map(m => (
                   <Link key={m.id} to={`/movie/${m.id}`} style={{ textDecoration: 'none' }}>
@@ -453,7 +453,7 @@ export default function Discover() {
                         )}
                       </div>
                       <div style={{ padding: '0.75rem' }}>
-                        <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.9rem', color: 'var(--vc-cream)', fontWeight: 700 }}>{m.title}</div>
+                        <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.9rem', color: 'var(--vc-cream)', fontWeight: 700 }}>{m.title}</div>
                         {m.year && <div style={{ fontSize: '0.72rem', color: 'var(--vc-slate)' }}>{m.year}</div>}
                         {m.reason && <p style={{ fontSize: '0.72rem', color: 'var(--vc-slate)', marginTop: '0.35rem', lineHeight: 1.4 }}>{m.reason}</p>}
                       </div>

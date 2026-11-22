@@ -49,23 +49,39 @@ export default function Navbar() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
+    // Guest sessions: skip /api/auth/me so the console is not flooded with 401s.
+    if (!token) {
+      try {
+        const cached = JSON.parse(localStorage.getItem('user') || 'null');
+        if (cached) {
+          localStorage.removeItem('user');
+        }
+      } catch { /* ignore */ }
+      setUser(null);
+      return undefined;
+    }
+
+    let active = true;
     axios.get('/api/auth/me', {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      headers: { Authorization: `Bearer ${token}` },
       withCredentials: true,
     })
       .then(res => {
+        if (!active) return;
         const nextUser = res.data?.data;
         if (!nextUser) return;
         setUser(nextUser);
         localStorage.setItem('user', JSON.stringify(nextUser));
       })
       .catch(err => {
+        if (!active) return;
         if (err.response?.status === 401 || err.response?.status === 404) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           setUser(null);
         }
       });
+    return () => { active = false; };
   }, [location.pathname]);
 
   useEffect(() => {
@@ -174,7 +190,7 @@ export default function Navbar() {
               <Link
                 to={link.to}
                 style={{
-                  fontFamily: 'Outfit, sans-serif',
+                  fontFamily: 'var(--vc-font-body)',
                   fontSize: '0.82rem',
                   fontWeight: isActive(link.to) ? 600 : 400,
                   color: isActive(link.to) ? 'var(--vc-gold)' : 'rgba(245,240,232,0.75)',
@@ -225,7 +241,7 @@ export default function Navbar() {
             border: 'none',
             borderRadius: '999px',
             color: '#0a0f1a',
-            fontFamily: 'Outfit, sans-serif',
+            fontFamily: 'var(--vc-font-body)',
             fontWeight: 700,
             fontSize: '0.78rem',
             textDecoration: 'none',
@@ -261,7 +277,7 @@ export default function Navbar() {
                   padding: '0.3rem 0.75rem 0.3rem 0.3rem',
                   cursor: 'pointer',
                   color: '#f5f0e8',
-                  fontFamily: 'Outfit, sans-serif',
+                  fontFamily: 'var(--vc-font-body)',
                   fontSize: '0.82rem',
                   transition: 'all 200ms',
                 }}
@@ -405,7 +421,7 @@ export default function Navbar() {
                 background: 'linear-gradient(135deg, #d4af37 0%, #f5cc50 50%, #d4af37 100%)',
                 borderRadius: '999px',
                 color: '#0a0f1a',
-                fontFamily: 'Outfit, sans-serif',
+                fontFamily: 'var(--vc-font-body)',
                 fontSize: '0.9rem',
                 fontWeight: 700,
                 textDecoration: 'none',
@@ -421,7 +437,7 @@ export default function Navbar() {
                 onClick={() => setMenuOpen(false)}
                 className="navbar-mobile-link"
                 style={{
-                  fontFamily: 'Outfit, sans-serif',
+                  fontFamily: 'var(--vc-font-body)',
                   fontSize: '0.9rem',
                   color: isActive(link.to) ? 'var(--vc-gold)' : 'rgba(245,240,232,0.8)',
                   textDecoration: 'none',
@@ -441,7 +457,7 @@ export default function Navbar() {
                     onClick={() => setMenuOpen(false)}
                     className="navbar-mobile-link"
                     style={{
-                      fontFamily: 'Outfit, sans-serif',
+                      fontFamily: 'var(--vc-font-body)',
                       fontSize: '0.9rem',
                       color: 'rgba(245,240,232,0.6)',
                       textDecoration: 'none',
@@ -460,7 +476,7 @@ export default function Navbar() {
                     background: 'none',
                     border: 'none',
                     cursor: 'pointer',
-                    fontFamily: 'Outfit, sans-serif',
+                    fontFamily: 'var(--vc-font-body)',
                     fontSize: '0.9rem',
                     color: '#fc8181',
                     padding: '0.65rem 0',
@@ -519,7 +535,7 @@ export default function Navbar() {
 
 const dropdownLinkStyle = {
   display: 'block',
-  fontFamily: 'Outfit, sans-serif',
+  fontFamily: 'var(--vc-font-body)',
   fontSize: '0.85rem',
   color: 'rgba(245,240,232,0.85)',
   textDecoration: 'none',

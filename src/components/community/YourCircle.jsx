@@ -51,7 +51,7 @@ export default function YourCircle({
 
         <div className="cs-layout">
           <div>
-            <h3 style={{ fontFamily: 'Playfair Display, serif', marginTop: 0 }}>Recent from your societies</h3>
+            <h3 style={{ fontFamily: 'var(--vc-font-display)', marginTop: 0 }}>Recent from your societies</h3>
             {!posts.length ? (
               <div className="cs-empty">Join a community to fill this room with conversation.</div>
             ) : (

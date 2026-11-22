@@ -468,20 +468,8 @@ function reportIdentity(source, sourceMovieKey, collectionType, reportDate) {
   return `${source}:${sourceMovieKey}:${collectionType}:${reportDate}`;
 }
 
-async function findTmdbMatch(title, year) {
-  const params = { query: title };
-  if (year) params.year = year;
-  const response = await fetchTmdb('search/movie', params);
-  const target = normalizeTitle(title);
-  let candidates = (response.results || []).filter(movie => (
-    normalizeTitle(movie.title) === target || normalizeTitle(movie.original_title) === target
-  ));
-  if (year) {
-    const matchingYear = candidates.filter(movie => movie.release_date?.startsWith(String(year)));
-    if (matchingYear.length) candidates = matchingYear;
-  }
-  if (candidates.length !== 1) return null;
-  const match = candidates[0];
+function toTmdbMatch(match) {
+  if (!match?.id) return null;
   return {
     tmdbId: Number(match.id),
     originalTitle: match.original_title || null,
@@ -490,6 +478,43 @@ async function findTmdbMatch(title, year) {
     releaseYear: match.release_date ? Number(match.release_date.slice(0, 4)) : null,
     originalLanguage: match.original_language || null,
   };
+}
+
+async function findTmdbMatch(title, year) {
+  const params = { query: title };
+  if (year) params.year = year;
+
+  let response;
+  try {
+    response = await fetchTmdb('search/movie', params);
+  } catch (error) {
+    // One short retry for transient TMDB blips during sync.
+    await new Promise(resolve => setTimeout(resolve, 350));
+    response = await fetchTmdb('search/movie', params);
+  }
+
+  const target = normalizeTitle(title);
+  const results = response.results || [];
+  let candidates = results.filter(movie => (
+    normalizeTitle(movie.title) === target || normalizeTitle(movie.original_title) === target
+  ));
+  if (year) {
+    const matchingYear = candidates.filter(movie => movie.release_date?.startsWith(String(year)));
+    if (matchingYear.length) candidates = matchingYear;
+  }
+  if (candidates.length === 1) return toTmdbMatch(candidates[0]);
+
+  // Soft fallback: prefer year match, then near-title first hit.
+  if (year) {
+    const byYear = results.find(movie => movie.release_date?.startsWith(String(year)));
+    if (byYear) return toTmdbMatch(byYear);
+  }
+  const near = results.find(movie => {
+    const name = normalizeTitle(movie.title);
+    const original = normalizeTitle(movie.original_title);
+    return name.includes(target) || target.includes(name) || original.includes(target) || target.includes(original);
+  });
+  return toTmdbMatch(near || null);
 }
 
 async function upsertReportBatch(Model, reports, kind) {
@@ -930,8 +955,18 @@ async function fetchHistoryJson(cacheKey, path) {
         maxBodyLength: MAX_HISTORY_RESPONSE_BYTES,
         headers: { Accept: 'application/json' },
       });
-      if (!response.data || typeof response.data !== 'object') {
-        throw new Error('Box Office History returned an invalid response.');
+      const contentType = String(response.headers?.['content-type'] || '');
+      // Provider sometimes returns HTML/SPA shell with HTTP 200
+      if (
+        contentType.includes('text/html')
+        || typeof response.data === 'string'
+        || !response.data
+        || typeof response.data !== 'object'
+      ) {
+        const err = new Error('Box Office History returned an invalid response.');
+        err.status = 404;
+        err.code = 'history_resource_not_found';
+        throw err;
       }
       const cacheTtlSeconds = envInteger(
         'BOX_OFFICE_CACHE_TTL_SECONDS',

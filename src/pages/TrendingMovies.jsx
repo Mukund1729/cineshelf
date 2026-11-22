@@ -28,14 +28,14 @@ function TrendingMovies() {
         <div className="vc-container">
           <span className="vc-section-label">🔥 Trending</span>
           <h1 style={{
-            fontFamily: 'Playfair Display, serif',
+            fontFamily: 'var(--vc-font-display)',
             fontSize: 'clamp(2rem, 4vw, 3rem)',
             fontWeight: 800,
             marginBottom: '0.75rem',
           }}>
             Trending Movies
           </h1>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
             The hottest films everyone's watching right now, updated weekly.
           </p>
         </div>
@@ -63,7 +63,7 @@ function TrendingMovies() {
                   )}
                 </div>
                 <div style={{ padding: '0.75rem' }}>
-                  <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.9rem', color: 'var(--vc-cream)', fontWeight: 700 }}>{movie.title}</div>
+                  <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.9rem', color: 'var(--vc-cream)', fontWeight: 700 }}>{movie.title}</div>
                   {movie.release_date && <div style={{ fontSize: '0.72rem', color: 'var(--vc-slate)' }}>{movie.release_date.slice(0, 4)}</div>}
                 </div>
               </div>

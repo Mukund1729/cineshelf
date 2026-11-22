@@ -209,7 +209,7 @@ export default function CommunityDetailPage() {
                 )}
                 <div>
                   <span className="cs-chip">{community.category} · {community.privacy}</span>
-                  <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(2rem, 4vw, 3rem)', margin: '0.4rem 0' }}>
+                  <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(2rem, 4vw, 3rem)', margin: '0.4rem 0' }}>
                     {community.name}
                   </h1>
                   <p style={{ color: '#c9c2b8', maxWidth: 620, margin: '0 0 0.6rem' }}>{community.description}</p>
@@ -307,13 +307,13 @@ export default function CommunityDetailPage() {
 
             {tab === 'about' && (
               <div className="cs-panel" style={{ marginBottom: '3rem' }}>
-                <h2 style={{ fontFamily: 'Playfair Display, serif', marginTop: 0 }}>About this society</h2>
+                <h2 style={{ fontFamily: 'var(--vc-font-display)', marginTop: 0 }}>About this society</h2>
                 <p style={{ color: '#d8d1c7', lineHeight: 1.6 }}>{community.description}</p>
                 <p className="cs-meta">
                   <span>Created {community.createdAt ? new Date(community.createdAt).toLocaleDateString() : '—'}</span>
                   <span>Privacy: {community.privacy}</span>
                 </p>
-                <h3 style={{ fontFamily: 'Playfair Display, serif' }}>Rules</h3>
+                <h3 style={{ fontFamily: 'var(--vc-font-display)' }}>Rules</h3>
                 {!community.rules?.length ? (
                   <p className="cs-empty" style={{ padding: 0 }}>No formal rules published.</p>
                 ) : (
@@ -321,7 +321,7 @@ export default function CommunityDetailPage() {
                     {community.rules.map(rule => <li key={rule}>{rule}</li>)}
                   </ol>
                 )}
-                <h3 style={{ fontFamily: 'Playfair Display, serif' }}>Leadership</h3>
+                <h3 style={{ fontFamily: 'var(--vc-font-display)' }}>Leadership</h3>
                 <div className="cs-member-grid">
                   {community.owner && (
                     <Link className="cs-member" to={`/people/${community.owner._id || community.owner}`}>

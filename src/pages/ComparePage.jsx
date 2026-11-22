@@ -163,7 +163,7 @@ export default function ComparePage() {
       <form onSubmit={handleSearch} className="w-full max-w-xl mx-auto flex items-center bg-[#181c24] rounded-full shadow-xl border border-[#232526] focus-within:ring-2 focus-within:ring-cyan-400 px-3 py-2 mb-6">
         <input
           className="flex-1 bg-transparent outline-none px-2 py-1 text-base font-sans text-white rounded-full placeholder:text-gray-400"
-          style={{ fontFamily: 'Inter, Poppins, Source Sans Pro, sans-serif' }}
+          style={{ fontFamily: 'var(--vc-font-body)' }}
           placeholder="Search movie or TV show..."
           value={query}
           onChange={e => setQuery(e.target.value)}

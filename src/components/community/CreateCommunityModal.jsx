@@ -120,7 +120,7 @@ export default function CreateCommunityModal({ open, onClose, onCreated }) {
 
           <div className="cs-preview">
             <div className="cs-chip">{preview.category}</div>
-            <h3 style={{ fontFamily: 'Playfair Display, serif', margin: '0.5rem 0' }}>{preview.name || 'Untitled society'}</h3>
+            <h3 style={{ fontFamily: 'var(--vc-font-display)', margin: '0.5rem 0' }}>{preview.name || 'Untitled society'}</h3>
             <p style={{ color: '#a6a09a', margin: 0 }}>{preview.description || 'Your description will appear here.'}</p>
             <p style={{ color: '#b59a76', fontSize: '0.78rem' }}>/community/{preview.slug || 'slug'}</p>
           </div>

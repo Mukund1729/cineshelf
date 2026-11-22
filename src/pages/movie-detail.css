@@ -8,8 +8,8 @@
   --md-text: #f5f0e8;
   --md-muted: #94a3b8;
   --md-border: rgba(245, 240, 232, 0.12);
-  --md-serif: var(--vc-font-display, 'Playfair Display', Georgia, serif);
-  --md-sans: var(--vc-font-body, 'Outfit', 'Lato', system-ui, sans-serif);
+  --md-serif: var(--vc-font-display, 'Newsreader', Georgia, serif);
+  --md-sans: var(--vc-font-body, 'DM Sans', 'Helvetica Neue', sans-serif);
   position: relative;
   min-height: 100vh;
   width: 100%;

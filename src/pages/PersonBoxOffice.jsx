@@ -1,209 +1,290 @@
-import React, { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import Navbar from '../components/Navbar';
 import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
-import BrandLogo from '../components/BrandLogo';
+import './movie-detail.css';
+import './person-detail.css';
 
+function formatUsd(value) {
+  if (typeof value !== 'number' || Number.isNaN(value) || value <= 0) return null;
+  if (value >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(2)}B`;
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  return `$${value.toLocaleString()}`;
+}
 
-const navLinks = [
-  { to: '/', label: 'Discover' },
-  { to: '/reviews', label: 'Reviews' },
-  { to: '/people', label: 'People' },
-  { to: '/rankings', label: 'Rankings' },
-  { to: '/lists', label: 'Lists' },
-  { to: '/watchlist', label: 'Watchlist' },
-];
-
-const PersonBoxOffice = () => {
+export default function PersonBoxOffice() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [movies, setMovies] = useState([]);
   const [person, setPerson] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [search, setSearch] = useState("");
+  const [fetchProgress, setFetchProgress] = useState({ done: 0, total: 0 });
+  const [search, setSearch] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // Person search handler
-  const handleSearchChange = async (e) => {
-    setSearch(e.target.value);
-    if (e.target.value.length > 1) {
-      const data = await tmdbGet('/search/person', { query: e.target.value });
-      setSuggestions(data.results || []);
-      setShowSuggestions(true);
+  const handleSearchChange = async event => {
+    const value = event.target.value;
+    setSearch(value);
+    if (value.trim().length > 1) {
+      try {
+        const data = await tmdbGet('/search/person', { query: value.trim() });
+        setSuggestions(data.results || []);
+        setShowSuggestions(true);
+      } catch {
+        setSuggestions([]);
+      }
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
     }
   };
-  const handleSuggestionClick = (personId) => {
+
+  const handleSuggestionClick = personId => {
     setShowSuggestions(false);
-    setSearch("");
+    setSearch('');
     navigate(`/person/${personId}/boxoffice`);
   };
 
   useEffect(() => {
+    let active = true;
     const fetchFilmography = async () => {
+      setLoading(true);
+      setError(null);
+      setMovies([]);
+      setPerson(null);
+      setFetchProgress({ done: 0, total: 0 });
       try {
-        // Fetch person details
-        const personData = await tmdbGet(`/person/${id}`);
+        const [personData, creditsData] = await Promise.all([
+          tmdbGet(`/person/${id}`),
+          tmdbGet(`/person/${id}/combined_credits`),
+        ]);
+        if (!active) return;
         setPerson(personData);
 
-        // Fetch combined credits (acting + crew)
-        const creditsData = await tmdbGet(`/person/${id}/combined_credits`);
-        let allMovies = creditsData.cast.concat(creditsData.crew)
-          .filter(m => m.media_type === 'movie' && m.release_date && m.id)
+        let allMovies = [...(creditsData.cast || []), ...(creditsData.crew || [])]
+          .filter(item => item.media_type === 'movie' && item.release_date && item.id)
           .reduce((acc, curr) => {
-            if (!acc.find(m => m.id === curr.id)) acc.push(curr);
+            if (!acc.find(movie => movie.id === curr.id)) acc.push(curr);
             return acc;
-          }, []);
-        // Sort by box office revenue descending, then by release date desc
-        allMovies = allMovies.sort((a, b) => {
-          if (b.revenue !== a.revenue) return (b.revenue || 0) - (a.revenue || 0);
-          return new Date(b.release_date) - new Date(a.release_date);
-        });
-        setMovies(allMovies);
+          }, [])
+          .sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
 
-        // Fetch box office for each movie (in parallel, but limit concurrency)
-        const fetchBoxOffice = async (movie) => {
-          const data = await tmdbGet(`/movie/${movie.id}`);
-          return { ...movie, revenue: data.revenue };
-        };
-        // Use Promise.allSettled for smoother experience and show partial data as it loads
-        let results = [];
-        for (let i = 0; i < allMovies.length; i += 10) {
-          const chunk = allMovies.slice(i, i + 10);
-          const chunkResults = await Promise.allSettled(chunk.map(fetchBoxOffice));
-          results.push(...chunkResults.filter(r => r.status === 'fulfilled').map(r => r.value));
-          setMovies([...results].sort((a, b) => (b.revenue || 0) - (a.revenue || 0)));
-        }
-        // Final sort
-        setMovies([...results].sort((a, b) => (b.revenue || 0) - (a.revenue || 0)));
-      } catch (err) {
-        setError("Failed to fetch box office data.");
-      } finally {
+        setMovies(allMovies);
+        setFetchProgress({ done: 0, total: allMovies.length });
         setLoading(false);
+
+        const results = [];
+        for (let i = 0; i < allMovies.length; i += 8) {
+          if (!active) return;
+          const chunk = allMovies.slice(i, i + 8);
+          const chunkResults = await Promise.allSettled(
+            chunk.map(async movie => {
+              const detail = await tmdbGet(`/movie/${movie.id}`);
+              return { ...movie, revenue: detail.revenue || 0, budget: detail.budget || 0 };
+            }),
+          );
+          results.push(...chunkResults.filter(item => item.status === 'fulfilled').map(item => item.value));
+          if (!active) return;
+          setMovies([...results].sort((a, b) => (b.revenue || 0) - (a.revenue || 0)));
+          setFetchProgress({ done: Math.min(i + chunk.length, allMovies.length), total: allMovies.length });
+        }
+      } catch {
+        if (active) {
+          setError('Failed to fetch box office data.');
+          setLoading(false);
+        }
       }
     };
     fetchFilmography();
+    return () => { active = false; };
   }, [id]);
 
-  if (loading) return <div className="flex items-center justify-center h-64 text-cyan-400">Loading box office data...</div>;
-  if (error) return <div className="text-red-400">{error}</div>;
+  const stats = useMemo(() => {
+    const withRevenue = movies.filter(movie => typeof movie.revenue === 'number' && movie.revenue > 0);
+    const total = withRevenue.reduce((sum, movie) => sum + movie.revenue, 0);
+    const top = withRevenue[0] || null;
+    return {
+      counted: withRevenue.length,
+      total,
+      totalLabel: formatUsd(total) || '—',
+      topTitle: top?.title || '—',
+      topRevenue: formatUsd(top?.revenue) || '—',
+      stillLoading: fetchProgress.total > 0 && fetchProgress.done < fetchProgress.total,
+    };
+  }, [movies, fetchProgress]);
+
+  const topPosters = movies.filter(movie => movie.poster_path && movie.revenue > 0).slice(0, 14);
+  const profileUrl = person?.profile_path ? tmdbImageUrl(person.profile_path, 'w500') : '/actor-placeholder.jpg';
+  const backdropUrl = person?.profile_path ? tmdbImageUrl(person.profile_path, 'original') : '';
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-black via-[#181c24] to-[#1a1333] text-white font-lato relative overflow-x-hidden">
-      {/* Header with the site logo */}
-      <div className="fixed top-0 left-0 right-0 z-30 flex items-center w-full px-6 py-4 bg-gradient-to-b from-black/80 via-[#181c24]/60 to-transparent backdrop-blur-md">
-        <BrandLogo style={{ width: 190 }} />
-      </div>
-      {/* Search Bar for Person Box Office */}
-      <div className="w-full flex justify-center pt-20 pb-2">
-        <div className="relative w-full max-w-md">
+    <div className="md-page person-page">
+      {backdropUrl ? (
+        <div className="md-backdrop" style={{ backgroundImage: `url(${backdropUrl})` }} aria-hidden="true" />
+      ) : null}
+      <div className="md-backdrop-shade" aria-hidden="true" />
+      <Navbar />
+
+      <div className="md-shell">
+        <div className="md-person-search">
           <input
             type="text"
-            className="w-full px-4 py-2 rounded-lg bg-[#232526] text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-cyan-400 shadow"
-            placeholder="Search person for box office..."
             value={search}
             onChange={handleSearchChange}
+            placeholder="Search another person…"
             onFocus={() => setShowSuggestions(suggestions.length > 0)}
             onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            aria-label="Search person for box office"
           />
           {showSuggestions && suggestions.length > 0 && (
-            <div className="absolute left-0 right-0 mt-1 bg-[#232526] rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto border border-cyan-900">
-              {suggestions.map(s => (
-                <div
-                  key={s.id}
-                  className="flex items-center gap-3 px-4 py-2 cursor-pointer hover:bg-cyan-900/40"
-                  onMouseDown={() => handleSuggestionClick(s.id)}
+            <div className="md-person-suggest" role="listbox">
+              {suggestions.slice(0, 8).map(suggestion => (
+                <button
+                  key={suggestion.id}
+                  type="button"
+                  onMouseDown={() => handleSuggestionClick(suggestion.id)}
                 >
-                  <img src={s.profile_path ? tmdbImageUrl(s.profile_path, 'w45') : '/actor-placeholder.jpg'} alt={s.name} className="w-8 h-8 rounded-full object-cover bg-gray-700" />
-                  <span className="text-white text-sm">{s.name}</span>
-                </div>
+                  {suggestion.profile_path ? (
+                    <img src={tmdbImageUrl(suggestion.profile_path, 'w45')} alt="" />
+                  ) : (
+                    <span className="md-person-suggest-fallback">{(suggestion.name || '?')[0]}</span>
+                  )}
+                  <span>{suggestion.name}</span>
+                </button>
               ))}
             </div>
           )}
         </div>
-      </div>
-      <div className="pt-6 max-w-5xl mx-auto p-6">
-        <h1 className="text-3xl md:text-4xl font-bold font-playfair mb-6 text-cyan-200 drop-shadow">{person?.name}'s Box Office Collection</h1>
-        {/* Horizontally scrolling movie train */}
-        {movies.length > 0 && (
-          <div className="relative overflow-x-auto mt-2 mb-8 scrollbar-thin scrollbar-thumb-cyan-900 scrollbar-track-transparent vc-mobile-hide-train"
-            style={{ WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 8%, black 92%, transparent 100%)' }}>
-            <div
-              className="flex gap-4 items-stretch animate-train min-w-[600px] md:min-w-0"
-              style={{
-                animation: 'train 32s linear infinite',
-                '--pause': 'paused',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.animationPlayState = 'paused')}
-              onMouseLeave={e => (e.currentTarget.style.animationPlayState = 'running')}
-            >
-              {movies.concat(movies).map((movie, idx) => (
-                <Link to={`/movie/${movie.id}`} key={movie.id + '-' + idx} className="bg-[#181c24] rounded-lg shadow-md overflow-hidden hover:scale-105 hover:shadow-cyan-400 transition-transform duration-200 group cursor-pointer min-w-[120px] max-w-[120px] flex-shrink-0 relative">
-                  <img
-                    src={movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w200') : '/placeholder.jpg'}
-                    alt={movie.title}
-                    className="w-full h-40 object-cover rounded-t-lg group-hover:opacity-90 transition"
-                  />
-                  <div className="p-2 text-center absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent">
-                    <div className="text-white font-bold text-xs font-lato truncate text-shadow line-clamp-2">{movie.title}</div>
-                    <div className="text-green-300 font-bold text-xs">{typeof movie.revenue === 'number' && movie.revenue > 0 ? `$${movie.revenue.toLocaleString()}` : movie.revenue === 0 ? '$0' : 'Fetching...'}</div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            <style>{`
-              @keyframes train {
-                0% { transform: translateX(0); }
-                100% { transform: translateX(-50%); }
-              }
-              .animate-train {
-                animation-play-state: running;
-              }
-              .text-shadow {
-                text-shadow: 0 2px 8px #000, 0 1px 2px #000;
-              }
-            `}</style>
+
+        {loading && (
+          <div className="md-status" aria-live="polite">
+            <div className="md-skeleton" style={{ height: 180, marginBottom: 12 }} />
+            Loading box office…
           </div>
         )}
-        {/* Table fallback for full details */}
-        <div className="overflow-x-auto rounded-2xl shadow-2xl bg-[#181c24] vc-mobile-table-wrap">
-          <table className="min-w-full rounded-2xl overflow-hidden">
-            <thead>
-              <tr className="bg-cyan-900/60 text-cyan-200 text-lg">
-                <th className="px-6 py-4 text-left font-semibold font-playfair">Title</th>
-                <th className="px-6 py-4 text-left font-semibold font-playfair">Year</th>
-                <th className="px-6 py-4 text-left font-semibold font-playfair">Role</th>
-                <th className="px-6 py-4 text-left font-semibold font-playfair">Box Office</th>
-              </tr>
-            </thead>
-            <tbody>
-              {movies.map(movie => (
-                <tr key={movie.id} className="border-b border-gray-700 hover:bg-cyan-900/20 transition group">
-                  <td className="px-6 py-3">
-                    <Link to={`/movie/${movie.id}`} className="text-cyan-300 hover:underline font-semibold font-playfair group-hover:text-pink-300 transition">
-                      {movie.title || movie.original_title}
+        {!loading && error && <p className="md-status is-error" role="alert">{error}</p>}
+
+        {!loading && person && (
+          <>
+            <section className="md-hero" aria-label="Person box office">
+              <div className="md-poster-col">
+                <img className="md-poster" src={profileUrl} alt={person.name} />
+              </div>
+              <div className="md-hero-copy">
+                <div className="md-hero-intro">
+                  <h1 className="md-title">{person.name}</h1>
+                  <p className="md-directed">
+                    <span className="md-directed-label">Box office </span>
+                    worldwide gross across credited films
+                  </p>
+                </div>
+
+                <div className="md-person-stats" aria-label="Box office summary">
+                  <div className="md-bo-card">
+                    <span>Total gross</span>
+                    <strong>{stats.totalLabel}</strong>
+                    <small>{stats.counted} titles with reported revenue</small>
+                  </div>
+                  <div className="md-bo-card">
+                    <span>Top earner</span>
+                    <strong>{stats.topRevenue}</strong>
+                    <small>{stats.topTitle}</small>
+                  </div>
+                  <div className="md-bo-card">
+                    <span>Credits tracked</span>
+                    <strong>{movies.length}</strong>
+                    <small>
+                      {stats.stillLoading
+                        ? `Fetching ${fetchProgress.done}/${fetchProgress.total}…`
+                        : 'TMDB worldwide revenue'}
+                    </small>
+                  </div>
+                </div>
+
+                <div className="md-hero-actions">
+                  <Link to={`/person/${id}`} className="md-btn md-btn-ghost">
+                    Person profile
+                  </Link>
+                  <Link to={`/person/${id}/filmography`} className="md-btn md-btn-ghost">
+                    Filmography
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+            {topPosters.length > 0 && (
+              <section className="md-section" aria-label="Highest grossing">
+                <div className="md-section-head">
+                  <div>
+                    <h2>Highest Grossing</h2>
+                    <p>Sorted by worldwide box office.</p>
+                  </div>
+                </div>
+                <div className="md-poster-rail">
+                  {topPosters.map(movie => (
+                    <Link key={movie.id} to={`/movie/${movie.id}`} className="md-poster-card">
+                      <img src={tmdbImageUrl(movie.poster_path, 'w342')} alt="" loading="lazy" />
+                      <strong>{movie.title}</strong>
+                      <span>{formatUsd(movie.revenue) || '—'}</span>
                     </Link>
-                  </td>
-                  <td className="px-6 py-3 text-gray-200">{movie.release_date ? new Date(movie.release_date).getFullYear() : '-'}</td>
-                  <td className="px-6 py-3 text-gray-300">{movie.character || movie.job || '-'}</td>
-                  <td className="px-6 py-3 text-green-300 font-bold">
-                    {typeof movie.revenue === 'number' && movie.revenue > 0
-                      ? `$${movie.revenue.toLocaleString()}`
-                      : movie.revenue === 0
-                        ? '$0'
-                        : 'Fetching...'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="md-section" aria-label="Full box office list">
+              <div className="md-section-head">
+                <div>
+                  <h2>All Titles</h2>
+                  <p>Role and worldwide gross where TMDB reports it.</p>
+                </div>
+              </div>
+
+              {movies.length === 0 ? (
+                <p className="md-empty">No movie credits found.</p>
+              ) : (
+                <div className="md-bo-table-wrap">
+                  <table className="md-bo-table">
+                    <thead>
+                      <tr>
+                        <th>Title</th>
+                        <th>Year</th>
+                        <th>Role</th>
+                        <th>Box office</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {movies.map(movie => {
+                        const amount = formatUsd(movie.revenue);
+                        return (
+                          <tr key={movie.id}>
+                            <td>
+                              <Link to={`/movie/${movie.id}`}>{movie.title || movie.original_title}</Link>
+                            </td>
+                            <td>{movie.release_date ? movie.release_date.slice(0, 4) : '—'}</td>
+                            <td>{movie.character || movie.job || '—'}</td>
+                            <td>
+                              {amount ? (
+                                <span className="md-bo-amount">{amount}</span>
+                              ) : movie.revenue === 0 ? (
+                                <span className="md-bo-amount is-pending">Unreported</span>
+                              ) : (
+                                <span className="md-bo-amount is-pending">Fetching…</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </div>
     </div>
   );
-};
-
-export default PersonBoxOffice;
+}

@@ -447,7 +447,7 @@ export default function PanoramaHero() {
           flexDirection: 'column', gap: '1.2rem',
         }}>
           <div style={{ fontSize: '3.5rem', animation: 'spin 2s linear infinite' }}>🎬</div>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'rgba(245,240,232,0.55)', fontSize: '0.9rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'rgba(245,240,232,0.55)', fontSize: '0.9rem' }}>
             Loading cinema…
           </p>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -470,7 +470,7 @@ export default function PanoramaHero() {
             {/* Drag hint */}
             <div style={{
               position: 'absolute', top: 18, left: '50%', transform: 'translateX(-50%)',
-              fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem',
+              fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem',
               color: 'rgba(245,240,232,0.42)', zIndex: 10, pointerEvents: 'none',
               letterSpacing: '0.08em', textTransform: 'uppercase',
             }}>
@@ -485,7 +485,7 @@ export default function PanoramaHero() {
                 width: '100%', maxWidth: '480px', padding: '0 1.5rem',
               }}>
                 <div style={{
-                  fontFamily: 'Playfair Display, serif',
+                  fontFamily: 'var(--vc-font-display)',
                   fontSize: 'clamp(1.3rem, 5vw, 2.1rem)',
                   fontWeight: 700,
                   textShadow: '0 2px 20px rgba(0,0,0,0.9)',
@@ -495,7 +495,7 @@ export default function PanoramaHero() {
                   {currentMovie.title}
                 </div>
                 <div style={{
-                  fontFamily: 'Outfit, sans-serif',
+                  fontFamily: 'var(--vc-font-body)',
                   fontSize: '0.85rem',
                   color: 'rgba(245,240,232,0.6)',
                   marginBottom: '1.2rem',
@@ -510,7 +510,7 @@ export default function PanoramaHero() {
                       padding: '0.6rem 1.6rem',
                       background: 'linear-gradient(135deg, #d4af37, #f5cc50)',
                       borderRadius: '999px', color: '#0a0f1a',
-                      fontFamily: 'Outfit, sans-serif', fontWeight: 700,
+                      fontFamily: 'var(--vc-font-body)', fontWeight: 700,
                       fontSize: '0.85rem', textDecoration: 'none',
                       boxShadow: '0 4px 20px rgba(212,175,55,0.5)',
                     }}
@@ -525,7 +525,7 @@ export default function PanoramaHero() {
                       background: 'rgba(255,255,255,0.1)',
                       border: '1px solid rgba(255,255,255,0.2)',
                       borderRadius: '999px', color: '#f5f0e8',
-                      fontFamily: 'Outfit, sans-serif', fontWeight: 500,
+                      fontFamily: 'var(--vc-font-body)', fontWeight: 500,
                       fontSize: '0.85rem', textDecoration: 'none',
                       backdropFilter: 'blur(8px)',
                     }}

@@ -36,17 +36,17 @@ function ReviewCard({ review, onDelete, onEdit }) {
           )}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '1rem', fontWeight: 700, color: 'var(--vc-cream)', marginBottom: '0.25rem', lineHeight: 1.3 }}>
-            {review.title} {year && <span style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 400, fontSize: '0.8rem', color: 'var(--vc-slate)' }}>({year})</span>}
+          <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1rem', fontWeight: 700, color: 'var(--vc-cream)', marginBottom: '0.25rem', lineHeight: 1.3 }}>
+            {review.title} {year && <span style={{ fontFamily: 'var(--vc-font-body)', fontWeight: 400, fontSize: '0.8rem', color: 'var(--vc-slate)' }}>({year})</span>}
           </div>
           {review.rating !== undefined && (
-            <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-gold)', marginBottom: '0.35rem' }}>
+            <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-gold)', marginBottom: '0.35rem' }}>
               {'★'.repeat(Math.round(review.rating / 2))}{'☆'.repeat(5 - Math.round(review.rating / 2))} {review.rating}/10
             </div>
           )}
           {review.review && (
             <p style={{
-              fontFamily: 'Outfit, sans-serif', fontSize: '0.82rem', color: 'var(--vc-slate)',
+              fontFamily: 'var(--vc-font-body)', fontSize: '0.82rem', color: 'var(--vc-slate)',
               lineHeight: 1.5, margin: 0,
               display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
             }}>
@@ -74,7 +74,7 @@ function ReviewCard({ review, onDelete, onEdit }) {
         >
           Delete
         </button>
-        <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-slate-dark)', marginLeft: 'auto', alignSelf: 'center' }}>
+        <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-slate-dark)', marginLeft: 'auto', alignSelf: 'center' }}>
           {new Date(review.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
         </span>
       </div>
@@ -168,10 +168,10 @@ export default function Reviews() {
       <section style={{ padding: '4rem 0 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="vc-container">
           <span className="vc-section-label">Your Diary</span>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900 }}>
+          <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900 }}>
             Reviews
           </h1>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', marginTop: '0.5rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', marginTop: '0.5rem' }}>
             Films you've watched and what you thought.
           </p>
         </div>
@@ -205,15 +205,15 @@ export default function Reviews() {
           ) : myReviews.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '5rem 2rem', color: 'var(--vc-slate)' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📝</div>
-              <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem', color: 'var(--vc-cream)', marginBottom: '0.5rem' }}>No reviews yet.</p>
-              <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem', marginBottom: '2rem' }}>
+              <p style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.25rem', color: 'var(--vc-cream)', marginBottom: '0.5rem' }}>No reviews yet.</p>
+              <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.9rem', marginBottom: '2rem' }}>
                 Go to a movie page and write your first review.
               </p>
               <Link to="/discover" className="vc-btn vc-btn-primary">Discover Films</Link>
             </div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
-              <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-slate)', marginBottom: '0.5rem' }}>
+              <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-slate)', marginBottom: '0.5rem' }}>
                 {myReviews.length} review{myReviews.length !== 1 ? 's' : ''}
               </p>
               {myReviews.map(review => (
@@ -227,7 +227,7 @@ export default function Reviews() {
         {friends.length > 0 && (
           <aside>
             <div style={{ background: 'var(--vc-bg-card)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '1.25rem' }}>
-              <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1rem', marginBottom: '1rem', color: 'var(--vc-cream)' }}>
+              <h3 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1rem', marginBottom: '1rem', color: 'var(--vc-cream)' }}>
                 Friends
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -241,12 +241,12 @@ export default function Reviews() {
                       </div>
                     )}
                     <div>
-                      <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-cream)' }}>{friend.username}</div>
-                      {friend.bio && <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-slate)', lineHeight: 1.3 }}>{friend.bio.slice(0, 40)}</div>}
+                      <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-cream)' }}>{friend.username}</div>
+                      {friend.bio && <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-slate)', lineHeight: 1.3 }}>{friend.bio.slice(0, 40)}</div>}
                     </div>
                   </div>
                 ))}
-                <Link to="/people" style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.78rem', color: 'var(--vc-cyan)', textDecoration: 'none', marginTop: '0.25rem' }}>
+                <Link to="/people" style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', color: 'var(--vc-cyan)', textDecoration: 'none', marginTop: '0.25rem' }}>
                   View all friends →
                 </Link>
               </div>
@@ -262,12 +262,12 @@ export default function Reviews() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
         }} onClick={(e) => e.target === e.currentTarget && setEditReview(null)}>
           <div style={{ background: 'var(--vc-bg-elevated)', borderRadius: '16px', padding: '2rem', width: '100%', maxWidth: '480px', border: '1px solid rgba(255,255,255,0.08)' }}>
-            <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem', marginBottom: '1.5rem' }}>
+            <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.25rem', marginBottom: '1.5rem' }}>
               Edit Review: {editReview.title}
             </h2>
             <form onSubmit={handleSaveEdit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div>
-                <label style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.82rem', color: 'var(--vc-slate)', display: 'block', marginBottom: '0.4rem' }}>Rating (0–10)</label>
+                <label style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.82rem', color: 'var(--vc-slate)', display: 'block', marginBottom: '0.4rem' }}>Rating (0–10)</label>
                 <input
                   type="number" min="0" max="10" step="0.5"
                   value={editRating}
@@ -277,7 +277,7 @@ export default function Reviews() {
                 />
               </div>
               <div>
-                <label style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.82rem', color: 'var(--vc-slate)', display: 'block', marginBottom: '0.4rem' }}>Review</label>
+                <label style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.82rem', color: 'var(--vc-slate)', display: 'block', marginBottom: '0.4rem' }}>Review</label>
                 <textarea
                   value={editText}
                   onChange={e => setEditText(e.target.value)}
@@ -286,7 +286,7 @@ export default function Reviews() {
                   rows={4}
                 />
               </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-slate)', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-slate)', cursor: 'pointer' }}>
                 <input type="checkbox" checked={editSpoiler} onChange={e => setEditSpoiler(e.target.checked)} />
                 Contains spoilers
               </label>

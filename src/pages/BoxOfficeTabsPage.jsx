@@ -7,7 +7,7 @@ import BoxOfficeIndia from './BoxOfficeIndia';
 const tabStyle = (active) => ({
   padding: '0.65rem 1.35rem',
   borderRadius: 'var(--vc-radius-pill)',
-  fontFamily: 'Outfit, sans-serif',
+  fontFamily: 'var(--vc-font-body)',
   fontWeight: 600,
   fontSize: '0.875rem',
   border: active ? '1px solid var(--vc-gold)' : '1px solid rgba(255,255,255,0.12)',
@@ -33,10 +33,10 @@ export default function BoxOfficeTabsPage() {
       }}>
         <div className="vc-container">
           <span className="vc-section-label">📊 Box Office</span>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, marginBottom: '0.75rem' }}>
+          <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(2rem, 4vw, 3rem)', fontWeight: 800, marginBottom: '0.75rem' }}>
             Box Office Collections
           </h1>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', maxWidth: 640, marginBottom: '2rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', maxWidth: 640, marginBottom: '2rem' }}>
             Explore source-attributed collection reports, lifetime totals by release year, and filmographies. Coverage and estimates are labeled; unavailable figures are never filled in.
           </p>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

@@ -62,7 +62,7 @@ export default function About() {
         <div className="vc-container" style={{ textAlign: 'center', position: 'relative' }}>
           <span className="vc-section-label">About</span>
           <h1 style={{
-            fontFamily: 'Playfair Display, serif',
+            fontFamily: 'var(--vc-font-display)',
             fontSize: 'clamp(2.5rem, 6vw, 5rem)',
             fontWeight: 900,
             lineHeight: 1.05,
@@ -73,7 +73,7 @@ export default function About() {
             <em style={{ fontStyle: 'italic', color: 'var(--vc-gold)' }}>with intention.</em>
           </h1>
           <p style={{
-            fontFamily: 'Outfit, sans-serif',
+            fontFamily: 'var(--vc-font-body)',
             fontSize: 'clamp(1rem, 2vw, 1.2rem)',
             color: 'var(--vc-slate)',
             maxWidth: '620px',
@@ -94,11 +94,11 @@ export default function About() {
       <section style={{ padding: '5rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="vc-container" style={{ maxWidth: '800px' }}>
           <span className="vc-section-label">Our Approach</span>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.5rem, 3vw, 2.5rem)', marginBottom: '2rem', lineHeight: 1.2 }}>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.5rem)', marginBottom: '2rem', lineHeight: 1.2 }}>
             Cinema deserves a better home.
           </h2>
           <div style={{
-            fontFamily: 'Outfit, sans-serif',
+            fontFamily: 'var(--vc-font-body)',
             fontSize: '1.05rem',
             lineHeight: 1.8,
             color: 'rgba(245,240,232,0.8)',
@@ -109,7 +109,7 @@ export default function About() {
 
           <div style={{ marginTop: '2.5rem', borderLeft: '3px solid var(--vc-gold)', paddingLeft: '1.5rem' }}>
             <blockquote style={{
-              fontFamily: 'Playfair Display, serif',
+              fontFamily: 'var(--vc-font-display)',
               fontSize: '1.25rem',
               fontStyle: 'italic',
               color: 'var(--vc-cream)',
@@ -118,7 +118,7 @@ export default function About() {
             }}>
               "Cinema is a matter of what's in the frame and what's out."
             </blockquote>
-            <cite style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-slate)', marginTop: '0.5rem', display: 'block' }}>
+            <cite style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-slate)', marginTop: '0.5rem', display: 'block' }}>
               — Martin Scorsese
             </cite>
           </div>
@@ -129,7 +129,7 @@ export default function About() {
       <section style={{ padding: '5rem 0', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="vc-container">
           <span className="vc-section-label">What We Offer</span>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', marginBottom: '3rem' }}>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', marginBottom: '3rem' }}>
             Everything a cinephile needs.
           </h2>
 
@@ -142,7 +142,7 @@ export default function About() {
               <div key={i} className="vc-card" style={{ padding: '2rem' }}>
                 <div style={{ fontSize: '2rem', marginBottom: '1rem' }}>{p.icon}</div>
                 <h3 style={{
-                  fontFamily: 'Playfair Display, serif',
+                  fontFamily: 'var(--vc-font-display)',
                   fontSize: '1.15rem',
                   marginBottom: '0.75rem',
                   color: 'var(--vc-cream)',
@@ -150,7 +150,7 @@ export default function About() {
                   {p.title}
                 </h3>
                 <p style={{
-                  fontFamily: 'Outfit, sans-serif',
+                  fontFamily: 'var(--vc-font-body)',
                   fontSize: '0.9rem',
                   color: 'var(--vc-slate)',
                   lineHeight: 1.6,
@@ -168,7 +168,7 @@ export default function About() {
       <section style={{ padding: '5rem 0', background: 'var(--vc-bg-surface)' }}>
         <div className="vc-container" style={{ textAlign: 'center' }}>
           <span className="vc-section-label">The Platform</span>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', marginBottom: '3rem' }}>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.2rem)', marginBottom: '3rem' }}>
             Built for depth, not scale.
           </h2>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '4rem', flexWrap: 'wrap' }}>
@@ -179,10 +179,10 @@ export default function About() {
               { stat: '🎬', label: 'Cinematic Picks' },
             ].map((item, i) => (
               <div key={i} style={{ textAlign: 'center' }}>
-                <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '2.5rem', fontWeight: 900, color: 'var(--vc-gold)', marginBottom: '0.5rem' }}>
+                <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2.5rem', fontWeight: 900, color: 'var(--vc-gold)', marginBottom: '0.5rem' }}>
                   {item.stat}
                 </div>
-                <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-slate)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-slate)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                   {item.label}
                 </div>
               </div>
@@ -194,10 +194,10 @@ export default function About() {
       {/* CTA */}
       <section style={{ padding: '5rem 0', textAlign: 'center' }}>
         <div className="vc-container">
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', marginBottom: '1rem' }}>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.75rem, 3vw, 2.5rem)', marginBottom: '1rem' }}>
             Start your film journal.
           </h2>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', marginBottom: '2rem' }}>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', marginBottom: '2rem' }}>
             Track films, write reviews, build lists, and find your cinematic community.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>

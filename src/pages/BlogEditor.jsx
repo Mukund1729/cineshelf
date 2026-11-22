@@ -135,7 +135,7 @@ export default function BlogEditor() {
       <main className="vc-container" style={{ maxWidth: 900, paddingTop: '3rem', paddingBottom: '5rem' }}>
         <Link to="/journal" style={{ color: 'var(--vc-slate)', textDecoration: 'none' }}>← Back to Journal</Link>
         <span className="vc-section-label" style={{ display: 'block', marginTop: '2rem' }}>Community writing</span>
-        <h1 style={{ margin: '.5rem 0', fontFamily: 'Playfair Display, serif', fontSize: 'clamp(2rem, 6vw, 3.5rem)' }}>
+        <h1 style={{ margin: '.5rem 0', fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(2rem, 6vw, 3.5rem)' }}>
           Write for the Journal
         </h1>
         <p style={{ maxWidth: 700, color: 'var(--vc-slate)', lineHeight: 1.7 }}>
@@ -215,7 +215,7 @@ export default function BlogEditor() {
         {user?.isAdmin && (
           <section style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,.08)' }}>
             <span className="vc-section-label">Admin</span>
-            <h2 style={{ margin: '.4rem 0 1rem', fontFamily: 'Playfair Display, serif' }}>Community submissions</h2>
+            <h2 style={{ margin: '.4rem 0 1rem', fontFamily: 'var(--vc-font-display)' }}>Community submissions</h2>
             {queueLoading ? (
               <div className="vc-skeleton" style={{ height: 100, borderRadius: 12 }} />
             ) : submissions.length ? (

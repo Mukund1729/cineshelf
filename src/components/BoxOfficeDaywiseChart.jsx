@@ -37,7 +37,7 @@ export default function BoxOfficeDaywiseChart({ movieData, currency = 'INR' }) {
     <div className="bg-[#181c24] rounded-xl p-6 shadow-xl">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
-          <h3 className="text-xl font-bold text-white mb-1" style={{ fontFamily: 'Playfair Display, serif' }}>
+          <h3 className="text-xl font-bold text-white mb-1" style={{ fontFamily: 'var(--vc-font-display)' }}>
             {movieData.title}
           </h3>
           <p className="text-gray-400 text-sm">

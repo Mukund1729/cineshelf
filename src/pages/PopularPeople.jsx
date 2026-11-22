@@ -25,8 +25,8 @@ function PersonCard({ person }) {
           </div>
         )}
         <div className="vc-overlay">
-          <div style={{ fontFamily: 'Playfair Display, serif', fontSize: '0.88rem', fontWeight: 700, color: '#fff', marginBottom: '0.2rem' }}>{person.name}</div>
-          <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.72rem', color: 'var(--vc-slate)' }}>
+          <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.88rem', fontWeight: 700, color: '#fff', marginBottom: '0.2rem' }}>{person.name}</div>
+          <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-slate)' }}>
             {knownFor}{topFilm ? ` · ${topFilm}` : ''}
           </div>
         </div>
@@ -61,10 +61,10 @@ export default function PopularPeople() {
       <section style={{ padding: '4rem 0 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="vc-container">
           <span className="vc-section-label">People</span>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900 }}>
+          <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900 }}>
             Popular People
           </h1>
-          <p style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-slate)', marginTop: '0.5rem' }}>Directors, actors, writers, cinematographers.</p>
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', marginTop: '0.5rem' }}>Directors, actors, writers, cinematographers.</p>
         </div>
       </section>
       <section style={{ padding: '3rem 0' }}>
@@ -85,7 +85,7 @@ export default function PopularPeople() {
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
                 <button className="vc-btn vc-btn-outline" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} style={{ opacity: page === 1 ? 0.4 : 1 }}>← Prev</button>
-                <span style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-slate)', padding: '0 0.5rem' }}>Page {page} of {totalPages}</span>
+                <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-slate)', padding: '0 0.5rem' }}>Page {page} of {totalPages}</span>
                 <button className="vc-btn vc-btn-outline" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} style={{ opacity: page === totalPages ? 0.4 : 1 }}>Next →</button>
               </div>
             </>

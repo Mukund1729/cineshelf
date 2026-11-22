@@ -144,7 +144,7 @@ function PageFallback() {
     }}>
       <div style={{ textAlign: 'center' }}>
         <div className="vc-skeleton" style={{ width: 48, height: 48, borderRadius: '50%', margin: '0 auto 1rem' }} />
-        <p style={{ color: '#94a3b8', fontFamily: 'Lato, sans-serif', fontSize: '0.9rem' }}>Loading…</p>
+        <p style={{ color: '#94a3b8', fontFamily: 'var(--vc-font-body)', fontSize: '0.9rem' }}>Loading…</p>
       </div>
     </div>
   );
@@ -217,9 +217,9 @@ function AppWrapper() {
             {/* 404 */}
             <Route path="*" element={
               <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0a0f1a', color: '#fff', gap: '1rem' }}>
-                <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: '4rem', margin: 0, color: '#ffd700' }}>404</h1>
-                <p style={{ color: '#94a3b8', fontFamily: 'Lato, sans-serif' }}>This scene doesn't exist.</p>
-                <a href="/" style={{ color: '#01b4e4', textDecoration: 'none', fontFamily: 'Lato, sans-serif', border: '1px solid #01b4e4', padding: '0.5rem 1.5rem', borderRadius: '999px' }}>Back to Home</a>
+                <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '4rem', margin: 0, color: '#ffd700' }}>404</h1>
+                <p style={{ color: '#94a3b8', fontFamily: 'var(--vc-font-body)' }}>This scene doesn't exist.</p>
+                <a href="/" style={{ color: '#01b4e4', textDecoration: 'none', fontFamily: 'var(--vc-font-body)', border: '1px solid #01b4e4', padding: '0.5rem 1.5rem', borderRadius: '999px' }}>Back to Home</a>
               </div>
             } />
           </Routes>

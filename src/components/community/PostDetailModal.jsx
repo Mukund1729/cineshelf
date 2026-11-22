@@ -101,7 +101,7 @@ export default function PostDetailModal({ postId, onClose, onUpdated }) {
               <div className="cs-post-body">{post.body}</div>
             </SpoilerContent>
 
-            <h3 style={{ fontFamily: 'Playfair Display, serif', margin: '1.4rem 0 0.75rem' }}>
+            <h3 style={{ fontFamily: 'var(--vc-font-display)', margin: '1.4rem 0 0.75rem' }}>
               Comments ({comments.length})
             </h3>
             <div style={{ display: 'grid', gap: 10, marginBottom: 14 }}>

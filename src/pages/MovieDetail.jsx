@@ -400,6 +400,7 @@ const MovieDetail = () => {
 
         if (Array.isArray(data.reports) && data.reports.length) {
           const labels = {
+            budget: 'Budget',
             india_nett: 'India nett',
             india_gross: 'India gross',
             domestic_gross: 'Domestic gross',
@@ -431,10 +432,14 @@ const MovieDetail = () => {
         setRawBoxOfficeData(data);
       })
       .catch(err => {
-        if (active) {
+        if (!active) return;
+        // 404 = no publisher/history/TMDB figures yet — empty state, not an app error.
+        if (err.response?.status !== 404) {
           console.warn('Could not load box office:', err.message);
-          setBoxOfficeError(null);
         }
+        setBoxOffice([]);
+        setRawBoxOfficeData(null);
+        setBoxOfficeError(null);
       });
     return () => { active = false; };
   }, [movie?.id, movie?.source]);

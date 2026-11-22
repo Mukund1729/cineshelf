@@ -31,10 +31,10 @@ function ListCard({ list, onSelect, selected }) {
         {!list.coverImage && '📋'}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem', fontWeight: 600, color: 'var(--vc-cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.9rem', fontWeight: 600, color: 'var(--vc-cream)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {list.name}
         </div>
-        <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
+        <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'var(--vc-slate)' }}>
           {list.items?.length || 0} film{list.items?.length !== 1 ? 's' : ''} · {list.isPublic ? '🌐 Public' : '🔒 Private'}
         </div>
       </div>
@@ -64,7 +64,7 @@ function MoviePosterMini({ item, onRemove }) {
       >
         ✕
       </button>
-      <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.65rem', color: 'var(--vc-slate)', marginTop: '0.25rem', textAlign: 'center', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+      <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.65rem', color: 'var(--vc-slate)', marginTop: '0.25rem', textAlign: 'center', lineHeight: 1.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {item.title}
       </div>
     </div>
@@ -186,7 +186,7 @@ export default function Lists() {
         <div className="vc-container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <span className="vc-section-label">Collections</span>
-            <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900 }}>Your Lists</h1>
+            <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.75rem, 4vw, 3rem)', fontWeight: 900 }}>Your Lists</h1>
           </div>
           <button className="vc-btn vc-btn-primary" onClick={() => setShowCreate(v => !v)}>
             {showCreate ? 'Cancel' : '+ New List'}
@@ -199,10 +199,10 @@ export default function Lists() {
         <div style={{ background: 'var(--vc-bg-surface)', borderBottom: '1px solid rgba(255,255,255,0.06)', padding: '1.5rem 0' }}>
           <div className="vc-container" style={{ maxWidth: '560px' }}>
             <form onSubmit={handleCreateList} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <h3 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1rem', marginBottom: '0.25rem' }}>Create New List</h3>
+              <h3 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1rem', marginBottom: '0.25rem' }}>Create New List</h3>
               <input className="vc-input" placeholder="List name (required)" value={createName} onChange={e => setCreateName(e.target.value)} required />
               <textarea className="vc-input vc-textarea" style={{ minHeight: 80 }} placeholder="Description (optional)" value={createDesc} onChange={e => setCreateDesc(e.target.value)} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', cursor: 'pointer', color: 'var(--vc-slate)' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', cursor: 'pointer', color: 'var(--vc-slate)' }}>
                 <input type="checkbox" checked={createPublic} onChange={e => setCreatePublic(e.target.checked)} />
                 Public list (visible to others)
               </label>
@@ -230,8 +230,8 @@ export default function Lists() {
         ) : lists.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '5rem 2rem', color: 'var(--vc-slate)' }}>
             <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📋</div>
-            <p style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.25rem', color: 'var(--vc-cream)', marginBottom: '0.5rem' }}>No lists yet.</p>
-            <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem', marginBottom: '2rem' }}>Create your first curated list above.</p>
+            <p style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.25rem', color: 'var(--vc-cream)', marginBottom: '0.5rem' }}>No lists yet.</p>
+            <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.9rem', marginBottom: '2rem' }}>Create your first curated list above.</p>
             <button className="vc-btn vc-btn-primary" onClick={() => setShowCreate(true)}>+ Create a List</button>
           </div>
         ) : (
@@ -250,9 +250,9 @@ export default function Lists() {
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.75rem' }}>
                   <div>
-                    <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.5rem', marginBottom: '0.25rem' }}>{selectedList.name}</h2>
+                    <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.5rem', marginBottom: '0.25rem' }}>{selectedList.name}</h2>
                     {selectedList.description && (
-                      <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.85rem', color: 'var(--vc-slate)', margin: 0 }}>{selectedList.description}</p>
+                      <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-slate)', margin: 0 }}>{selectedList.description}</p>
                     )}
                     <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
                       <span className="vc-badge vc-badge-slate">{selectedList.isPublic ? '🌐 Public' : '🔒 Private'}</span>
@@ -296,7 +296,7 @@ export default function Lists() {
                             ) : (
                               <div style={{ width: '100%', aspectRatio: '2/3', background: 'var(--vc-bg-elevated)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: 'var(--vc-slate)', padding: '0.5rem', textAlign: 'center' }}>{movie.title}</div>
                             )}
-                            <div style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.65rem', color: 'var(--vc-slate)', marginTop: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.65rem', color: 'var(--vc-slate)', marginTop: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                               {movie.title} {movie.release_date ? `(${movie.release_date.slice(0, 4)})` : ''}
                             </div>
                           </div>
@@ -309,7 +309,7 @@ export default function Lists() {
                 {/* Films in list */}
                 {!selectedList.items?.length ? (
                   <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--vc-slate)', background: 'var(--vc-bg-card)', borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <p style={{ fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem' }}>No films in this list yet. Click "+ Add Film" to start.</p>
+                    <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.9rem' }}>No films in this list yet. Click "+ Add Film" to start.</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>

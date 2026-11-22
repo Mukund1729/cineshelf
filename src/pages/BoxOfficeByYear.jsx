@@ -77,7 +77,7 @@ export default function BoxOfficeByYear() {
   const pill = active => ({
     padding: '0.35rem 0.85rem',
     borderRadius: 'var(--vc-radius-pill)',
-    fontFamily: 'Outfit, sans-serif',
+    fontFamily: 'var(--vc-font-body)',
     fontSize: '0.78rem',
     fontWeight: 600,
     border: active ? '1px solid var(--vc-gold)' : '1px solid rgba(255,255,255,0.1)',
@@ -88,7 +88,7 @@ export default function BoxOfficeByYear() {
 
   return (
     <section style={{ paddingTop: '0.5rem', paddingBottom: '2rem' }}>
-      <h2 style={{ fontFamily: 'Playfair Display, serif', color: 'var(--vc-gold-light)' }}>
+      <h2 style={{ fontFamily: 'var(--vc-font-display)', color: 'var(--vc-gold-light)' }}>
         Lifetime reports by release year
       </h2>
       <p style={{ color: 'var(--vc-slate)', maxWidth: 700, fontSize: '0.85rem' }}>
@@ -124,7 +124,7 @@ export default function BoxOfficeByYear() {
         {loading ? (
           <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--vc-slate)' }}>Loading reports…</p>
         ) : (
-          <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontFamily: 'Outfit, sans-serif', fontSize: '0.84rem' }}>
+          <table style={{ width: '100%', minWidth: 700, borderCollapse: 'collapse', fontFamily: 'var(--vc-font-body)', fontSize: '0.84rem' }}>
             <thead>
               <tr style={{ background: 'var(--vc-bg-elevated)', color: 'var(--vc-gold)' }}>
                 <th style={{ padding: '0.7rem' }}>#</th>

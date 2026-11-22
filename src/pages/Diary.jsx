@@ -169,7 +169,7 @@ export default function Diary() {
       <section style={{ padding: '4rem 0 2rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="vc-container">
           <span className="vc-section-label">Your cinema journal</span>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', fontSize: 'clamp(2rem, 4vw, 3rem)', margin: '0.5rem 0' }}>Movie Diary</h1>
+          <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(2rem, 4vw, 3rem)', margin: '0.5rem 0' }}>Movie Diary</h1>
           <p style={{ color: 'var(--vc-slate)', maxWidth: 620, lineHeight: 1.6 }}>
             Log what you watched and when. Add a rating if you like—writing a review is completely optional.
           </p>
@@ -178,7 +178,7 @@ export default function Diary() {
 
       <main className="vc-container grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] items-start gap-8" style={{ paddingTop: '2rem', paddingBottom: '4rem' }}>
         <section>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.35rem', marginTop: 0 }}>Watched by date <span style={{ color: 'var(--vc-slate)', fontFamily: 'Outfit, sans-serif', fontSize: '0.9rem' }}>({entries.length})</span></h2>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.35rem', marginTop: 0 }}>Watched by date <span style={{ color: 'var(--vc-slate)', fontFamily: 'var(--vc-font-body)', fontSize: '0.9rem' }}>({entries.length})</span></h2>
           {loading ? (
             <p role="status" style={{ color: 'var(--vc-slate)' }}>Loading your diary…</p>
           ) : error && !entries.length ? (
@@ -198,7 +198,7 @@ export default function Diary() {
           ) : (
             Object.entries(groupedEntries).map(([date, dayEntries]) => (
               <section key={date} style={{ marginBottom: '1.5rem' }}>
-                <h3 style={{ fontFamily: 'Outfit, sans-serif', color: 'var(--vc-gold)', fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem' }}>{formatDiaryDate(date)}</h3>
+                <h3 style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-gold)', fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.75rem' }}>{formatDiaryDate(date)}</h3>
                 <div style={{ display: 'grid', gap: '0.75rem' }}>
                   {dayEntries.map(entry => (
                     <article key={entry._id} style={{ display: 'flex', gap: '1rem', padding: '1rem', borderRadius: 12, background: 'var(--vc-bg-card)', border: '1px solid rgba(255,255,255,0.06)' }}>
@@ -227,7 +227,7 @@ export default function Diary() {
         </section>
 
         <aside className="lg:sticky lg:top-20" style={{ padding: '1.25rem', borderRadius: 12, background: 'var(--vc-bg-card)', border: '1px solid rgba(255,255,255,0.07)' }}>
-          <h2 style={{ fontFamily: 'Playfair Display, serif', fontSize: '1.15rem', margin: '0 0 0.4rem' }}>Log a watch</h2>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.15rem', margin: '0 0 0.4rem' }}>Log a watch</h2>
           <p style={{ color: 'var(--vc-slate)', fontSize: '0.8rem', lineHeight: 1.5, marginTop: 0 }}>
             A date and title are enough. Rating and note are optional.
           </p>

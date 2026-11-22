@@ -98,7 +98,7 @@ export default function BlogPost() {
       <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)' }}>
         <Navbar />
         <div className="vc-container" style={{ maxWidth: 720, padding: '6rem 0', textAlign: 'center' }}>
-          <h1 style={{ fontFamily: 'Playfair Display, serif', color: 'var(--vc-gold)' }}>A page turned.</h1>
+          <h1 style={{ fontFamily: 'var(--vc-font-display)', color: 'var(--vc-gold)' }}>A page turned.</h1>
           <p style={{ color: 'var(--vc-slate)', marginBottom: '2rem' }}>{error || 'This essay could not be found.'}</p>
           <Link to="/journal" className="vc-btn vc-btn-outline">← Back to THE JOURNAL</Link>
         </div>
@@ -134,7 +134,7 @@ export default function BlogPost() {
 
         <h1 style={{
           margin: 0,
-          fontFamily: 'Playfair Display, serif',
+          fontFamily: 'var(--vc-font-display)',
           fontSize: 'clamp(2rem, 5vw, 3.8rem)',
           fontWeight: 800,
           lineHeight: 1.12,
@@ -195,12 +195,12 @@ export default function BlogPost() {
         {related.length > 0 && (
           <section style={{ marginTop: '4rem' }}>
             <span className="vc-section-label">Keep reading</span>
-            <h2 style={{ margin: '0.4rem 0 1.25rem', fontFamily: 'Playfair Display, serif', fontSize: '1.8rem' }}>More from the Journal</h2>
+            <h2 style={{ margin: '0.4rem 0 1.25rem', fontFamily: 'var(--vc-font-display)', fontSize: '1.8rem' }}>More from the Journal</h2>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '1rem' }}>
               {related.map(article => (
                 <Link key={article._id} to={`/journal/${article.slug}`} style={{ color: 'var(--vc-cream)', textDecoration: 'none', border: '1px solid rgba(255,255,255,.08)', borderRadius: 12, overflow: 'hidden', background: 'var(--vc-bg-card)' }}>
                   {article.coverImage && <img src={article.coverImage} alt="" loading="lazy" style={{ display: 'block', width: '100%', aspectRatio: '16/9', objectFit: 'cover' }} />}
-                  <span style={{ display: 'block', padding: '1rem', fontFamily: 'Playfair Display, serif', fontWeight: 600, lineHeight: 1.4 }}>{article.title}</span>
+                  <span style={{ display: 'block', padding: '1rem', fontFamily: 'var(--vc-font-display)', fontWeight: 600, lineHeight: 1.4 }}>{article.title}</span>
                 </Link>
               ))}
             </div>
