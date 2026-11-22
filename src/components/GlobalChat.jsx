@@ -120,38 +120,73 @@ export default function GlobalChat() {
   }, [open, loadVersion]);
 
   useEffect(() => {
+    // Intentional right-edge swipe only — avoid firing on light carousel scrolls
+    const EDGE_ZONE_PX = 28;
+    const MIN_SWIPE_PX = 140;
+    const HORIZONTAL_RATIO = 2.8;
     let touchStart = null;
+
     const handleTouchStart = event => {
-      if (window.innerWidth > 768 || event.touches.length !== 1) {
+      if (open || window.innerWidth > 768 || event.touches.length !== 1) {
         touchStart = null;
         return;
       }
       const target = event.target;
-      if (target instanceof Element && target.closest('input, textarea, button, a, [role="button"]')) {
+      if (
+        target instanceof Element
+        && target.closest('input, textarea, button, a, [role="button"], .vc-home-poster-row, .vc-mobile-grid, [data-scroll="x"]')
+      ) {
         touchStart = null;
         return;
       }
       const touch = event.touches[0];
-      touchStart = { x: touch.clientX, y: touch.clientY };
+      // Only begin gesture from the far right edge
+      if (touch.clientX < window.innerWidth - EDGE_ZONE_PX) {
+        touchStart = null;
+        return;
+      }
+      touchStart = { x: touch.clientX, y: touch.clientY, t: Date.now() };
     };
+
+    const handleTouchMove = event => {
+      if (!touchStart || event.touches.length !== 1) return;
+      const touch = event.touches[0];
+      const deltaY = Math.abs(touch.clientY - touchStart.y);
+      const deltaX = touchStart.x - touch.clientX;
+      // Cancel if user is clearly scrolling vertically
+      if (deltaY > 36 && deltaY > deltaX * 0.7) {
+        touchStart = null;
+      }
+    };
+
     const handleTouchEnd = event => {
-      if (!touchStart || event.changedTouches.length !== 1) return;
+      if (!touchStart || event.changedTouches.length !== 1) {
+        touchStart = null;
+        return;
+      }
       const touch = event.changedTouches[0];
       const deltaX = touch.clientX - touchStart.x;
       const deltaY = touch.clientY - touchStart.y;
-      if (deltaX < -80 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+      const elapsed = Date.now() - touchStart.t;
+      touchStart = null;
+
+      const isLeftSwipe = deltaX <= -MIN_SWIPE_PX;
+      const isMostlyHorizontal = Math.abs(deltaX) > Math.abs(deltaY) * HORIZONTAL_RATIO;
+      const isDeliberate = elapsed >= 80 && elapsed <= 900;
+      if (isLeftSwipe && isMostlyHorizontal && isDeliberate) {
         openInbox();
       }
-      touchStart = null;
     };
 
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
     window.addEventListener('touchend', handleTouchEnd, { passive: true });
     return () => {
       window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
     };
-  }, [openInbox]);
+  }, [open, openInbox]);
 
   const closeInbox = () => {
     setOpen(false);
