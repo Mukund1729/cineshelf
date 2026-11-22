@@ -1,9 +1,17 @@
 import { tmdbImageUrl } from '../api/tmdb';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import CinemaMarkdown from '../components/CinemaMarkdown';
 import { searchMovies } from '../api/tmdb';
 import { apiUrl } from '../api/config';
+import { hasAuthSession } from '../api/session';
+import {
+  ASK_FOLLOWUPS,
+  ASK_SYSTEM,
+  DISCOVER_SYSTEM,
+  buildTasteHintFromHistory,
+} from '../ai/cinemaPrompts';
 
 const HISTORY_KEY = 'vc-discover-history';
 const MAX_HISTORY = 40;
@@ -20,28 +28,18 @@ const MOODS = [
 const EXAMPLES = [
   'slow burn films like Aftersun',
   'Indian neo-noir with moral ambiguity',
-  'movies where the city feels like a character',
-  'films like Interstellar but more emotional',
-  'Korean revenge thrillers with style',
+  'movies with the emotional weight of Manchester by the Sea',
+  'underrated Malayalam thrillers',
+  'films about loneliness and alienation',
+  'movies with ambiguous endings',
 ];
 
-const DISCOVER_SYSTEM = (mood) => `You are an expert film curator for visual.cineaste — deep knowledge of world cinema, arthouse, Bollywood, regional Indian, East Asian, and classic Hollywood.
-
-The user describes what they want in natural language. Return ONLY valid JSON (no markdown):
-{
-  "movies": [
-    { "title": "Exact English release title", "year": 2019, "reason": "One vivid sentence why it fits" }
-  ]
-}
-
-Rules:
-- Return 6 movies when possible.
-- Use real, well-known titles TMDB can find.
-- Include year for disambiguation.
-- Match query intent first; ${mood && mood !== 'Any' ? `secondary filter: mood "${mood}".` : 'no mood filter.'}
-- Never ask clarifying questions — always recommend.`;
-
-const ASK_SYSTEM = `You are a knowledgeable, engaging movie expert for visual.cineaste. Answer clearly about films, directors, box office context, and recommendations. Be specific with titles and years. Keep answers focused (2–4 short paragraphs unless the user asks for a list). Do not be vague or generic.`;
+const ASK_EXAMPLES = [
+  'Explain the ending of Mulholland Drive',
+  'Compare Nolan and Villeneuve',
+  'What is the 180-degree rule?',
+  'Recommend essential Iranian films',
+];
 
 function loadHistory() {
   try {
@@ -97,6 +95,8 @@ async function enrichWithTmdb(items) {
             posterUrl: best.poster_path ? tmdbImageUrl(best.poster_path, 'w500') : null,
             rating: best.vote_average,
             reason: item.reason || '',
+            director: item.director || '',
+            genre: item.genre || '',
           };
         } catch {
           return null;
@@ -118,7 +118,9 @@ export default function Discover() {
   const [showHistory, setShowHistory] = useState(true);
   const [bgPoster, setBgPoster] = useState(null);
   const [primaryColor, setPrimaryColor] = useState('#6b7280');
-  const messagesEndRef = React.useRef(null);
+  const [tasteProfile, setTasteProfile] = useState({ watchlistTitles: [], likedTitles: [] });
+  const messagesEndRef = useRef(null);
+  const tasteLoadedRef = useRef(false);
 
   const currentMood = MOODS.find(m => m.name === selectedMood) || MOODS[0];
 
@@ -134,6 +136,49 @@ export default function Discover() {
     setHistory(loadHistory());
   }, []);
 
+  // Soft personalization from existing user data (watchlist + high ratings). Opt-in via auth only.
+  useEffect(() => {
+    if (tasteLoadedRef.current || !hasAuthSession()) return;
+    tasteLoadedRef.current = true;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    let cancelled = false;
+    (async () => {
+      try {
+        const [wlRes, revRes] = await Promise.allSettled([
+          fetch(apiUrl('/api/watchlist'), { headers, credentials: 'include' }),
+          fetch(apiUrl('/api/review'), { headers, credentials: 'include' }),
+        ]);
+        let watchlistTitles = [];
+        let likedTitles = [];
+        if (wlRes.status === 'fulfilled' && wlRes.value.ok) {
+          const data = await wlRes.value.json();
+          const movies = data?.movies || data?.data || [];
+          watchlistTitles = (Array.isArray(movies) ? movies : [])
+            .map(m => m.title || m.name)
+            .filter(Boolean);
+        }
+        if (revRes.status === 'fulfilled' && revRes.value.ok) {
+          const data = await revRes.value.json();
+          const reviews = data?.reviews || data?.data || (Array.isArray(data) ? data : []);
+          likedTitles = (Array.isArray(reviews) ? reviews : [])
+            .filter(r => {
+              const rating = Number(r.rating);
+              // Reviews use 0–10; treat 7+ as a strong positive signal.
+              return Number.isFinite(rating) && rating >= 7;
+            })
+            .map(r => r.title || r.movieTitle || r.movie?.title)
+            .filter(Boolean);
+        }
+        if (!cancelled) setTasteProfile({ watchlistTitles, likedTitles });
+      } catch {
+        /* personalization is optional — ignore failures */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   useEffect(() => {
     const moodData = MOODS.find(m => m.name === selectedMood);
     if (moodData) {
@@ -144,11 +189,11 @@ export default function Discover() {
     }
   }, [selectedMood]);
 
-  const callLLM = useCallback(async (messages, temperature = 0.75) => {
+  const callLLM = useCallback(async (messages, temperature = 0.75, maxTokens = 1600) => {
     const res = await fetch(apiUrl('/api/gpt'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages, temperature }),
+      body: JSON.stringify({ messages, temperature, max_tokens: maxTokens }),
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'AI request failed');
@@ -168,12 +213,18 @@ export default function Discover() {
 
     try {
       if (mode === 'ask') {
+        const taste = buildTasteHintFromHistory(loadHistory(), tasteProfile);
+        const systemContent = taste
+          ? `${ASK_SYSTEM}\n\nSoft personalization context (do not invent watch history):\n${taste}`
+          : ASK_SYSTEM;
+        // Keep last 16 turns + system so long chats stay contextual without unbounded payloads.
+        const prior = askMessages.slice(-16).map(m => ({ role: m.role, content: m.content }));
         const msgs = [
-          { role: 'system', content: ASK_SYSTEM },
-          ...askMessages.map(m => ({ role: m.role, content: m.content })),
+          { role: 'system', content: systemContent },
+          ...prior,
           { role: 'user', content: cleaned },
         ];
-        const reply = await callLLM(msgs, 0.7);
+        const reply = await callLLM(msgs, 0.65, 2200);
         const next = [...askMessages, { role: 'user', content: cleaned }, { role: 'assistant', content: reply }];
         setAskMessages(next);
         setInput('');
@@ -181,11 +232,12 @@ export default function Discover() {
         return;
       }
 
+      const tasteHint = buildTasteHintFromHistory(loadHistory(), tasteProfile);
       const messages = [
-        { role: 'system', content: DISCOVER_SYSTEM(selectedMood) },
+        { role: 'system', content: DISCOVER_SYSTEM(selectedMood, tasteHint) },
         { role: 'user', content: cleaned },
       ];
-      let raw = await callLLM(messages, 0.72);
+      let raw = await callLLM(messages, 0.72, 1600);
       let list;
       try {
         list = parseMoviesJson(raw);
@@ -198,10 +250,10 @@ export default function Discover() {
       let enriched = await enrichWithTmdb(list);
       if (enriched.length === 0 && selectedMood !== 'Any') {
         const retry = [
-          { role: 'system', content: DISCOVER_SYSTEM('Any') },
+          { role: 'system', content: DISCOVER_SYSTEM('Any', tasteHint) },
           { role: 'user', content: cleaned },
         ];
-        const raw2 = await callLLM(retry, 0.72);
+        const raw2 = await callLLM(retry, 0.72, 1600);
         list = parseMoviesJson(raw2);
         enriched = await enrichWithTmdb(list);
       }
@@ -282,7 +334,7 @@ export default function Discover() {
         borderBottom: '1px solid rgba(255,255,255,0.06)',
       }}>
         <div className="vc-container">
-          <span className="vc-section-label">AI · Discover</span>
+          <span className="vc-section-label">AI · Cinema Intelligence</span>
           <h1 style={{
             fontFamily: 'var(--vc-font-display)',
             fontSize: 'clamp(2rem, 4vw, 3rem)',
@@ -291,8 +343,8 @@ export default function Discover() {
           }}>
             Find films by <em style={{ color: 'var(--vc-gold)', fontStyle: 'italic' }}>feeling</em>
           </h1>
-          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', maxWidth: 560, marginBottom: '1.5rem' }}>
-            Describe a vibe, reference a film, or ask a cinema question — curated for cinephiles, powered by GPT-4o-mini.
+          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', maxWidth: 620, marginBottom: '1.5rem' }}>
+            Discover by mood and craft — or Ask Expert about directors, theory, endings, and filmmaking. Cinema-first intelligence on GPT-4o-mini.
           </p>
 
           <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
@@ -393,9 +445,25 @@ export default function Discover() {
               {/* Chat conversation below */}
               <div style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
                 {askMessages.length === 0 && (
-                  <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--vc-slate)' }}>
-                    <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '1rem', marginBottom: '0.5rem' }}>Start a conversation about cinema</p>
-                    <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem' }}>Ask about directors, films, box office, or recommendations</p>
+                  <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--vc-slate)' }}>
+                    <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--vc-cream)' }}>
+                      Ask a film scholar
+                    </p>
+                    <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', marginBottom: '1.25rem' }}>
+                      Endings, directors, craft, theory, world cinema — follow-ups keep the same thread.
+                    </p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', justifyContent: 'center' }}>
+                      {ASK_EXAMPLES.map(ex => (
+                        <button
+                          key={ex}
+                          type="button"
+                          onClick={() => { setInput(ex); handleSearch(null, ex); }}
+                          style={{ ...pill(false), fontSize: '0.72rem' }}
+                        >
+                          {ex}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 {askMessages.map((m, i) => (
@@ -411,14 +479,35 @@ export default function Discover() {
                       marginRight: m.role === 'assistant' ? '2rem' : '0',
                     }}
                   >
-                    <div style={{ fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--vc-gold)', marginBottom: '0.35rem' }}>
-                      {m.role === 'user' ? 'You' : 'Cineaste AI'}
+                    <div style={{ fontSize: '0.65rem', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--vc-gold)', marginBottom: '0.45rem' }}>
+                      {m.role === 'user' ? 'You' : 'CineShelf AI'}
                     </div>
-                    <div style={{ fontFamily: 'var(--vc-font-body)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                    {m.role === 'assistant' ? (
+                      <CinemaMarkdown content={m.content} />
+                    ) : (
+                      <div style={{ fontFamily: 'var(--vc-font-body)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                    )}
                   </div>
                 ))}
+                {!loading && askMessages.length > 0 && askMessages[askMessages.length - 1]?.role === 'assistant' && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem', margin: '0.25rem 0 1rem' }}>
+                    {ASK_FOLLOWUPS.map(q => (
+                      <button
+                        key={q}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => handleSearch(null, q)}
+                        style={{ ...pill(false), fontSize: '0.7rem' }}
+                      >
+                        {q}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {loading && (
-                  <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--vc-slate)' }}>Thinking…</div>
+                  <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--vc-slate)' }}>
+                    Reading the scene…
+                  </div>
                 )}
                 <div ref={messagesEndRef} />
               </div>
@@ -454,7 +543,9 @@ export default function Discover() {
                       </div>
                       <div style={{ padding: '0.75rem' }}>
                         <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.9rem', color: 'var(--vc-cream)', fontWeight: 700 }}>{m.title}</div>
-                        {m.year && <div style={{ fontSize: '0.72rem', color: 'var(--vc-slate)' }}>{m.year}</div>}
+                        <div style={{ fontSize: '0.72rem', color: 'var(--vc-slate)', marginTop: 2 }}>
+                          {[m.year, m.director, m.genre].filter(Boolean).join(' · ')}
+                        </div>
                         {m.reason && <p style={{ fontSize: '0.72rem', color: 'var(--vc-slate)', marginTop: '0.35rem', lineHeight: 1.4 }}>{m.reason}</p>}
                       </div>
                     </div>

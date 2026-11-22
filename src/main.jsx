@@ -12,10 +12,15 @@ import './LoadFonts';
 axios.defaults.baseURL = API_BASE_URL;
 axios.defaults.withCredentials = true;
 
+// Cookie sessions are canonical. Drop legacy Bearer tokens only after a successful
+// auth/me (or other) response so pages that still send Authorization can migrate
+// without wiping the signed-in UI before the cookie session is confirmed.
 axios.interceptors.response.use(response => {
   const headers = response.config?.headers;
   const authorization = headers?.Authorization || headers?.authorization;
-  if (typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
+  const url = response.config?.url || '';
+  const isAuthMe = /\/api\/auth\/me(?:\?|$)/.test(url);
+  if (isAuthMe && typeof authorization === 'string' && authorization.startsWith('Bearer ')) {
     localStorage.removeItem('token');
   }
   return response;

@@ -49,21 +49,24 @@ export default function Navbar() {
 
   useEffect(() => {
     const token = localStorage.getItem('token');
-    // Guest sessions: skip /api/auth/me so the console is not flooded with 401s.
-    if (!token) {
-      try {
-        const cached = JSON.parse(localStorage.getItem('user') || 'null');
-        if (cached) {
-          localStorage.removeItem('user');
-        }
-      } catch { /* ignore */ }
+    let cachedUser = null;
+    try {
+      cachedUser = JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+      cachedUser = null;
+    }
+
+    // Auth is cookie-first (HttpOnly vc_session). localStorage token is legacy only.
+    // Skip /api/auth/me for true guests to avoid 401 noise — but never wipe a cached
+    // signed-in user just because the Bearer token was cleared after login.
+    if (!token && !(cachedUser && cachedUser._id)) {
       setUser(null);
       return undefined;
     }
 
     let active = true;
     axios.get('/api/auth/me', {
-      headers: { Authorization: `Bearer ${token}` },
+      ...(token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
       withCredentials: true,
     })
       .then(res => {

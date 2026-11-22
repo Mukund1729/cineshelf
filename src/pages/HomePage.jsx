@@ -202,13 +202,33 @@ function AIDiscoverBlock() {
       const raw = res.data?.reply || '';
       setSource(res.data?.source || '');
 
-      // Parse JSON array from the response
-      const match = raw.match(/\[[\s\S]*\]/);
-      if (match) {
-        const parsed = JSON.parse(match[0]);
-        setResults(Array.isArray(parsed) ? parsed : []);
+      // Prefer JSON array; also accept { movies: [...] } from shared curator schema
+      let parsedResults = [];
+      try {
+        const objectMatch = raw.match(/\{[\s\S]*"movies"[\s\S]*\}/);
+        const arrayMatch = raw.match(/\[[\s\S]*\]/);
+        if (objectMatch) {
+          const obj = JSON.parse(objectMatch[0]);
+          parsedResults = Array.isArray(obj.movies) ? obj.movies : [];
+        } else if (arrayMatch) {
+          const parsed = JSON.parse(arrayMatch[0]);
+          parsedResults = Array.isArray(parsed) ? parsed : [];
+        }
+      } catch {
+        parsedResults = [];
+      }
+
+      if (parsedResults.length) {
+        setResults(parsedResults.map(item => ({
+          title: item.title || '',
+          year: item.year || '',
+          director: item.director || '',
+          description: item.description || item.reason || '',
+          moodTags: item.moodTags || [],
+          visualTags: item.visualTags || [],
+          language: item.language || '',
+        })));
       } else {
-        // Text format fallback
         setResults([{ title: 'Response', description: raw, year: '', director: '', moodTags: [], visualTags: [], language: '' }]);
       }
     } catch (err) {
@@ -222,12 +242,12 @@ function AIDiscoverBlock() {
   return (
     <section style={{ padding: '4rem 0', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
       <div className="vc-container">
-        <span className="vc-section-label">AI-Powered · GPT-4o</span>
+        <span className="vc-section-label">AI · Cinema Intelligence</span>
         <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 800, marginBottom: '0.5rem' }}>
           Discover by Vibe
         </h2>
         <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', fontSize: '0.9rem', marginBottom: '1.75rem', maxWidth: 520 }}>
-          Describe a feeling, director, era, or aesthetic — and get cinephile-grade recommendations.
+          Describe a feeling, director, craft, or reference film — get thoughtful world-cinema picks.
         </p>
 
         {/* Search bar */}

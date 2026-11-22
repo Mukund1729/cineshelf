@@ -6,21 +6,13 @@ dotenv.config();
 import express from 'express';
 import OpenAI from 'openai';
 import axios from 'axios';
+import { HOME_DISCOVER_SYSTEM_PROMPT } from '../ai/cinemaPrompts.js';
 
 const router = express.Router();
-
-const DISCOVER_SYSTEM_PROMPT = `You are a cinematic movie recommendation expert — a knowledgeable cinephile.
-Interpret user input from a cinephile's perspective and suggest highly relevant films.
-
-Accept free-form natural prompts like "films like Masaan" or "protagonist loses everything".
-Understand genre, emotion, character arcs, endings, tones, and keywords.
-Respond with 5–8 curated movie titles that match the query.
-For each movie: **Title (Year)** – *One-line reason why it fits.*
-
-Always aim for artistic, emotional, intelligent recommendations. No blank results.`;
+const DISCOVER_SYSTEM_PROMPT = HOME_DISCOVER_SYSTEM_PROMPT;
 
 // ── Unified AI caller ─────────────────────────────────────────────────────────
-async function callAI({ messages, temperature = 0.7, maxTokens = 1200 } = {}) {
+async function callAI({ messages, temperature = 0.7, maxTokens = 1600 } = {}) {
   // PRIMARY: OpenAI GPT-4o-mini
   if (process.env.OPENAI_API_KEY) {
     try {
@@ -44,13 +36,13 @@ async function callAI({ messages, temperature = 0.7, maxTokens = 1200 } = {}) {
     const model = process.env.OPENROUTER_MODEL || 'mistralai/mistral-7b-instruct';
     const res = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
-      { model, messages, temperature },
+      { model, messages, temperature, max_tokens: maxTokens },
       {
         headers: {
           Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
         },
-        timeout: 30000,
+        timeout: 45000,
       }
     );
     const reply = res.data.choices[0].message.content;
@@ -110,7 +102,7 @@ router.post('/gpt', async (req, res) => {
     const { reply, source } = await callAI({
       messages: usedMessages,
       temperature: typeof temperature === 'number' ? temperature : 0.8,
-      maxTokens: typeof maxTokensBody === 'number' ? maxTokensBody : 1200,
+      maxTokens: typeof maxTokensBody === 'number' ? maxTokensBody : 1600,
     });
     res.status(200).json({ reply, source });
   } catch (err) {
