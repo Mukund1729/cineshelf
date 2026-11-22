@@ -1,19 +1,12 @@
-import React, { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
-import { FiClock, FiCalendar, FiDollarSign, FiStar } from 'react-icons/fi';
-import { motion } from 'framer-motion';
-import BoxOfficeChart from "../components/BoxOfficeChart";
-import RatingStars from "../components/RatingStars";
-// import ReviewForm from "../components/ReviewForm";
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { hasAuthSession } from '../api/session';
+import BoxOfficeChart from '../components/BoxOfficeChart';
 import TrailerEmbed from '../components/TrailerEmbed';
-import JustWatch from 'justwatch-api';
-import SearchBar from "../components/SearchBar";
-import { searchMovies, searchPeople, tmdbGet, tmdbImageUrl } from '../api/tmdb';
 import Navbar from '../components/Navbar';
-
-// Remove StreamingPlatforms component, integrated its logic into MovieDetail
+import { hasAuthSession } from '../api/session';
+import { searchMovies, searchPeople, tmdbGet, tmdbImageUrl } from '../api/tmdb';
+import './movie-detail.css';
 
 const getTodayDate = () => {
   const date = new Date();
@@ -30,40 +23,45 @@ const CREW_SECTIONS = [
 ];
 
 const MovieDetail = () => {
-  // Always get id and navigate from params/hooks first so they're available for all hooks
   const { id } = useParams();
   const [showTrailer, setShowTrailer] = useState(false);
-  useEffect(() => setShowTrailer(false), [id]);
-  // Add to Watchlist state
+  const [overviewExpanded, setOverviewExpanded] = useState(false);
+  useEffect(() => {
+    setShowTrailer(false);
+    setOverviewExpanded(false);
+  }, [id]);
+
   const [addingToWatchlist, setAddingToWatchlist] = useState(false);
   const [watchlistToast, setWatchlistToast] = useState('');
   const [shareNotice, setShareNotice] = useState('');
-  // Review form state
+
+  // Review form — hydrated from MongoDB for the signed-in user
   const [reviewText, setReviewText] = useState('');
   const [reviewRating, setReviewRating] = useState('');
   const [watchedAt, setWatchedAt] = useState(getTodayDate);
+  const [myReviewId, setMyReviewId] = useState(null);
+  const [myReviewLoaded, setMyReviewLoaded] = useState(false);
   const [reviewLoading, setReviewLoading] = useState(false);
   const [reviewError, setReviewError] = useState('');
   const [diaryLoading, setDiaryLoading] = useState(false);
   const [diaryError, setDiaryError] = useState('');
   const [diaryNotice, setDiaryNotice] = useState('');
-  // Search bar state
-  const [searchQuery, setSearchQuery] = useState("");
+
+  const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState(null);
-  const debounceRef = React.useRef();
+  const debounceRef = useRef();
   const [showSearchBar, setShowSearchBar] = useState(false);
 
-  // Search effect: triggers search on input
   useEffect(() => {
-    if (!showSearchBar) return;
+    if (!showSearchBar) return undefined;
     if (!searchQuery || searchQuery.trim().length < 2) {
       setIsSearching(false);
       setSearchResults([]);
       setSearchError(null);
-      return;
+      return undefined;
     }
     setIsSearching(true);
     setSearchLoading(true);
@@ -71,7 +69,6 @@ const MovieDetail = () => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       try {
-        // Search both movies and people, combine results
         const [movieRes, peopleRes, originalRes] = await Promise.all([
           searchMovies(searchQuery),
           searchPeople(searchQuery),
@@ -87,23 +84,21 @@ const MovieDetail = () => {
           ...(originalRes?.people || []),
           ...(peopleRes?.results || []).map(result => ({ ...result, media_type: 'person' })),
         ];
-        // Optionally, add TV search here if needed
         setSearchResults([...movieResults, ...peopleResults]);
         setSearchLoading(false);
-      } catch (err) {
+      } catch {
         setSearchError('Failed to fetch results.');
         setSearchLoading(false);
       }
     }, 400);
-    // eslint-disable-next-line
+    return () => clearTimeout(debounceRef.current);
   }, [searchQuery, showSearchBar]);
 
-  // Fetch movie data from TMDb API
   const [movie, setMovie] = useState(null);
   const [movieLoading, setMovieLoading] = useState(true);
   const [movieError, setMovieError] = useState('');
   useEffect(() => {
-    if (!id) return;
+    if (!id) return undefined;
     let active = true;
     setMovie(null);
     setMovieError('');
@@ -131,7 +126,6 @@ const MovieDetail = () => {
     return () => { active = false; };
   }, [id]);
 
-  // Add to Watchlist handler
   const handleAddToWatchlist = async () => {
     const token = localStorage.getItem('token');
     if (!hasAuthSession()) {
@@ -150,10 +144,10 @@ const MovieDetail = () => {
         overview: movie.overview,
         releaseDate: movie.release_date,
         voteAverage: movie.vote_average,
-        genreIds: movie.genre_ids
+        genreIds: movie.genre_ids,
       }, {
         headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true
+        withCredentials: true,
       });
       setWatchlistToast('Added to watchlist!');
     } catch (err) {
@@ -179,7 +173,6 @@ const MovieDetail = () => {
     setTimeout(() => setShareNotice(''), 2500);
   };
 
-  // Submit review handler
   const [reviews, setReviews] = useState([]);
   const [reviewsError, setReviewsError] = useState(null);
   useEffect(() => {
@@ -187,6 +180,15 @@ const MovieDetail = () => {
     let active = true;
     setReviews([]);
     setReviewsError(null);
+    setMyReviewId(null);
+    setMyReviewLoaded(false);
+    setReviewText('');
+    setReviewRating('');
+    setWatchedAt(getTodayDate());
+    setDiaryNotice('');
+    setReviewError('');
+    setDiaryError('');
+
     axios.get(`/api/review/movie/${movie.id}`)
       .then(response => {
         if (active) setReviews(Array.isArray(response.data?.data) ? response.data.data : []);
@@ -194,6 +196,36 @@ const MovieDetail = () => {
       .catch(err => {
         if (active) setReviewsError(err.response?.data?.error || 'Could not load reviews.');
       });
+
+    if (hasAuthSession()) {
+      const token = localStorage.getItem('token');
+      axios.get(`/api/review/mine/${movie.id}`, {
+        params: { mediaType: 'movie' },
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        withCredentials: true,
+      })
+        .then(response => {
+          if (!active) return;
+          const mine = response.data?.data;
+          if (mine?._id) {
+            setMyReviewId(mine._id);
+            if (mine.rating != null && mine.rating !== '') {
+              setReviewRating(String(mine.rating));
+            }
+            setReviewText(typeof mine.review === 'string' ? mine.review : '');
+          }
+          if (response.data?.watchedAt) {
+            setWatchedAt(response.data.watchedAt);
+          }
+          setMyReviewLoaded(true);
+        })
+        .catch(() => {
+          if (active) setMyReviewLoaded(true);
+        });
+    } else {
+      setMyReviewLoaded(true);
+    }
+
     return () => { active = false; };
   }, [movie?.id]);
 
@@ -248,19 +280,30 @@ const MovieDetail = () => {
         watchedAt,
       }, {
         headers: { Authorization: `Bearer ${token}` },
-        withCredentials: true
+        withCredentials: true,
       });
       const savedReview = res.data?.data;
       if (!savedReview) throw new Error('Review was not returned by the server.');
       setReviews(current => [savedReview, ...current.filter(review => review._id !== savedReview._id)]);
-      setReviewText('');
-      setReviewRating('');
-      setDiaryNotice('Rating/review saved to your profile and Movie Diary.');
+      setMyReviewId(savedReview._id);
+      if (savedReview.rating != null && savedReview.rating !== '') {
+        setReviewRating(String(savedReview.rating));
+      }
+      setReviewText(typeof savedReview.review === 'string' ? savedReview.review : '');
+      setMyReviewLoaded(true);
+      setDiaryNotice(myReviewId
+        ? 'Your rating/review was updated and remains saved to your account.'
+        : 'Rating/review saved to your profile and Movie Diary.');
       setDiaryError('');
     } catch (err) {
       const savedReview = err.response?.data?.data;
       if (savedReview?._id) {
         setReviews(current => [savedReview, ...current.filter(review => review._id !== savedReview._id)]);
+        setMyReviewId(savedReview._id);
+        if (savedReview.rating != null && savedReview.rating !== '') {
+          setReviewRating(String(savedReview.rating));
+        }
+        setReviewText(typeof savedReview.review === 'string' ? savedReview.review : '');
       }
       setReviewError(err.response?.data?.error || err.message || 'Failed to submit review.');
     } finally {
@@ -309,13 +352,10 @@ const MovieDetail = () => {
     }
   };
 
-  // Box office state
   const [boxOffice, setBoxOffice] = useState([]);
   const [rawBoxOfficeData, setRawBoxOfficeData] = useState(null);
   const [boxOfficeError, setBoxOfficeError] = useState(null);
-  const [thumbError, setThumbError] = useState(false);
 
-  // Fetch box office from backend
   useEffect(() => {
     setBoxOfficeError(null);
     setBoxOffice([]);
@@ -346,15 +386,12 @@ const MovieDetail = () => {
                 val = val.toLocaleString();
               }
               list.push({ name: label, amount: `₹${val}${suffix}`, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate, sourceReportedValue: obj.sourceReportedValue });
-            } else {
-              // Assume USD
-              if (val >= 1000000) {
-                val = (val / 1000000).toFixed(2);
-                suffix = ' M';
-              } else {
-                val = val.toLocaleString();
-              }
+            } else if (val >= 1000000) {
+              val = (val / 1000000).toFixed(2);
+              suffix = ' M';
               list.push({ name: label, amount: `$${val}${suffix}`, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate, sourceReportedValue: obj.sourceReportedValue });
+            } else {
+              list.push({ name: label, amount: `$${val.toLocaleString()}`, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate, sourceReportedValue: obj.sourceReportedValue });
             }
           } else {
             list.push({ name: label, amount: val, source: obj.source, sourceUrl: obj.sourceUrl, isEstimate: obj.isEstimate });
@@ -394,16 +431,47 @@ const MovieDetail = () => {
         setRawBoxOfficeData(data);
       })
       .catch(err => {
-        if (active) console.warn('Could not load box office:', err.message);
+        if (active) {
+          console.warn('Could not load box office:', err.message);
+          setBoxOfficeError(null);
+        }
       });
     return () => { active = false; };
   }, [movie?.id, movie?.source]);
 
-  // Recommendations and actor movies state
   const [recommendations, setRecommendations] = useState([]);
   const [actorMovies, setActorMovies] = useState([]);
+  const [ottLinks, setOttLinks] = useState({ byProviderId: {}, byName: {}, preferredUrl: null });
+  const [ottLinksLoading, setOttLinksLoading] = useState(false);
 
-  // Fetch recommendations and actor movies when movie is loaded
+  useEffect(() => {
+    if (!movie?.id || movie.source === 'original') {
+      setOttLinks({ byProviderId: {}, byName: {}, preferredUrl: null });
+      return undefined;
+    }
+    let active = true;
+    setOttLinksLoading(true);
+    const year = movie.release_date ? movie.release_date.slice(0, 4) : '';
+    axios.get(`/api/streaming/ott-links/movie/${movie.id}`, {
+      params: { title: movie.title, year, country: 'IN' },
+    })
+      .then(({ data }) => {
+        if (!active) return;
+        setOttLinks({
+          byProviderId: data?.byProviderId || {},
+          byName: data?.byName || {},
+          preferredUrl: data?.preferredUrl || null,
+        });
+      })
+      .catch(() => {
+        if (active) setOttLinks({ byProviderId: {}, byName: {}, preferredUrl: null });
+      })
+      .finally(() => {
+        if (active) setOttLinksLoading(false);
+      });
+    return () => { active = false; };
+  }, [movie?.id, movie?.title, movie?.release_date, movie?.source]);
+
   useEffect(() => {
     const fetchRecsAndActorMovies = async () => {
       if (!movie) return;
@@ -412,723 +480,627 @@ const MovieDetail = () => {
         setRecommendations(movie.related || []);
         return;
       }
-      // Fetch recommendations
       try {
         const recData = await tmdbGet(`/movie/${movie.id}/recommendations`);
         const recs = (recData.results || []).filter(m => m.poster_path && m.id !== movie.id);
         setRecommendations(recs.slice(0, 20));
-      } catch (e) {
+      } catch {
         setRecommendations([]);
       }
-      // Fetch actor movies
-      if (!movie.credits || !movie.credits.cast || movie.credits.cast.length === 0) return;
+      if (!movie.credits?.cast?.length) return;
       const actor = movie.credits.cast[0];
-      if (!actor || !actor.id) return;
+      if (!actor?.id) return;
       try {
         const data = await tmdbGet(`/person/${actor.id}/movie_credits`);
-        // Filter out movies without poster and the current movie
         const filtered = (data.cast || []).filter(m => m.poster_path && m.id !== movie.id);
-        // Sort by popularity or release date
         filtered.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
         setActorMovies(filtered.slice(0, 20));
-      } catch (e) {
+      } catch {
         setActorMovies([]);
       }
     };
     fetchRecsAndActorMovies();
   }, [movie]);
+
   const crewSections = CREW_SECTIONS
     .map(({ label, jobs }) => ({
       label,
       people: (movie?.credits?.crew || []).filter(credit => jobs.includes(credit.job)),
     }))
     .filter(section => section.people.length > 0);
+  const directors = crewSections.find(section => section.label === 'Directed by')?.people || [];
   const trailer = movie?.videos?.results?.find(video => video.site === 'YouTube' && video.type === 'Trailer');
+  const releaseYear = movie?.release_date
+    ? movie.release_date.split('-')[0]
+    : (movie?.releaseYear || '');
+  const runtimeLabel = movie?.runtimeLabel
+    || (movie?.runtime ? `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m` : '');
+  const overviewText = movie?.overview || 'No overview available.';
+  const overviewNeedsToggle = overviewText.length > 280;
+  const leadActor = movie?.credits?.cast?.[0];
+  const watchRegion = movie?.['watch/providers']?.results?.IN
+    || movie?.['watch/providers']?.results?.US
+    || null;
+  const providerList = [
+    ...(watchRegion?.flatrate || []),
+    ...(watchRegion?.rent || []),
+    ...(watchRegion?.buy || []),
+  ].filter((provider, index, list) => (
+    list.findIndex(item => item.provider_id === provider.provider_id) === index
+  ));
+
+  const resolveProviderUrl = provider => {
+    const byId = ottLinks.byProviderId?.[provider.provider_id]?.url;
+    if (byId) return byId;
+
+    const rawName = String(provider.provider_name || '');
+    const nameKey = rawName.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    if (ottLinks.byName?.[nameKey]?.url) return ottLinks.byName[nameKey].url;
+
+    // Common TMDB ↔ JustWatch name mismatches
+    const aliases = [];
+    if (/netflix/i.test(rawName)) aliases.push('netflix');
+    if (/prime|amazon/i.test(rawName)) aliases.push('amazonprimevideo', 'amazonvideo', 'primevideo');
+    if (/hotstar|disney/i.test(rawName)) aliases.push('hotstar', 'disneyplushotstar', 'disneyplus');
+    if (/jio/i.test(rawName)) aliases.push('jiocinema');
+    if (/sony/i.test(rawName)) aliases.push('sonyliv');
+    if (/zee/i.test(rawName)) aliases.push('zee5');
+    if (/apple/i.test(rawName)) aliases.push('appletvplus', 'appletv', 'itunes', 'appletvstore');
+
+    for (const alias of aliases) {
+      if (ottLinks.byName?.[alias]?.url) return ottLinks.byName[alias].url;
+    }
+    return null;
+  };
+
+  // Prefer real OTT title page (Netflix etc.). Never send users to TMDB.
+  const watchMovieUrl = ottLinks.preferredUrl || movie?.watchUrl || '';
+  const backdropUrl = movie?.backdrop_path
+    ? tmdbImageUrl(movie.backdrop_path, 'original')
+    : (movie?.poster_path ? tmdbImageUrl(movie.poster_path, 'original') : '');
 
   return (
-    <div
-      className="movie-detail-page relative min-h-screen w-full"
-      style={
-        movie && movie.backdrop_path
-          ? {
-              backgroundImage: `url(${tmdbImageUrl(movie.backdrop_path, 'original')})`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
-              maxWidth: '100vw',
-              overflowX: 'hidden',
-            }
-          : { backgroundColor: '#10111a', maxWidth: '100vw', overflowX: 'hidden' }
-      }
-    >
-      {/* Overlay for readability */}
-      <div className="absolute inset-0 bg-black/80 z-0" />
+    <div className="md-page movie-detail-page">
+      {backdropUrl ? (
+        <div
+          className="md-backdrop"
+          style={{ backgroundImage: `url(${backdropUrl})` }}
+          aria-hidden="true"
+        />
+      ) : null}
+      <div className="md-backdrop-shade" aria-hidden="true" />
       <Navbar />
-      <button
-        className="movie-detail-search vc-btn vc-btn-ghost"
-        onClick={() => setShowSearchBar(true)}
-        aria-label="Open search"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+
+      <button type="button" className="md-search-btn" onClick={() => setShowSearchBar(true)} aria-label="Open search">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
         </svg>
       </button>
-      {/* Overlay Search Bar (TVDetail style) */}
+
       {showSearchBar && (
-        <div className="fixed top-0 left-0 w-full h-full z-50 flex items-start justify-end bg-black/40" onClick={() => setShowSearchBar(false)}>
-          <div className="mt-8 mr-8 bg-[#181c24] rounded-xl shadow-2xl p-4 w-full max-w-xs flex flex-col relative" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 104.5 4.5a7.5 7.5 0 0012.15 12.15z" />
-              </svg>
+        <div className="md-search-overlay" onClick={() => setShowSearchBar(false)}>
+          <div className="md-search-panel" onClick={event => event.stopPropagation()}>
+            <div className="md-search-row">
               <input
                 type="text"
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search movies, people..."
-                className="flex-1 bg-transparent outline-none px-2 py-1 text-base text-white placeholder:text-gray-400"
+                onChange={event => setSearchQuery(event.target.value)}
+                placeholder="Search movies, people…"
                 autoFocus
               />
-              <button onClick={() => { setShowSearchBar(false); setSearchQuery(''); setIsSearching(false); }} className="ml-2 text-gray-400 hover:text-red-400">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+              <button
+                type="button"
+                className="md-btn md-btn-ghost"
+                onClick={() => { setShowSearchBar(false); setSearchQuery(''); setIsSearching(false); }}
+              >
+                Close
               </button>
             </div>
-            {/* Results Dropdown - absolutely positioned below bar */}
             {isSearching && searchQuery && (
-              <div className="absolute left-0 right-0 top-14 z-50 bg-[#232526] rounded-xl shadow p-2 max-h-80 overflow-y-auto border border-cyan-900/40" style={{minWidth:'100%'}}>
-                {searchLoading ? (
-                  <div className="text-center text-cyan-300 py-6">Searching...</div>
-                ) : searchError ? (
-                  <div className="text-center text-red-400 py-6">{searchError}</div>
-                ) : searchResults.length === 0 ? (
-                  <div className="text-center text-gray-400 py-6">No results found.</div>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {searchResults.filter(r => r.poster_path || r.profile_path || r.source === 'original').map(result => (
-                      <Link
-                        key={result.id}
-                        to={result.media_type === 'person' ? `/person/${result.id}` : result.media_type === 'movie' ? `/movie/${result.id}` : `/tv/${result.id}`}
-                        className="flex items-center gap-3 bg-[#181c24] rounded-lg overflow-hidden shadow hover:scale-105 transition-transform duration-200 p-2"
-                        onClick={() => { setIsSearching(false); setShowSearchBar(false); setSearchQuery(''); setSearchResults([]); }}
-                      >
-                        {result.poster_path || result.profile_path ? (
-                          <img
-                            src={tmdbImageUrl(result.poster_path || result.profile_path, 'w92')}
-                            alt={result.title || result.name}
-                            className="w-10 h-14 object-cover rounded"
-                          />
-                        ) : (
-                          <span aria-hidden="true" className="grid h-14 w-10 place-items-center rounded bg-cyan-900/40 text-cyan-200">
-                            {(result.name || '?').slice(0, 1).toUpperCase()}
-                          </span>
-                        )}
-                        <div className="flex-1">
-                          <div className="text-white font-semibold text-sm truncate">{result.title || result.name}</div>
-                          {result.vote_average && (
-                            <div className="text-xs text-yellow-300">⭐ {result.vote_average.toFixed(1)}</div>
-                          )}
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+              <div className="md-search-results">
+                {searchLoading && <div className="md-status">Searching…</div>}
+                {searchError && <div className="md-status is-error">{searchError}</div>}
+                {!searchLoading && !searchError && searchResults.length === 0 && (
+                  <div className="md-status">No results found.</div>
                 )}
+                {!searchLoading && !searchError && searchResults
+                  .filter(result => result.poster_path || result.profile_path || result.source === 'original')
+                  .map(result => (
+                    <Link
+                      key={`${result.media_type}-${result.id}`}
+                      to={result.media_type === 'person' ? `/person/${result.id}` : result.media_type === 'movie' ? `/movie/${result.id}` : `/tv/${result.id}`}
+                      className="md-search-item"
+                      onClick={() => { setIsSearching(false); setShowSearchBar(false); setSearchQuery(''); setSearchResults([]); }}
+                    >
+                      {result.poster_path || result.profile_path ? (
+                        <img src={tmdbImageUrl(result.poster_path || result.profile_path, 'w92')} alt="" />
+                      ) : (
+                        <span className="md-search-fallback">{(result.name || '?')[0]}</span>
+                      )}
+                      <div>
+                        <strong>{result.title || result.name}</strong>
+                        {result.vote_average ? <div className="md-review-time">★ {result.vote_average.toFixed(1)}</div> : null}
+                      </div>
+                    </Link>
+                  ))}
               </div>
             )}
           </div>
         </div>
       )}
-      {/* Main Content Container */}
-      <div className="vc-container movie-detail-content relative z-10 pt-10 pb-16">
-        {movieLoading && <p className="py-12 text-center text-cyan-200">Loading movie details…</p>}
-        {!movieLoading && movieError && <p role="alert" className="py-12 text-center text-red-300">{movieError}</p>}
-        {/* Main Movie Content with Poster and Info */}
+
+      <div className="md-shell movie-detail-content">
+        {movieLoading && (
+          <div className="md-status" aria-live="polite">
+            <div className="md-skeleton" style={{ height: 220, marginBottom: 12 }} />
+            Loading movie details…
+          </div>
+        )}
+        {!movieLoading && movieError && <p role="alert" className="md-status is-error">{movieError}</p>}
+
         {movie && (
-          <div className="flex flex-col md:flex-row gap-6 md:gap-10 items-start p-0 mb-10 mt-2 md:mt-4 bg-gradient-to-br from-[#10111a]/80 via-[#181c24]/70 to-[#10111a]/80 rounded-3xl shadow-2xl border border-cyan-900/50 backdrop-blur-xl mx-auto px-4 md:px-6 py-6 md:py-8" style={{maxWidth:'100%', boxShadow:'0 12px 36px 0 rgba(0,0,0,0.30)'}}>
-            {/* Movie Poster */}
-            <div className="flex-shrink-0 mx-auto md:mx-0 mb-6 md:mb-0 flex flex-col items-center gap-4">
-              <div className="relative group rounded-2xl bg-gradient-to-br from-[#181c24]/80 via-[#232526]/60 to-[#10111a]/80 border-2 border-cyan-900/40 shadow-xl transition-all duration-300 hover:shadow-cyan-400/40 hover:border-cyan-400/80 hover:scale-105" style={{padding:'0.5rem', boxShadow:'0 6px 32px 0 rgba(0,255,255,0.08)'}}>
+          <>
+            <section className="md-hero" aria-label="Movie introduction">
+              <div className="md-poster-col">
                 <img
-                  src={movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w400') : '/placeholder.jpg'}
+                  className="md-poster"
+                  src={movie.poster_path ? tmdbImageUrl(movie.poster_path, 'w500') : '/placeholder.jpg'}
                   alt={movie.title}
-                  className="rounded-xl shadow-lg w-36 md:w-44 h-auto object-cover bg-[#232526] border-2 border-cyan-900 group-hover:border-cyan-400 group-hover:shadow-cyan-400/40 transition-all duration-300"
-                  style={{ maxHeight: 280 }}
                 />
-                <div className="absolute inset-0 rounded-xl pointer-events-none group-hover:ring-4 group-hover:ring-cyan-400/30 transition-all duration-300" />
-              </div>
-              {/* Streaming Platforms & Trailer Button (below poster, grid/wrap) */}
-              <div className="w-full flex flex-col items-center mt-3">
-                <div className="flex flex-wrap justify-center gap-3 w-full">
-                  {movie['watch/providers']?.results?.IN?.flatrate?.map(provider => {
-                    // Try to get the direct link to the movie on the provider
-                    let providerLink = null;
-                    // TMDb sometimes provides a 'link' at the country level, not per provider
-                    if (movie['watch/providers']?.results?.IN?.link) {
-                      providerLink = movie['watch/providers'].results.IN.link;
-                      // For some providers, we can try to deep-link using known URL patterns
-                      // Example: Prime Video, Netflix, Hotstar, etc.
-                      // You can expand this mapping as needed
-                      const providerUrls = {
-                        119: 'https://www.primevideo.com/', // Prime Video
-                        8: 'https://www.netflix.com/', // Netflix
-                        122: 'https://www.hotstar.com/', // Hotstar
-                        384: 'https://www.jiocinema.com/', // JioCinema
-                        3: 'https://www.youtube.com/', // YouTube
-                        2: 'https://www.apple.com/in/apple-tv-plus/', // Apple TV+
-                        15: 'https://www.hulu.com/', // Hulu
-                        9: 'https://www.amazon.com/Instant-Video/', // Amazon Video
-                        350: 'https://www.sonyliv.com/', // Sony LIV
-                        531: 'https://www.zee5.com/', // Zee5
-                        307: 'https://www.mxplayer.in/', // MX Player
-                        387: 'https://erosnow.com/', // Eros Now
-                        232: 'https://www.altbalaji.com/', // ALTBalaji
-                        188: 'https://www.hoichoi.tv/' // Hoichoi
-                      };
-                      // If provider_id is in mapping, use their homepage as fallback
-                      if (providerUrls[provider.provider_id]) {
-                        providerLink = providerUrls[provider.provider_id];
-                      }
-                    }
-                    // If no link, fallback to provider homepage
-                    if (!providerLink) {
-                      providerLink = '#';
-                    }
-                    return (
+
+                <div className="md-hero-actions-bar md-poster-actions">
+                  {(providerList.length > 0 || watchMovieUrl || ottLinksLoading || trailer) && (
+                    <p className="md-watch-label">Where to watch</p>
+                  )}
+                  {providerList.length > 0 && (
+                    <div className="md-providers" aria-label="Where to watch">
+                      {providerList.slice(0, 6).map(provider => {
+                        const href = resolveProviderUrl(provider) || watchMovieUrl || '';
+                        return (
+                          <a
+                            key={provider.provider_id}
+                            href={href || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={href ? `Watch on ${provider.provider_name}` : `${provider.provider_name} link loading…`}
+                            onClick={event => {
+                              if (!href) {
+                                event.preventDefault();
+                                window.alert(ottLinksLoading
+                                  ? 'Finding the official watch link… try again in a moment.'
+                                  : `Direct ${provider.provider_name} link is not available for this title.`);
+                              }
+                            }}
+                          >
+                            <img src={tmdbImageUrl(provider.logo_path, 'w45')} alt="" />
+                            <span>{provider.provider_name}</span>
+                          </a>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <div className="md-cta-row">
+                    {(watchMovieUrl || ottLinksLoading) && (
                       <a
-                        key={provider.provider_id}
-                        href={providerLink}
+                        className="md-btn md-btn-accent"
+                        href={watchMovieUrl || '#'}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-block"
-                        title={provider.provider_name}
-                        onClick={e => {
-                          if (providerLink === '#') {
-                            e.preventDefault();
-                            alert('Direct link to this movie on the provider is not available.');
+                        onClick={event => {
+                          if (!watchMovieUrl) {
+                            event.preventDefault();
+                            window.alert('Finding the official watch link… try again in a moment.');
                           }
                         }}
                       >
-                        <img
-                          src={tmdbImageUrl(provider.logo_path, 'w45')}
-                          alt={provider.provider_name}
-                          className="w-10 h-10 rounded bg-white/10 border border-cyan-900 hover:scale-110 transition shadow"
-                        />
+                        {ottLinksLoading && !watchMovieUrl ? 'Finding watch link…' : 'Watch now'}
                       </a>
-                    );
-                  })}
+                    )}
+                    {movie.watchUrl && movie.watchUrl !== watchMovieUrl && (
+                      <a className="md-btn md-btn-danger" href={movie.watchUrl} target="_blank" rel="noopener noreferrer">
+                        Watch Full Film
+                      </a>
+                    )}
+                    {trailer && (
+                      <button
+                        type="button"
+                        className="md-btn md-btn-danger md-btn-trailer"
+                        onClick={() => setShowTrailer(current => !current)}
+                        aria-expanded={showTrailer}
+                        aria-controls="movie-trailer-player"
+                      >
+                        {showTrailer ? 'Hide Trailer' : 'Play Trailer'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {movie.watchUrl && (
-                  <a
-                    href={movie.watchUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-2 mt-3 bg-red-600 hover:bg-red-700 text-white rounded-full shadow text-sm font-bold transition"
-                  >
-                    Watch Full Film on YouTube
-                  </a>
-                )}
-                {trailer && (
-                  <button
-                    type="button"
-                    onClick={() => setShowTrailer(current => !current)}
-                    aria-expanded={showTrailer}
-                    aria-controls="movie-trailer-player"
-                    className="flex items-center gap-2 px-3 py-2 mt-3 bg-red-600 hover:bg-red-700 text-white rounded-full shadow text-sm font-bold transition"
-                    title={showTrailer ? 'Hide trailer' : 'Play trailer'}
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M21.8 8.001a2.752 2.752 0 0 0-1.936-1.947C18.003 5.5 12 5.5 12 5.5s-6.003 0-7.864.554A2.752 2.752 0 0 0 2.2 8.001 28.434 28.434 0 0 0 2 12a28.434 28.434 0 0 0 .2 3.999 2.752 2.752 0 0 0 1.936 1.947C5.997 18.5 12 18.5 12 18.5s6.003 0 7.864-.554A2.752 2.752 0 0 0 21.8 15.999 28.434 28.434 0 0 0 22 12a28.434 28.434 0 0 0-.2-3.999zM10 15.5v-7l6 3.5-6 3.5z"/></svg>
-                    {showTrailer ? 'Hide Trailer' : 'Play Trailer'}
-                  </button>
-                )}
               </div>
-            </div>
-            {/* Main Details */}
-            <div className="flex-1 w-full bg-transparent px-0 md:px-6">
-              <h1 className="text-2xl md:text-4xl font-bold font-playfair flex items-center mb-4 text-cyan-200 drop-shadow-lg">
-                {movie.title}
-                {(movie.release_date || movie.releaseYear) && (
-                  <span className="text-cyan-400 text-sm md:text-lg font-normal ml-2">({movie.release_date ? movie.release_date.split("-")[0] : movie.releaseYear})</span>
-                )}
-              </h1>
-              <div className="flex flex-wrap gap-2 md:gap-4 text-sm md:text-base bg-white/10 p-3 md:p-4 rounded-xl border border-cyan-900/30 mb-5 shadow-inner font-semibold tracking-wide" style={{fontSize:'0.9rem', lineHeight:'1.5'}}>
-                {movie.source === 'original' ? (
-                  <div className="flex items-center gap-1.5">
-                    <FiStar className="text-cyan-300 text-lg" />
-                    <span>{ratingCount ? `${averageRating.toFixed(1)}/10 · ${ratingCount} ratings` : 'Not rated yet'}</span>
-                  </div>
-                ) : movie.vote_average != null && (
-                  <div className="flex items-center gap-1.5">
-                    <FiStar className="text-cyan-300 text-lg" />
-                    <span>{movie.vote_average?.toFixed(1)}/10</span>
-                  </div>
-                )}
-                {movie.revenue && (
-                  <div className="flex items-center gap-1.5">
-                    <FiDollarSign className="text-green-300 text-lg" />
-                    <span>{movie.revenue.toLocaleString()}</span>
-                  </div>
-                )}
-                {(movie.runtimeLabel || movie.runtime) && (
-                  <div className="flex items-center gap-1.5">
-                    <FiClock className="text-pink-300 text-lg" />
-                    <span>{movie.runtimeLabel || `${Math.floor(movie.runtime / 60)}h ${movie.runtime % 60}m`}</span>
-                  </div>
-                )}
-                {movie.release_date && (
-                  <div className="flex items-center gap-1.5">
-                    <FiCalendar className="text-yellow-300 text-lg" />
-                    <span>{new Date(movie.release_date).toLocaleDateString()}</span>
-                  </div>
-                )}
-              </div>
-              {movie.tagline && <p className="mb-4 italic text-cyan-100">“{movie.tagline}”</p>}
-              {/* Overview */}
-              <section className="mb-5">
-                <h3 className="text-xs text-cyan-400 uppercase tracking-wider border-b border-gray-700 mb-1 pb-0.5 font-semibold">Overview</h3>
-                <p className="text-sm md:text-base text-gray-200 leading-normal font-lato" style={{fontSize:'0.9rem', lineHeight:'1.5', letterSpacing:'0.01em', padding:'0.1rem 0.05rem'}}>
-                  {movie.overview || 'No overview available.'}
-                </p>
-              </section>
-              {movie.quote && (
-                <blockquote className="mb-5 border-l-2 border-cyan-500 pl-4 text-sm italic text-gray-200">
-                  “{movie.quote}”
-                </blockquote>
-              )}
-              {movie.copyrightNotice && (
-                <p className="mb-5 text-xs text-gray-400">{movie.copyrightNotice}</p>
-              )}
-              {/* Crew Info */}
-              <section className="mb-4">
-                <h3 className="text-xs text-cyan-400 uppercase tracking-wider border-b border-gray-700 mb-1 pb-0.5 font-semibold">Crew</h3>
-                <div className="flex flex-col gap-1">
-                  {crewSections.map(({ label, people }) => (
-                    <span className="text-sm md:text-base" key={label}>
-                      <span className="text-cyan-300 font-semibold">{label}</span>{' '}
-                      {people.map((person, index) => (
-                        <React.Fragment key={`${person.id}-${person.job}-${index}`}>
-                          <Link
-                            to={`/person/${person.id}`}
-                            className="text-cyan-200 hover:text-pink-400 underline font-semibold transition-colors"
-                          >
-                            {person.name}
-                          </Link>
-                          {index < people.length - 1 && ', '}
+
+              <div className="md-hero-copy">
+                <div className="md-hero-intro">
+                  <h1 className="md-title">
+                    {movie.title}
+                    {releaseYear ? <span>({releaseYear})</span> : null}
+                  </h1>
+                  {directors.length > 0 && (
+                    <p className="md-directed">
+                      {releaseYear ? <span className="md-directed-year">{releaseYear} · </span> : null}
+                      <span className="md-directed-label">Directed by </span>
+                      {directors.slice(0, 3).map((person, index) => (
+                        <React.Fragment key={person.id}>
+                          {index > 0 && ', '}
+                          <Link to={`/person/${person.id}`}>{person.name}</Link>
                         </React.Fragment>
                       ))}
-                    </span>
-                  ))}
+                    </p>
+                  )}
+                  {runtimeLabel ? <p className="md-runtime-mobile">{runtimeLabel}</p> : null}
                 </div>
-              </section>
-              {movie.specialThanks?.length > 0 && (
-                <section className="mb-4">
-                  <h3 className="text-xs text-cyan-400 uppercase tracking-wider border-b border-gray-700 mb-1 pb-0.5 font-semibold">Special Thanks</h3>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1">
-                    {movie.specialThanks.map((person, index) => (
-                      <Link key={`${person.id}-${index}`} to={`/person/${person.id}`} className="text-sm text-cyan-200 underline hover:text-pink-400">
-                        {person.name}
-                      </Link>
+
+                {movie.tagline ? <p className="md-tagline">“{movie.tagline}”</p> : null}
+
+                <div className="md-meta">
+                  {movie.source === 'original' ? (
+                    <span><strong>{ratingCount ? averageRating.toFixed(1) : '—'}</strong> /10 community</span>
+                  ) : movie.vote_average != null ? (
+                    <span><strong>{movie.vote_average.toFixed(1)}</strong> /10 TMDB</span>
+                  ) : null}
+                  {runtimeLabel ? <span>{runtimeLabel}</span> : null}
+                  {movie.release_date ? <span>{new Date(movie.release_date).toLocaleDateString()}</span> : null}
+                  {movie.revenue ? <span>${Number(movie.revenue).toLocaleString()}</span> : null}
+                </div>
+
+                {Array.isArray(movie.genres) && movie.genres.length > 0 && (
+                  <div className="md-genres">
+                    {movie.genres.map(genre => (
+                      <span key={genre.id || genre.name} className="md-chip">
+                        {genre.name}
+                      </span>
                     ))}
                   </div>
-                </section>
-              )}
-              {/* ...existing code... (Cast section removed from here) */}
-            </div>
-          </div>
-        )}
-        {movie && trailer && showTrailer && (
-          <div id="movie-trailer-player" className="w-full max-w-4xl mx-auto mt-6">
-            <TrailerEmbed trailerUrl={trailer.key} movieTitle={movie.title} />
-          </div>
-        )}
-        {/* Top Cast Section (separate, aesthetic card) */}
-        {movie && movie.credits && movie.credits.cast && movie.credits.cast.length > 0 && (
-          <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto mt-6 mb-8">
-            <div className="bg-[#181c24]/95 rounded-2xl shadow-xl border border-cyan-900/30 px-4 md:px-6 py-4 md:py-5">
-              <h3 className="text-lg md:text-2xl font-bold text-cyan-300 mb-3 font-playfair tracking-tight flex items-center gap-2 drop-shadow-lg">
-                <span className="text-xl md:text-2xl">👥</span> Top Cast
-              </h3>
-              <div className="flex overflow-x-auto gap-3 md:gap-4 pb-1 no-scrollbar vc-mobile-grid">
-                {movie.credits.cast.slice(0, 10).map(actor => (
-                  <Link
-                    key={actor.id}
-                    to={`/person/${actor.id}`}
-                    className="min-w-[75px] md:min-w-[90px] max-w-[75px] md:max-w-[90px] flex-shrink-0 bg-[#232526]/80 rounded-xl overflow-hidden shadow-md hover:scale-105 hover:shadow-cyan-400 transition-transform duration-200 flex flex-col items-center border border-cyan-900/30"
-                  >
-                    <img
-                      src={actor.profile_path ? tmdbImageUrl(actor.profile_path, 'w200') : '/actor-placeholder.jpg'}
-                      alt={actor.name}
-                      className="w-full h-20 md:h-24 object-cover rounded-t-xl bg-[#10111a]"
-                    />
-                    <span className="text-white font-semibold text-[10px] md:text-xs text-center p-1 line-clamp-2 font-lato">{actor.name}</span>
-                    <span className="text-cyan-300 font-bold mb-2 text-[9px] md:text-[10px] truncate">{actor.character}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Box Office Section (now outside the highlight box, always visible) */}
-        {movie && movie.source !== 'original' && <div className="w-full max-w-4xl 2xl:max-w-5xl mx-auto mt-2 mb-10">
-          <h4 className="text-base text-cyan-300 uppercase tracking-wider font-bold mb-2">Box Office</h4>
-          {boxOfficeError ? (
-            <p className="text-base text-red-400">{boxOfficeError}</p>
-          ) : boxOffice.length === 0 ? (
-            <p className="text-base text-gray-400 italic">No box office data available.</p>
-          ) : (
-            <div>
-              <div className="flex flex-wrap gap-4 mb-6">
-                {boxOffice.map((item, idx) => (
-                  <div key={item.name + '-' + idx} className="flex flex-col items-center justify-center min-w-[9rem] max-w-[14rem] bg-[#232526]/80 rounded-xl shadow border border-cyan-900/40 px-4 py-3 hover:scale-105 transition-transform duration-200" title={`Source: ${item.source}`}>
-                    <span className="font-bold text-cyan-300 text-xs uppercase tracking-wider mb-1">{item.name}</span>
-                    <span className="text-base text-yellow-400 font-extrabold">{item.amount}</span>
-                    {item.sourceReportedValue && (
-                      <span className="text-[10px] text-gray-400">Provider: {item.sourceReportedValue}</span>
-                    )}
-                    <span className="text-[10px] text-gray-500 mt-1 capitalize">
-                      {item.sourceUrl ? <a href={item.sourceUrl} target="_blank" rel="noreferrer" className="underline">via {item.source}</a> : `via ${item.source}`}
-                    </span>
-                    {item.isEstimate && <span className="text-[10px] text-yellow-500 mt-1">Publisher estimate</span>}
-                  </div>
-                ))}
-              </div>
-
-              {rawBoxOfficeData?.daywiseCollection?.value?.length > 0 && (
-                <div className="mt-6">
-                  <BoxOfficeChart
-                    data={rawBoxOfficeData.daywiseCollection.value.map(d => ({
-                      date: d.date ? new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `Day ${d.day}`,
-                      amount: d.amount
-                    }))}
-                  />
-                </div>
-              )}
-            </div>
-          )}
-        </div>}
-        {/* Reviews Section (full width) */}
-        <section className="bg-[#181c24]/95 rounded-2xl p-0 mb-8 relative z-20 border border-cyan-900/30 shadow-xl overflow-hidden">
-          {/* Add to Watchlist Button - prominent, card style */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 px-6 py-6 bg-gradient-to-r from-[#10111a]/90 via-[#181c24]/80 to-[#10111a]/90 border-b border-cyan-900/20">
-            <div className="flex items-center gap-3">
-              <button
-                className={`px-6 py-2 bg-cyan-500 hover:bg-cyan-400 text-white rounded-full shadow-lg font-bold text-lg tracking-wide transition flex items-center gap-2 border-2 border-cyan-700/40 ${addingToWatchlist ? 'opacity-60 pointer-events-none' : ''}`}
-                onClick={handleAddToWatchlist}
-                disabled={addingToWatchlist}
-                style={{boxShadow:'0 2px 12px 0 rgba(0,255,255,0.08)'}}
-              >
-                {addingToWatchlist ? (
-                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>
-                ) : (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                    Add to Watchlist
-                  </>
                 )}
-              </button>
-              {watchlistToast && <span className="text-cyan-300 text-base font-semibold drop-shadow">{watchlistToast}</span>}
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleShare}
-                className="rounded-full border border-cyan-700/50 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-900/30"
-              >
-                Share
-              </button>
-              {shareNotice && <span role="status" className="text-sm text-cyan-300">{shareNotice}</span>}
-              <div className="hidden md:block text-gray-400 text-sm italic font-lato">Keep track of your favorites and never miss a rewatch!</div>
-            </div>
-          </div>
-          {/* Divider */}
-          <div className="w-full h-0.5 bg-gradient-to-r from-cyan-900/0 via-cyan-900/40 to-cyan-900/0 my-0" />
-          {/* Review Form and Reviews - side by side on desktop, stacked on mobile */}
-          <div className="flex flex-col md:flex-row gap-6 md:gap-8 px-4 md:px-6 py-6 md:py-8">
-            {/* Review Form */}
-            <form onSubmit={handleReviewSubmit} className="flex-1 max-w-lg bg-[#10111a]/80 rounded-xl shadow-md border border-cyan-900/20 p-4 md:p-6 flex flex-col gap-3 mx-auto">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-cyan-300 text-xl font-bold">Your Review</span>
-                <span className="text-gray-400 text-xs font-lato">(review text optional)</span>
-              </div>
-              <div className="flex items-center gap-3 mb-2">
-                <input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={reviewRating}
-                  onChange={e => setReviewRating(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-16 p-2 rounded bg-gray-800 text-cyan-200 text-lg font-bold border-2 border-cyan-700 focus:ring-2 focus:ring-cyan-400 outline-none transition"
-                  placeholder="8"
-                  aria-label="Rating out of 10"
-                />
-                <span className="text-yellow-300 text-lg font-bold">★</span>
-                <span className="text-gray-400 text-xs">/10 · optional for diary log</span>
-              </div>
-              <label htmlFor="movie-watched-date" className="text-gray-300 text-sm font-semibold">Watched on</label>
-              <input
-                id="movie-watched-date"
-                type="date"
-                value={watchedAt}
-                max={getTodayDate()}
-                onChange={e => setWatchedAt(e.target.value)}
-                className="w-full p-2 rounded bg-gray-800 text-white border border-cyan-700 focus:ring-2 focus:ring-cyan-400 outline-none"
-                required
-              />
-              <textarea
-                className="w-full p-3 rounded bg-gray-800 text-white text-base font-lato border border-cyan-700 focus:ring-2 focus:ring-cyan-400 outline-none transition mb-2"
-                rows={3}
-                placeholder="What did you think? Share your thoughts... (optional)"
-                value={reviewText}
-                onChange={e => setReviewText(e.target.value)}
-              />
-              <div className="flex flex-col sm:flex-row gap-2 mt-2">
-                <button type="submit" className="bg-cyan-500 hover:bg-cyan-400 text-white px-6 py-2 rounded-full font-bold text-base shadow transition" disabled={reviewLoading || diaryLoading}>
-                  {reviewLoading ? 'Saving…' : 'Save Rating / Review'}
-                </button>
-                <button type="button" onClick={handleDiaryLog} className="border border-cyan-600 text-cyan-200 hover:bg-cyan-900/30 px-6 py-2 rounded-full font-bold text-base transition" disabled={diaryLoading || reviewLoading}>
-                  {diaryLoading ? 'Logging…' : 'Log only to Diary'}
-                </button>
-              </div>
-              {reviewError && <div className="text-red-400 text-base mt-1">{reviewError}</div>}
-              {diaryError && <div role="alert" className="text-red-400 text-sm mt-1">{diaryError}</div>}
-              {diaryNotice && <div role="status" className="text-emerald-300 text-sm mt-1">{diaryNotice}</div>}
-            </form>
-            {/* Reviews List */}
-            <div className="flex-1 flex flex-col gap-4 max-w-2xl mx-auto">
-              <div className="text-cyan-200 text-lg font-bold mb-2 flex items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 17.75l-6.172 3.245 1.179-6.873L2 9.505l6.908-1.004L12 2.75l3.092 5.751L22 9.505l-5.007 4.617 1.179 6.873z" /></svg> Recent Reviews</div>
-              <section
-                aria-label="Community rating summary"
-                className="rounded-xl border border-cyan-900/30 bg-[#10111a]/80 p-4"
-              >
-                <div className="mb-4 flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-sm text-gray-400">Community rating</p>
-                    <p className="text-3xl font-bold text-yellow-300">
-                      {ratingCount ? averageRating.toFixed(1) : '—'}
-                      <span className="ml-1 text-sm font-medium text-gray-400">/ 10</span>
-                    </p>
-                  </div>
-                  <p className="text-right text-xs text-gray-400">
-                    {ratingCount} rating{ratingCount === 1 ? '' : 's'}
-                  </p>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  {[...ratingDistribution].reverse().map(({ rating, count }) => (
-                    <div key={rating} className="flex items-center gap-2 text-xs">
-                      <span className="w-5 text-right text-gray-400">{rating}</span>
-                      <div
-                        role="progressbar"
-                        aria-label={`${rating} out of 10 ratings`}
-                        aria-valuemin={0}
-                        aria-valuemax={largestRatingBucket}
-                        aria-valuenow={count}
-                        className="h-2 flex-1 overflow-hidden rounded-full bg-gray-800"
-                      >
-                        <div
-                          className="h-full rounded-full bg-yellow-400 transition-all"
-                          style={{ width: `${(count / largestRatingBucket) * 100}%` }}
-                        />
+
+                <p className="md-overview-label">Overview</p>
+                <p className={`md-overview${overviewNeedsToggle && !overviewExpanded ? ' is-clamped' : ''}`}>
+                  {overviewText}
+                </p>
+                {overviewNeedsToggle && (
+                  <button type="button" className="md-readmore" onClick={() => setOverviewExpanded(current => !current)}>
+                    {overviewExpanded ? 'Show less' : 'Read more'}
+                  </button>
+                )}
+
+                {movie.quote && (
+                  <blockquote className="md-tagline" style={{ marginTop: '1rem' }}>“{movie.quote}”</blockquote>
+                )}
+                {movie.copyrightNotice && <p className="md-empty" style={{ marginTop: '0.75rem' }}>{movie.copyrightNotice}</p>}
+
+                {crewSections.length > 0 && (
+                  <div className="md-crew">
+                    <p className="md-section-label">Crew</p>
+                    {crewSections.map(({ label, people }) => (
+                      <div className="md-crew-row" key={label}>
+                        <span className="md-crew-label">{label}</span>
+                        {people.map((person, index) => (
+                          <React.Fragment key={`${person.id}-${person.job}-${index}`}>
+                            <Link to={`/person/${person.id}`}>{person.name}</Link>
+                            {index < people.length - 1 ? ', ' : ''}
+                          </React.Fragment>
+                        ))}
                       </div>
-                      <span className="w-5 text-gray-400">{count}</span>
+                    ))}
+                  </div>
+                )}
+
+                {movie.specialThanks?.length > 0 && (
+                  <div className="md-crew">
+                    <p className="md-section-label">Special Thanks</p>
+                    <div className="md-crew-row">
+                      {movie.specialThanks.map((person, index) => (
+                        <React.Fragment key={`${person.id}-${index}`}>
+                          <Link to={`/person/${person.id}`}>{person.name}</Link>
+                          {index < movie.specialThanks.length - 1 ? ', ' : ''}
+                        </React.Fragment>
+                      ))}
                     </div>
+                  </div>
+                )}
+
+                <div className="md-hero-actions">
+                  <button
+                    type="button"
+                    className="md-btn md-btn-accent"
+                    onClick={handleAddToWatchlist}
+                    disabled={addingToWatchlist}
+                  >
+                    {addingToWatchlist ? 'Adding…' : 'Add to Watchlist'}
+                  </button>
+                  <button type="button" className="md-btn md-btn-ghost" onClick={handleShare}>
+                    Share
+                  </button>
+                  {watchlistToast && <span className="md-toast" role="status">{watchlistToast}</span>}
+                  {shareNotice && <span className="md-toast" role="status">{shareNotice}</span>}
+                </div>
+              </div>
+            </section>
+
+            {trailer && showTrailer && (
+              <div id="movie-trailer-player" className="md-trailer-wrap">
+                <TrailerEmbed trailerUrl={trailer.key} movieTitle={movie.title} />
+              </div>
+            )}
+
+            {movie.credits?.cast?.length > 0 && (
+              <section className="md-section" aria-label="Top cast">
+                <div className="md-section-head">
+                  <div>
+                    <h2>Top Cast</h2>
+                    <p>Performances that define the film.</p>
+                  </div>
+                </div>
+                <div className="md-cast-rail">
+                  {movie.credits.cast.slice(0, 12).map(actor => (
+                    <Link key={actor.id} to={`/person/${actor.id}`} className="md-cast-card">
+                      {actor.profile_path ? (
+                        <img src={tmdbImageUrl(actor.profile_path, 'w185')} alt="" loading="lazy" />
+                      ) : (
+                        <span className="md-cast-fallback">{(actor.name || '?')[0]}</span>
+                      )}
+                      <div className="md-cast-name">{actor.name}</div>
+                      <div className="md-cast-role">{actor.character}</div>
+                    </Link>
                   ))}
                 </div>
               </section>
-              {reviewsError ? (
-                <p className="text-base text-red-400">{reviewsError}</p>
-              ) : (!Array.isArray(reviews) || reviews.length === 0) ? (
-                <p className="text-base text-gray-400 italic">No reviews found.</p>
-              ) : (
-                reviews.map((review, idx) => (
-                  <Link
-                    key={review._id || review.id || idx}
-                    to={`/review/${review._id}`}
-                    className="flex items-start gap-3 bg-[#181c24]/80 rounded-lg shadow border border-cyan-900/20 p-4 hover:border-cyan-700 transition-colors"
-                    style={{ color: 'inherit', textDecoration: 'none' }}
-                    aria-label={`Read ${review.user?.name || review.user?.username || 'member'}'s full review`}
-                  >
-                    <div className="flex-shrink-0 w-10 h-10 rounded-full bg-cyan-900/40 flex items-center justify-center text-2xl font-bold text-cyan-300 shadow-inner">
-                      <span>{(review.user?.name || review.user?.username || 'U')[0]?.toUpperCase()}</span>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-yellow-300 font-bold text-lg">★ {review.rating}/10</span>
-                        <span className="text-cyan-200 text-base font-semibold">
-                          {review.user?.name || (review.user?.username ? `@${review.user.username}` : 'CineShelf member')}
-                        </span>
-                      </div>
-                      <div
-                        className="text-base text-cyan-100 font-lato mb-1"
-                        style={{
-                          display: '-webkit-box',
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: 'vertical',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {review.review || 'Rating only'}
-                      </div>
-                      <div className="text-gray-500 text-xs font-lato">{review.createdAt ? new Date(review.createdAt).toLocaleString() : ''}</div>
-                      {review.review && <span className="mt-2 inline-block text-sm font-semibold text-cyan-300">Read full review →</span>}
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-          </div>
-        </section>
-        {/* More Like This Carousel (infinite train/loop, always visible) */}
-        {recommendations.length > 0 && (
-          <div className="w-full max-w-5xl mx-auto mt-8">
-            <h3 className="text-2xl font-bold text-cyan-300 mb-4 font-playfair tracking-tight flex items-center gap-2 drop-shadow-lg">
-              <span className="text-3xl">🎬</span> More Like This
-            </h3>
-            <div className="relative w-full overflow-hidden rounded-lg border border-cyan-900 bg-[#10111a]/60 shadow-inner" style={{height: '11rem'}}>
-              <div className="pointer-events-none absolute inset-0 z-10 rounded-lg" style={{background: 'linear-gradient(90deg, #10111a 0%, transparent 8%, transparent 92%, #10111a 100%)'}}></div>
-              <div
-                className="flex gap-5 absolute left-0 top-0 h-full items-center carousel-row-mlt no-scrollbar"
-                style={{
-                  width: `${recommendations.length * 2 * 7}rem`,
-                  minWidth: `${recommendations.length * 2 * 7}rem`,
-                  maxWidth: `${recommendations.length * 2 * 7}rem`,
-                  height: '11rem',
-                  animation: `carousel-row-mlt 60s linear infinite`,
-                  zIndex: 5,
-                  overflow: 'hidden',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.animationPlayState = 'paused'; }}
-                onMouseLeave={e => { e.currentTarget.style.animationPlayState = 'running'; }}
-              >
-                {[...recommendations, ...recommendations].map((m, idx) => (
-                  <Link
-                    key={m.id + '-' + idx}
-                    to={`/movie/${m.id}`}
-                    className="inline-block align-top w-28 group snap-start"
-                    style={{ minWidth: '7rem', maxWidth: '7rem', perspective: '600px' }}
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.09, rotateY: 8 }}
-                      className="rounded-xl overflow-hidden shadow-lg border-2 border-transparent group-hover:border-cyan-400 transition-all duration-200 bg-[#232526] hover:shadow-cyan-400 hover:-translate-y-1 hover:brightness-110"
-                      style={{ boxShadow: '0 6px 24px 0 rgba(0,0,0,0.25), 0 1.5px 6px 0 rgba(0,255,255,0.08)' }}
-                    >
-                      <img
-                        src={tmdbImageUrl(m.poster_path, 'w500')}
-                        alt={m.title}
-                        className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-200"
-                        style={{ transform: 'translateZ(0)' }}
-                      />
-                    </motion.div>
-                    <div className="mt-1 text-xs text-center text-gray-200 font-semibold truncate px-1 font-lato">
-                      {m.title}
-                    </div>
-                    <div className="text-xs text-yellow-300 text-center font-lato">⭐ {m.vote_average?.toFixed(1)}</div>
-                  </Link>
-                ))}
-              </div>
-              <style>{`
-                @keyframes carousel-row-mlt {
-                  0% { transform: translateX(0); }
-                  100% { transform: translateX(-${recommendations.length * 7}rem); }
-                }
-                .carousel-row-mlt {
-                  scrollbar-width: none;
-                  -ms-overflow-style: none;
-                  overflow-x: hidden !important;
-                  min-width: 0;
-                  width: 100%;
-                  max-width: none;
-                  height: 11rem;
-                }
-                .carousel-row-mlt::-webkit-scrollbar {
-                  display: none;
-                }
-                .no-scrollbar {
-                  scrollbar-width: none !important;
-                  -ms-overflow-style: none !important;
-                }
-                .no-scrollbar::-webkit-scrollbar {
-                  display: none !important;
-                }
-              `}</style>
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* More from [Actor Name] Carousel (infinite train/loop, always visible) */}
-        {movie && movie.credits && movie.credits.cast && movie.credits.cast.length > 0 && actorMovies.length > 0 && (
-          <div className="w-full max-w-5xl mx-auto mt-8">
-            <h3 className="text-2xl font-bold text-pink-300 mb-4 font-playfair tracking-tight flex items-center gap-2 drop-shadow-lg">
-              <span className="text-3xl">🌟</span> More from {movie.credits.cast[0].name}
-            </h3>
-            <div className="relative w-full overflow-hidden rounded-lg border border-pink-900 bg-[#181c24]/60 shadow-inner" style={{height: '11rem'}}>
-              <div className="pointer-events-none absolute inset-0 z-10 rounded-lg" style={{background: 'linear-gradient(90deg, #181c24 0%, transparent 8%, transparent 92%, #181c24 100%)'}}></div>
-              <div
-                className="flex gap-5 absolute left-0 top-0 h-full items-center carousel-row-actor no-scrollbar"
-                style={{
-                  width: `${actorMovies.length * 2 * 7}rem`,
-                  minWidth: `${actorMovies.length * 2 * 7}rem`,
-                  maxWidth: `${actorMovies.length * 2 * 7}rem`,
-                  height: '11rem',
-                  animation: `carousel-row-actor 70s linear infinite`,
-                  zIndex: 5,
-                  overflow: 'hidden',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.animationPlayState = 'paused'; }}
-                onMouseLeave={e => { e.currentTarget.style.animationPlayState = 'running'; }}
-              >
-                {[...actorMovies, ...actorMovies].map((m, idx) => (
-                  <Link
-                    key={m.id + '-actor-' + idx}
-                    to={`/movie/${m.id}`}
-                    className="inline-block align-top w-28 group snap-start"
-                    style={{ minWidth: '7rem', maxWidth: '7rem', perspective: '600px' }}
-                  >
-                    <motion.div
-                      whileHover={{ scale: 1.09, rotateY: -8 }}
-                      className="rounded-xl overflow-hidden shadow-lg border-2 border-transparent group-hover:border-pink-400 transition-all duration-200 bg-[#232526] hover:shadow-pink-400 hover:-translate-y-1 hover:brightness-110"
-                      style={{ boxShadow: '0 6px 24px 0 rgba(0,0,0,0.25), 0 1.5px 6px 0 rgba(255,0,255,0.08)' }}
-                    >
-                      <img
-                        src={tmdbImageUrl(m.poster_path, 'w500')}
-                        alt={m.title}
-                        className="w-full h-36 object-cover group-hover:scale-105 transition-transform duration-200"
-                        style={{ transform: 'translateZ(0)' }}
-                      />
-                    </motion.div>
-                    <div className="mt-1 text-xs text-center text-gray-200 font-semibold truncate px-1 font-lato">
-                      {m.title}
+            {movie.source !== 'original' && (
+              <section className="md-section" aria-label="Box office">
+                <div className="md-section-head">
+                  <div>
+                    <h2>Box Office</h2>
+                    <p>Figures from available reporting sources.</p>
+                  </div>
+                </div>
+                {boxOfficeError ? (
+                  <p className="md-alert">{boxOfficeError}</p>
+                ) : boxOffice.length === 0 ? (
+                  <p className="md-empty">No box office data available for this title yet.</p>
+                ) : (
+                  <>
+                    <div className="md-bo-grid">
+                      {boxOffice.map((item, index) => (
+                        <div key={`${item.name}-${index}`} className="md-bo-card">
+                          <span>{item.name}</span>
+                          <strong>{item.amount}</strong>
+                          {item.sourceReportedValue && <small>Provider: {item.sourceReportedValue}</small>}
+                          <small>
+                            {item.sourceUrl ? (
+                              <a href={item.sourceUrl} target="_blank" rel="noreferrer">via {item.source}</a>
+                            ) : `via ${item.source}`}
+                            {item.isEstimate ? ' · estimate' : ''}
+                          </small>
+                        </div>
+                      ))}
                     </div>
-                    <div className="text-xs text-yellow-300 text-center font-lato">⭐ {m.vote_average?.toFixed(1)}</div>
-                  </Link>
-                ))}
+                    {rawBoxOfficeData?.daywiseCollection?.value?.length > 0 && (
+                      <div style={{ marginTop: '1.25rem' }}>
+                        <BoxOfficeChart
+                          data={rawBoxOfficeData.daywiseCollection.value.map(day => ({
+                            date: day.date
+                              ? new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                              : `Day ${day.day}`,
+                            amount: day.amount,
+                          }))}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            )}
+
+            <section className="md-section" aria-label="Ratings and reviews">
+              <div className="md-section-head">
+                <div>
+                  <h2>Ratings & Reviews</h2>
+                  <p>Your score stays on your CineShelf account.</p>
+                </div>
               </div>
-              <style>{`
-                @keyframes carousel-row-actor {
-                  0% { transform: translateX(0); }
-                  100% { transform: translateX(-${actorMovies.length * 7}rem); }
-                }
-                .carousel-row-actor {
-                  scrollbar-width: none;
-                  -ms-overflow-style: none;
-                  overflow-x: hidden !important;
-                  min-width: 0;
-                  width: 100%;
-                  max-width: none;
-                  height: 11rem;
-                }
-                .carousel-row-actor::-webkit-scrollbar {
-                  display: none;
-                }
-                .no-scrollbar {
-                  scrollbar-width: none !important;
-                  -ms-overflow-style: none !important;
-                }
-                .no-scrollbar::-webkit-scrollbar {
-                  display: none !important;
-                }
-              `}</style>
-            </div>
-          </div>
+
+              <div className="md-reviews">
+                <form className="md-panel md-form" onSubmit={handleReviewSubmit}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                    <h3 style={{ margin: 0 }}>Your Review</h3>
+                    {myReviewLoaded && myReviewId && (
+                      <span className="md-saved-pill">
+                        Saved to your account{reviewRating !== '' ? ` · ${reviewRating}/10` : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  <label>
+                    Your rating
+                    <div className="md-rating-row">
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        step="0.5"
+                        value={reviewRating}
+                        onChange={event => setReviewRating(event.target.value === '' ? '' : event.target.value)}
+                        placeholder="8"
+                        aria-label="Rating out of 10"
+                      />
+                      <span style={{ color: '#d5b23d', fontWeight: 700 }}>★ / 10</span>
+                    </div>
+                  </label>
+
+                  <label htmlFor="movie-watched-date">
+                    Watched on
+                    <input
+                      id="movie-watched-date"
+                      type="date"
+                      value={watchedAt}
+                      max={getTodayDate()}
+                      onChange={event => setWatchedAt(event.target.value)}
+                      required
+                    />
+                  </label>
+
+                  <label htmlFor="movie-review-text">
+                    Written review <span style={{ fontWeight: 400 }}>(optional)</span>
+                    <textarea
+                      id="movie-review-text"
+                      rows={5}
+                      maxLength={2000}
+                      placeholder="What stayed with you after the credits?"
+                      value={reviewText}
+                      onChange={event => setReviewText(event.target.value)}
+                    />
+                  </label>
+
+                  <div className="md-form-actions">
+                    <button type="submit" className="md-btn md-btn-accent" disabled={reviewLoading || diaryLoading}>
+                      {reviewLoading ? 'Saving…' : (myReviewId ? 'Update Rating / Review' : 'Save Rating / Review')}
+                    </button>
+                    <button
+                      type="button"
+                      className="md-btn md-btn-ghost"
+                      onClick={handleDiaryLog}
+                      disabled={diaryLoading || reviewLoading}
+                    >
+                      {diaryLoading ? 'Logging…' : 'Log only to Diary'}
+                    </button>
+                  </div>
+                  {reviewError && <p className="md-alert" role="alert">{reviewError}</p>}
+                  {diaryError && <p className="md-alert" role="alert">{diaryError}</p>}
+                  {diaryNotice && <p className="md-notice" role="status">{diaryNotice}</p>}
+                </form>
+
+                <div className="md-panel">
+                  <h3>Community Reviews</h3>
+                  <div className="md-community-score">
+                    <div>
+                      <span className="md-section-label">Community rating</span>
+                      <strong>
+                        {ratingCount ? averageRating.toFixed(1) : '—'}
+                        <span style={{ fontSize: '0.9rem', color: '#9a958c', marginLeft: 4 }}>/ 10</span>
+                      </strong>
+                    </div>
+                    <span className="md-empty" style={{ fontStyle: 'normal' }}>
+                      {ratingCount} rating{ratingCount === 1 ? '' : 's'}
+                    </span>
+                  </div>
+
+                  <div className="md-bars" aria-label="Community rating summary">
+                    {[...ratingDistribution].reverse().map(({ rating, count }) => (
+                      <div key={rating} className="md-bar-row">
+                        <span>{rating}</span>
+                        <div
+                          className="md-bar-track"
+                          role="progressbar"
+                          aria-label={`${rating} out of 10 ratings`}
+                          aria-valuemin={0}
+                          aria-valuemax={largestRatingBucket}
+                          aria-valuenow={count}
+                        >
+                          <div
+                            className="md-bar-fill"
+                            style={{ width: `${(count / largestRatingBucket) * 100}%` }}
+                          />
+                        </div>
+                        <span>{count}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="md-review-list">
+                    {reviewsError ? (
+                      <p className="md-alert">{reviewsError}</p>
+                    ) : !reviews.length ? (
+                      <p className="md-empty">No reviews found.</p>
+                    ) : (
+                      reviews.map((review, index) => (
+                        <Link
+                          key={review._id || review.id || index}
+                          to={`/review/${review._id}`}
+                          className={`md-review-card${String(review._id) === String(myReviewId) ? ' is-mine' : ''}`}
+                          aria-label={`Read ${review.user?.name || review.user?.username || 'member'}'s full review`}
+                        >
+                          <div className="md-avatar">
+                            {(review.user?.name || review.user?.username || 'U')[0]?.toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="md-review-meta">
+                              <span className="rating">★ {review.rating}/10</span>
+                              <strong>
+                                {review.user?.name || (review.user?.username ? `@${review.user.username}` : 'CineShelf member')}
+                              </strong>
+                              {String(review._id) === String(myReviewId) && (
+                                <span className="md-saved-pill">Your review</span>
+                              )}
+                            </div>
+                            <div className="md-review-body">{review.review || 'Rating only'}</div>
+                            <div className="md-review-time">
+                              {review.createdAt ? new Date(review.createdAt).toLocaleString() : ''}
+                              {review.review ? ' · Read full review →' : ''}
+                            </div>
+                          </div>
+                        </Link>
+                      ))
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {recommendations.length > 0 && (
+              <section className="md-section" aria-label="More like this">
+                <div className="md-section-head">
+                  <div>
+                    <h2>More Like This</h2>
+                    <p>Nearby titles in tone and craft.</p>
+                  </div>
+                </div>
+                <div className="md-poster-rail">
+                  {recommendations.map(item => (
+                    <Link key={item.id} to={`/movie/${item.id}`} className="md-poster-card">
+                      <img src={tmdbImageUrl(item.poster_path, 'w342')} alt="" loading="lazy" />
+                      <strong>{item.title}</strong>
+                      <span>
+                        {item.release_date ? item.release_date.slice(0, 4) : '—'}
+                        {item.vote_average != null ? ` · ★ ${item.vote_average.toFixed(1)}` : ''}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {leadActor && actorMovies.length > 0 && (
+              <section className="md-section" aria-label={`More from ${leadActor.name}`}>
+                <div className="md-section-head">
+                  <div>
+                    <h2>More from {leadActor.name}</h2>
+                    <p>Further work from the film’s lead.</p>
+                  </div>
+                </div>
+                <div className="md-poster-rail">
+                  {actorMovies.map(item => (
+                    <Link key={item.id} to={`/movie/${item.id}`} className="md-poster-card">
+                      <img src={tmdbImageUrl(item.poster_path, 'w342')} alt="" loading="lazy" />
+                      <strong>{item.title}</strong>
+                      <span>
+                        {item.release_date ? item.release_date.slice(0, 4) : '—'}
+                        {item.vote_average != null ? ` · ★ ${item.vote_average.toFixed(1)}` : ''}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
       </div>
     </div>

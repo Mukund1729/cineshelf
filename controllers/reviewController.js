@@ -39,6 +39,40 @@ export const getReviewsByUser = async (req, res) => {
   }
 };
 
+// GET /api/review/mine/:tmdbId — Current user's saved rating/review for a title
+export const getMyReviewForTitle = async (req, res) => {
+  try {
+    const tmdbId = Number(req.params.tmdbId);
+    const mediaType = req.query.mediaType === 'tv' ? 'tv' : 'movie';
+    if (!Number.isSafeInteger(tmdbId) || (tmdbId <= 0 && !(await isOriginalMovieId(tmdbId)))) {
+      return res.status(400).json({ success: false, error: 'A valid title ID is required.' });
+    }
+
+    const reviewQuery = mediaType === 'tv'
+      ? { user: req.user.id, tmdbId, mediaType: 'tv' }
+      : { user: req.user.id, tmdbId, mediaType: { $ne: 'tv' } };
+
+    const [review, diaryEntry] = await Promise.all([
+      Review.findOne(reviewQuery).populate('user', 'username name avatar'),
+      DiaryEntry.findOne({ user: req.user.id, tmdbId, mediaType })
+        .sort({ watchedAt: -1, updatedAt: -1 })
+        .select('watchedAt rating note')
+        .lean(),
+    ]);
+
+    res.json({
+      success: true,
+      data: review || null,
+      watchedAt: diaryEntry?.watchedAt
+        ? new Date(diaryEntry.watchedAt).toISOString().slice(0, 10)
+        : null,
+    });
+  } catch (err) {
+    console.error('Get my review error:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
+};
+
 // GET /api/review/movie/:tmdbId — Get all reviews for a movie
 export const getReviewsByMovie = async (req, res) => {
   try {
@@ -248,10 +282,35 @@ export const addReview = async (req, res) => {
 // PUT /api/review/:id — Update own review
 export const updateReview = async (req, res) => {
   try {
-    const { rating, review, spoiler } = req.body;
+    if (!isValidObjectId(req.params.id)) {
+      return res.status(400).json({ success: false, error: 'Invalid review ID.' });
+    }
+
+    const updates = {};
+    if (req.body.rating !== undefined) {
+      const parsedRating = Number(req.body.rating);
+      if (!Number.isFinite(parsedRating) || parsedRating < 1 || parsedRating > 10) {
+        return res.status(400).json({ success: false, error: 'Rating must be between 1 and 10.' });
+      }
+      updates.rating = parsedRating;
+    }
+    if (req.body.review !== undefined) {
+      const reviewText = typeof req.body.review === 'string' ? req.body.review.trim() : '';
+      if (reviewText.length > 2000) {
+        return res.status(400).json({ success: false, error: 'Review must be 2000 characters or fewer.' });
+      }
+      updates.review = reviewText;
+    }
+    if (req.body.spoiler !== undefined) {
+      updates.spoiler = Boolean(req.body.spoiler);
+    }
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ success: false, error: 'No valid review fields to update.' });
+    }
+
     const updated = await Review.findOneAndUpdate(
       { _id: req.params.id, user: req.user.id },
-      { $set: { rating, review, spoiler } },
+      { $set: updates },
       { new: true, runValidators: true }
     );
     if (!updated) return res.status(404).json({ success: false, error: 'Review not found' });

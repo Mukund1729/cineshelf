@@ -3,6 +3,7 @@ import auth from '../middleware/auth.js';
 import {
   getReviews,
   getReviewsByUser,
+  getMyReviewForTitle,
   getReviewsByMovie,
   getReviewsByTv,
   getReviewById,
@@ -20,6 +21,9 @@ router.get('/', auth, getReviews);
 
 // Public: reviews by any user
 router.get('/user/:userId', getReviewsByUser);
+
+// Authenticated: restore this user's saved rating/review for a title
+router.get('/mine/:tmdbId', auth, getMyReviewForTitle);
 
 // Public: all reviews for a specific movie/show
 router.get('/movie/:tmdbId', getReviewsByMovie);

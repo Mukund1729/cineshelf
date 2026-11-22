@@ -1,6 +1,11 @@
 import express from 'express';
 import { fetchTmdb } from '../services/tmdbService.js';
+import { getMovieWatchLinks, getTvWatchLinks } from '../controllers/watchLinkController.js';
 const router = express.Router();
+
+// Direct OTT deep links (Netflix/Prime title pages) — not TMDB landers
+router.get('/ott-links/movie/:tmdbId', getMovieWatchLinks);
+router.get('/ott-links/tv/:tmdbId', getTvWatchLinks);
 
 // GET /api/streaming/providers?tmdbId=123&type=movie&region=IN
 // Returns TMDB watch providers for a movie or TV show
