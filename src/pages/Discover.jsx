@@ -1,6 +1,6 @@
 import { tmdbImageUrl } from '../api/tmdb';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import CinemaMarkdown from '../components/CinemaMarkdown';
 import { searchMovies } from '../api/tmdb';
@@ -20,6 +20,13 @@ const MOODS = [
   { name: 'Any', desc: 'No mood filter', color: '#6b7280', bgPoster: null, accentColor: '#9ca3af' },
   { name: 'Romantic', desc: 'Intimate, longing, love', color: '#dc2626', bgPoster: '/in-the-mood-for-love.jpeg', accentColor: '#ef4444' },
   { name: 'Melancholic', desc: 'Quiet grief, nostalgia', color: '#f472b6', bgPoster: '/wp2392788.webp', accentColor: '#f9a8d4' },
+  { name: 'Nostalgic', desc: 'Memory, yearning, past', color: '#d97706', bgPoster: '/in-the-mood-for-love.jpeg', accentColor: '#f59e0b' },
+  { name: 'Mind-bending', desc: 'Puzzle, reality shifts', color: '#8b5cf6', bgPoster: '/whiplash.webp', accentColor: '#a78bfa' },
+  { name: 'Slow-burn', desc: 'Patience, tension, craft', color: '#64748b', bgPoster: '/wp2392788.webp', accentColor: '#94a3b8' },
+  { name: 'Dreamlike', desc: 'Surreal, soft, hypnotic', color: '#06b6d4', bgPoster: '/wp8872346.webp', accentColor: '#22d3ee' },
+  { name: 'Existential', desc: 'Meaning, doubt, being', color: '#78716c', bgPoster: '/whiplash.webp', accentColor: '#a8a29e' },
+  { name: 'Visually stunning', desc: 'Image-led cinema', color: '#d5b23d', bgPoster: '/MV5BZjkxNDU3NDktNTcyYi00ZGEyLWI2OWMtYTNkYTgzYzI4MjQ0XkEyXkFqcGdeQVRoaXJkUGFydHlJbmdlc3Rpb25Xb3JrZmxvdw@@._V1_QL75_UX500_CR0,0,500,281_.webp', accentColor: '#e4c65a' },
+  { name: 'Psychological', desc: 'Mind, fear, interior', color: '#7c3aed', bgPoster: '/whiplash.webp', accentColor: '#a78bfa' },
   { name: 'Intense', desc: 'Pressure, obsession, stakes', color: '#6b7280', bgPoster: '/whiplash.webp', accentColor: '#9ca3af' },
   { name: 'Feel-Good', desc: 'Warmth, hope, joy', color: '#3b82f6', bgPoster: '/wp8872346.webp', accentColor: '#60a5fa' },
   { name: 'Stylish', desc: 'Visual flair, cool tone', color: '#f97316', bgPoster: '/MV5BZjkxNDU3NDktNTcyYi00ZGEyLWI2OWMtYTNkYTgzYzI4MjQ0XkEyXkFqcGdeQVRoaXJkUGFydHlJbmdlc3Rpb25Xb3JrZmxvdw@@._V1_QL75_UX500_CR0,0,500,281_.webp', accentColor: '#fb923c' },
@@ -123,6 +130,7 @@ async function enrichWithTmdb(items, onPartial) {
 }
 
 export default function Discover() {
+  const location = useLocation();
   const [mode, setMode] = useState('discover');
   const [input, setInput] = useState('');
   const [selectedMood, setSelectedMood] = useState('Any');
@@ -151,6 +159,14 @@ export default function Discover() {
   useEffect(() => {
     setHistory(loadHistory());
   }, []);
+
+  // Homepage mood chips pass selected mood via navigation state
+  useEffect(() => {
+    const incoming = location.state?.mood;
+    if (!incoming || typeof incoming !== 'string') return;
+    const match = MOODS.find(m => m.name.toLowerCase() === incoming.toLowerCase());
+    if (match) setSelectedMood(match.name);
+  }, [location.state]);
 
   // Soft personalization from existing user data (watchlist + high ratings). Opt-in via auth only.
   useEffect(() => {

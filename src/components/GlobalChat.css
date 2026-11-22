@@ -11,24 +11,46 @@
 }
 
 .vc-messages-launcher {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 9px;
   min-height: 52px;
   padding: 0 18px;
-  border: 1px solid rgba(212, 175, 55, 0.35);
+  border: 1px solid rgba(213, 178, 61, 0.4);
   border-radius: var(--vc-radius-pill);
-  background: linear-gradient(135deg, var(--vc-gold), #b8860b);
-  color: #0a0f1a;
+  background: linear-gradient(135deg, #d5b23d, #b8860b);
+  color: #0d0d0f;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   font: 600 0.9rem var(--vc-font-body);
   cursor: pointer;
-  transition: transform var(--vc-transition), box-shadow var(--vc-transition);
+  transition: transform 180ms ease, box-shadow 180ms ease, filter 180ms ease;
 }
 
 .vc-messages-launcher:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.48), 0 0 24px rgba(213, 178, 61, 0.18);
+  filter: brightness(1.04);
+}
+
+.vc-messages-launcher.has-activity {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), 0 0 0 2px rgba(213, 178, 61, 0.35);
+}
+
+.vc-messages-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #0d0d0f;
+  border: 2px solid #d5b23d;
+  color: #d5b23d;
+  font: 700 0.68rem var(--vc-font-body);
+  line-height: 16px;
+  text-align: center;
 }
 
 .vc-messages-launcher svg {
@@ -408,8 +430,8 @@
 
 @media (max-width: 640px) {
   .vc-messages-widget {
-    right: 16px;
-    bottom: calc(16px + env(safe-area-inset-bottom));
+    right: max(12px, env(safe-area-inset-right));
+    bottom: calc(18px + env(safe-area-inset-bottom));
   }
 
   .vc-messages-widget.is-open .vc-messages-launcher {
@@ -417,10 +439,16 @@
   }
 
   .vc-messages-launcher {
-    width: 54px;
-    height: 54px;
+    width: 52px;
+    height: 52px;
+    min-height: 52px;
     justify-content: center;
     padding: 0;
+  }
+
+  .vc-messages-badge {
+    top: -2px;
+    right: -2px;
   }
 
   .vc-messages-launcher span {

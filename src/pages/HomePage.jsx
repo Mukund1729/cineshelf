@@ -5,163 +5,161 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import BrandLogo from '../components/BrandLogo';
 import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
+import './HomePage.css';
 
-// Lazy-load Three.js canvas (not critical for FCP)
 const HeroCanvas = lazy(() => import('../components/HeroCanvas'));
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-const IMG = (path, size = 'w500') =>
-  path ? tmdbImageUrl(path, size) : null;
+const IMG = (path, size = 'w500') => (path ? tmdbImageUrl(path, size) : null);
 
-const PLACEHOLDER = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSI0NTAiIGZpbGw9IiMxYTIyMzYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZmlsbD0iIzY0NzQ4YiIgZm9udC1mYW1pbHk9InNlcmlmIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+const PLACEHOLDER =
+  'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjQ1MCIgdmlld0JveD0iMCAwIDMwMCA0NTAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSI0NTAiIGZpbGw9IiMxYTIyMzYiLz48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZmlsbD0iIzY0NzQ4YiIgZm9udC1mYW1pbHk9InNlcmlmIiBmb250LXNpemU9IjE0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5ObyBJbWFnZTwvdGV4dD48L3N2Zz4=';
+
+const VIBE_MOODS = [
+  'Romantic',
+  'Melancholic',
+  'Nostalgic',
+  'Mind-bending',
+  'Slow-burn',
+  'Dreamlike',
+  'Existential',
+  'Visually stunning',
+  'Psychological',
+  'Feel-Good',
+];
+
+function mediaPath(path, size = 'w500') {
+  if (!path) return null;
+  if (path.startsWith('http') || path.startsWith('data:')) return path;
+  // Local app assets only — TMDB paths also start with "/" (e.g. /abc.jpg)
+  if (
+    path.startsWith('/original-films/')
+    || path.startsWith('/uploads/')
+    || path.startsWith('/api/')
+  ) {
+    return path;
+  }
+  return IMG(path, size);
+}
+
+function directorFromCredits(movie) {
+  const crew = movie?.credits?.crew || [];
+  const directors = crew.filter(c => /director/i.test(c.job || '')).map(c => c.name || c.person?.name).filter(Boolean);
+  return directors[0] || null;
+}
 
 // ─── Poster Card ─────────────────────────────────────────────────────────────
-function PosterCard({ movie, size = 'normal' }) {
-  const [hovered, setHovered] = useState(false);
+function PosterCard({ movie, size = 'normal', showCaption = false }) {
   const isMovie = !movie.first_air_date;
   const title = movie.title || movie.name || 'Untitled';
-  const year  = (movie.release_date || movie.first_air_date || movie.releaseYear || '').toString().slice(0, 4);
-  const img   = IMG(movie.poster_path, 'w342');
-  const rating = movie.vote_average?.toFixed(1);
-  const to = isMovie ? `/movie/${movie.id}` : `/tv/${movie.id}`;
-
-  const widths = { small: '120px', normal: '150px', large: '180px' };
-  const w = widths[size] || widths.normal;
+  const year = (movie.release_date || movie.first_air_date || movie.releaseYear || '').toString().slice(0, 4);
+  const img = mediaPath(movie.poster_path) || PLACEHOLDER;
+  const rating = movie.vote_average?.toFixed?.(1);
+  const to = movie.source === 'original' && movie.slug
+    ? `/movie/${movie.slug}`
+    : isMovie
+      ? `/movie/${movie.id}`
+      : `/tv/${movie.id}`;
 
   return (
-    <Link to={to} style={{ textDecoration: 'none', flexShrink: 0, width: w }}>
-      <div
-        style={{
-          position: 'relative',
-          borderRadius: 6,
-          overflow: 'hidden',
-          background: 'var(--vc-bg-elevated)',
-          transform: hovered ? 'translateY(-6px) scale(1.03)' : 'translateY(0) scale(1)',
-          transition: 'transform 220ms cubic-bezier(0.25,0.1,0.25,1), box-shadow 220ms',
-          boxShadow: hovered ? '0 20px 50px rgba(0,0,0,0.7)' : '0 4px 16px rgba(0,0,0,0.4)',
-          cursor: 'pointer',
-          aspectRatio: '2/3',
-        }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
+    <Link to={to} className={`vc-home-poster vc-home-poster--${size}`}>
+      <div className="vc-home-poster-frame">
         <img
-          src={img || PLACEHOLDER}
+          src={img}
           alt={title}
           loading="lazy"
-          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           onError={e => { e.target.src = PLACEHOLDER; }}
         />
-        {/* Rating badge */}
-        {rating > 0 && (
-          <div style={{
-            position: 'absolute', top: 6, right: 6,
-            background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)',
-            borderRadius: 4, padding: '2px 6px',
-            fontFamily: 'var(--vc-font-body)', fontSize: '0.68rem', fontWeight: 700,
-            color: rating >= 7 ? '#d4af37' : rating >= 5 ? '#f5f0e8' : '#94a3b8',
-          }}>
-            ★ {rating}
+        {rating > 0 && <div className="vc-home-poster-rating">★ {rating}</div>}
+        <div className="vc-home-poster-overlay">
+          <div className="vc-home-poster-title">{title}</div>
+          <div className="vc-home-poster-year">
+            {year}{!isMovie ? ' · TV' : ''}
           </div>
-        )}
-        {/* Hover reveal */}
-        <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
-          opacity: hovered ? 1 : 0, transition: 'opacity 220ms',
-          display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '0.75rem',
-        }}>
-          <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.82rem', fontWeight: 700, color: '#f5f0e8', lineHeight: 1.3, marginBottom: 2 }}>{title}</div>
-          <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.68rem', color: '#94a3b8' }}>{year}{!isMovie ? ' · TV' : ''}</div>
         </div>
       </div>
+      {showCaption && (
+        <div className="vc-home-poster-caption">
+          <div className="vc-home-poster-title">{title}</div>
+          <div className="vc-home-poster-year">{year}</div>
+        </div>
+      )}
     </Link>
   );
 }
 
 // ─── Horizontal Strip ─────────────────────────────────────────────────────────
-function Strip({ title, label, items = [], linkTo, size = 'normal' }) {
+function Strip({ title, label, items = [], linkTo, size = 'normal', showCaption = false }) {
   const scrollRef = useRef(null);
   const scroll = (dir) => {
-    scrollRef.current?.scrollBy({ left: dir * 320, behavior: 'smooth' });
+    scrollRef.current?.scrollBy({ left: dir * 360, behavior: 'smooth' });
   };
+
   return (
-    <section style={{ marginBottom: '3.5rem' }}>
-      <div className="vc-container vc-strip-heading" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <div>
-          {label && <span className="vc-section-label">{label}</span>}
-          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.25rem, 2.5vw, 1.75rem)', fontWeight: 700, margin: 0 }}>{title}</h2>
-        </div>
-        <div className="vc-strip-controls" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          {linkTo && <Link to={linkTo} style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.8rem', color: 'var(--vc-gold)', textDecoration: 'none', letterSpacing: '0.08em' }}>See all →</Link>}
-          <button className="vc-strip-scroll-button" onClick={() => scroll(-1)} style={{ background: 'var(--vc-bg-elevated)', border: 'none', borderRadius: 4, color: 'var(--vc-slate)', width: 28, height: 28, cursor: 'pointer', fontSize: '0.8rem' }}>‹</button>
-          <button className="vc-strip-scroll-button" onClick={() => scroll(1)}  style={{ background: 'var(--vc-bg-elevated)', border: 'none', borderRadius: 4, color: 'var(--vc-slate)', width: 28, height: 28, cursor: 'pointer', fontSize: '0.8rem' }}>›</button>
+    <section className="vc-home-strip vc-home-section">
+      <div className="vc-container">
+        <div className="vc-home-section-head vc-strip-heading">
+          <div>
+            {label && <span className="vc-section-label">{label}</span>}
+            <h2>{title}</h2>
+          </div>
+          <div className="vc-home-strip-controls">
+            {linkTo && <Link to={linkTo} className="vc-home-see-all">View all →</Link>}
+            <button type="button" className="vc-home-strip-btn vc-strip-scroll-button" onClick={() => scroll(-1)} aria-label="Scroll left">‹</button>
+            <button type="button" className="vc-home-strip-btn vc-strip-scroll-button" onClick={() => scroll(1)} aria-label="Scroll right">›</button>
+          </div>
         </div>
       </div>
-      <div className="vc-container" style={{ overflowX: 'hidden', position: 'relative' }}>
-        <div
-          ref={scrollRef}
-          className="vc-mobile-grid vc-home-poster-row"
-          style={{
-            display: 'flex', gap: '0.75rem', overflowX: 'auto',
-            scrollbarWidth: 'none', msOverflowStyle: 'none',
-            paddingBottom: '0.5rem',
-          }}
-        >
+      <div className="vc-container" style={{ overflow: 'hidden' }}>
+        <div ref={scrollRef} className="vc-mobile-grid vc-home-poster-row">
           {items.length === 0
             ? Array.from({ length: 10 }, (_, i) => (
-                <div key={i} className="vc-skeleton" style={{ width: size === 'large' ? 180 : size === 'small' ? 120 : 150, aspectRatio: '2/3', borderRadius: 6, flexShrink: 0 }} />
+                <div
+                  key={i}
+                  className="vc-skeleton"
+                  style={{
+                    width: size === 'large' ? 196 : size === 'small' ? 132 : 168,
+                    aspectRatio: '2/3',
+                    borderRadius: 8,
+                    flexShrink: 0,
+                  }}
+                />
               ))
-            : items.map(m => <PosterCard key={m.id} movie={m} size={size} />)
-          }
+            : items.map(m => (
+                <PosterCard key={`${m.source || 'tmdb'}-${m.id}`} movie={m} size={size} showCaption={showCaption} />
+              ))}
         </div>
       </div>
     </section>
   );
 }
 
-// ─── Editorial Grid (Now Playing) ────────────────────────────────────────────
+// ─── Top Rated Grid ───────────────────────────────────────────────────────────
 function EditorialGrid({ items = [] }) {
   if (items.length === 0) {
     return (
-      <div className="vc-film-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+      <div className="vc-home-top-grid vc-film-grid">
         {Array.from({ length: 8 }, (_, i) => (
-          <div key={i} className="vc-skeleton" style={{ width: '100%', aspectRatio: '2/3', borderRadius: 6 }} />
+          <div key={i} className="vc-skeleton" style={{ width: '100%', aspectRatio: '2/3', borderRadius: 8 }} />
         ))}
       </div>
     );
   }
+
   return (
-    <div className="vc-film-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
+    <div className="vc-home-top-grid vc-film-grid">
       {items.slice(0, 12).map((m, idx) => {
-        const title  = m.title || m.name || 'Untitled';
-        const year   = (m.release_date || '').slice(0, 4);
-        const img    = IMG(m.poster_path, 'w342');
+        const title = m.title || m.name || 'Untitled';
+        const year = (m.release_date || '').slice(0, 4);
+        const img = IMG(m.poster_path, 'w342') || PLACEHOLDER;
         const rating = m.vote_average?.toFixed(1);
         return (
-          <Link key={m.id} to={`/movie/${m.id}`} style={{ textDecoration: 'none' }}>
-            <div className="vc-poster-card" style={{ aspectRatio: '2/3' }}>
-              <img src={img || PLACEHOLDER} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.src = PLACEHOLDER; }} />
-              {/* Rank overlay */}
-              <div style={{
-                position: 'absolute', top: 8, left: 8,
-                fontFamily: 'var(--vc-font-body)', fontSize: '0.65rem', fontWeight: 800,
-                color: 'rgba(0,0,0,0.8)', background: 'var(--vc-gold)',
-                borderRadius: 3, padding: '2px 5px', lineHeight: 1,
-              }}>{idx + 1}</div>
-              {rating > 0 && (
-                <div style={{
-                  position: 'absolute', top: 8, right: 8,
-                  background: 'rgba(0,0,0,0.82)', backdropFilter: 'blur(4px)',
-                  borderRadius: 4, padding: '2px 5px',
-                  fontFamily: 'var(--vc-font-body)', fontSize: '0.65rem', fontWeight: 700,
-                  color: rating >= 7 ? '#d4af37' : '#f5f0e8',
-                }}>★ {rating}</div>
-              )}
-              <div className="vc-overlay">
-                <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.85rem', fontWeight: 700, color: '#fff', marginBottom: 2, lineHeight: 1.3 }}>{title}</div>
-                <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year}</div>
-              </div>
+          <Link key={m.id} to={`/movie/${m.id}`} className="vc-home-top-card vc-poster-card">
+            <img src={img} alt={title} loading="lazy" onError={e => { e.target.src = PLACEHOLDER; }} />
+            <div className="vc-home-top-rank">{idx + 1}</div>
+            {rating > 0 && <div className="vc-home-poster-rating">★ {rating}</div>}
+            <div className="vc-home-top-overlay vc-overlay">
+              <div className="title">{title}</div>
+              <div className="meta">{year}{rating > 0 ? ` · ★ ${rating}` : ''}</div>
             </div>
           </Link>
         );
@@ -170,13 +168,136 @@ function EditorialGrid({ items = [] }) {
   );
 }
 
+// ─── Original Short Films ─────────────────────────────────────────────────────
+function OriginalShortFilms({ films = [] }) {
+  const [enriched, setEnriched] = useState([]);
+
+  useEffect(() => {
+    if (!films.length) {
+      setEnriched([]);
+      return undefined;
+    }
+    let active = true;
+    (async () => {
+      const detailed = await Promise.all(
+        films.map(async film => {
+          const slug = film.slug || film.id;
+          if (!slug) return film;
+          try {
+            const res = await axios.get(`/api/original-films/${encodeURIComponent(slug)}`);
+            return { ...film, ...(res.data?.data || res.data || {}) };
+          } catch {
+            return film;
+          }
+        })
+      );
+      if (active) setEnriched(detailed);
+    })();
+    return () => { active = false; };
+  }, [films]);
+
+  const list = enriched.length ? enriched : films;
+  if (!list.length) return null;
+
+  const [featured, ...rest] = list;
+  const featuredDirector = directorFromCredits(featured);
+  const featuredPoster = mediaPath(featured.poster_path) || PLACEHOLDER;
+  const featuredYear = featured.releaseYear || (featured.release_date || '').toString().slice(0, 4);
+  const featuredOverview = (featured.overview || featured.tagline || '').slice(0, 220);
+
+  return (
+    <section className="vc-home-section">
+      <div className="vc-container">
+        <div className="vc-home-section-head">
+          <div>
+            <span className="vc-section-label">Visual Cineaste · Originals</span>
+            <h2>Original Short Films</h2>
+          </div>
+        </div>
+
+        <div className={`vc-home-originals-grid${rest.length ? '' : ' is-single'}`}>
+          <div className="vc-home-original-feature">
+            <Link to={`/movie/${featured.slug || featured.id}`} className="vc-home-original-feature-poster">
+              <img src={featuredPoster} alt={featured.title} loading="lazy" onError={e => { e.target.src = PLACEHOLDER; }} />
+            </Link>
+            <div className="vc-home-original-feature-body">
+              <h3>{featured.title}</h3>
+              <div className="vc-home-original-meta">
+                {[featuredYear, featuredDirector && `Dir. ${featuredDirector}`, featured.runtimeLabel]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </div>
+              {featuredOverview && <p className="vc-home-original-desc">{featuredOverview}</p>}
+              <div className="vc-home-original-actions">
+                {featured.watchUrl && (
+                  <a
+                    href={featured.watchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="vc-btn vc-btn-primary"
+                  >
+                    Watch Film
+                  </a>
+                )}
+                <Link to={`/movie/${featured.slug || featured.id}`} className="vc-btn vc-btn-outline">
+                  Film details
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {rest.length > 0 && (
+            <div className="vc-home-original-list">
+              {rest.slice(0, 4).map(film => {
+                const director = directorFromCredits(film);
+                const year = film.releaseYear || (film.release_date || '').toString().slice(0, 4);
+                const poster = mediaPath(film.poster_path) || PLACEHOLDER;
+                return (
+                  <div key={film.id || film.slug} className="vc-home-original-item">
+                    <Link to={`/movie/${film.slug || film.id}`}>
+                      <img src={poster} alt={film.title} loading="lazy" onError={e => { e.target.src = PLACEHOLDER; }} />
+                    </Link>
+                    <div>
+                      <h4>
+                        <Link to={`/movie/${film.slug || film.id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                          {film.title}
+                        </Link>
+                      </h4>
+                      <div className="vc-home-original-meta" style={{ marginBottom: 0 }}>
+                        {[year, director && `Dir. ${director}`].filter(Boolean).join(' · ')}
+                      </div>
+                      {(film.overview || film.tagline) && (
+                        <p>{(film.overview || film.tagline || '').slice(0, 120)}</p>
+                      )}
+                      <div className="vc-home-original-actions">
+                        {film.watchUrl && (
+                          <a href={film.watchUrl} target="_blank" rel="noopener noreferrer" className="vc-btn vc-btn-primary" style={{ padding: '0.45rem 0.9rem', fontSize: '0.78rem' }}>
+                            Watch Film
+                          </a>
+                        )}
+                        <Link to={`/movie/${film.slug || film.id}`} className="vc-btn vc-btn-outline" style={{ padding: '0.45rem 0.9rem', fontSize: '0.78rem' }}>
+                          Details
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ─── AI Discover Block ───────────────────────────────────────────────────────
 function AIDiscoverBlock() {
-  const [input, setInput]     = useState('');
+  const [input, setInput] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError]     = useState('');
-  const [source, setSource]   = useState('');
+  const [error, setError] = useState('');
+  const [source, setSource] = useState('');
 
   const EXAMPLES = [
     'slow melancholic films like Certified Copy',
@@ -202,7 +323,6 @@ function AIDiscoverBlock() {
       const raw = res.data?.reply || '';
       setSource(res.data?.source || '');
 
-      // Prefer JSON array; also accept { movies: [...] } from shared curator schema
       let parsedResults = [];
       try {
         const objectMatch = raw.match(/\{[\s\S]*"movies"[\s\S]*\}/);
@@ -240,17 +360,30 @@ function AIDiscoverBlock() {
   };
 
   return (
-    <section style={{ padding: '4rem 0', borderTop: '1px solid rgba(255,255,255,0.06)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+    <section className="vc-home-section vc-home-vibe">
       <div className="vc-container">
         <span className="vc-section-label">AI · Cinema Intelligence</span>
-        <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 800, marginBottom: '0.5rem' }}>
+        <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', fontWeight: 800, margin: '0 0 0.5rem' }}>
           Discover by Vibe
         </h2>
-        <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', fontSize: '0.9rem', marginBottom: '1.75rem', maxWidth: 520 }}>
-          Describe a feeling, director, craft, or reference film — get thoughtful world-cinema picks.
+        <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', fontSize: '0.9rem', marginBottom: '1.35rem', maxWidth: 540 }}>
+          Describe a feeling, director, craft, or reference film — or pick a mood and continue on Discover.
         </p>
 
-        {/* Search bar */}
+        <div className="vc-home-mood-chips" role="list" aria-label="Mood shortcuts">
+          {VIBE_MOODS.map(mood => (
+            <Link
+              key={mood}
+              to="/discover"
+              state={{ mood }}
+              className="vc-home-mood-chip"
+              role="listitem"
+            >
+              {mood}
+            </Link>
+          ))}
+        </div>
+
         <div className="vc-ai-search-form" style={{ display: 'flex', gap: '0.5rem', maxWidth: 640, marginBottom: '1rem' }}>
           <input
             className="vc-input"
@@ -270,21 +403,14 @@ function AIDiscoverBlock() {
           </button>
         </div>
 
-        {/* Example prompts */}
         {!results.length && !loading && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.5rem' }}>
             {EXAMPLES.map((ex, i) => (
               <button
                 key={i}
+                type="button"
+                className="vc-home-example-chip"
                 onClick={() => { setInput(ex); handleSearch(ex); }}
-                style={{
-                  background: 'var(--vc-bg-elevated)', border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: 4, padding: '0.35rem 0.75rem',
-                  fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'var(--vc-slate)',
-                  cursor: 'pointer', transition: 'all 150ms',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--vc-gold)'; e.currentTarget.style.color = 'var(--vc-gold)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'var(--vc-slate)'; }}
               >
                 {ex}
               </button>
@@ -292,9 +418,12 @@ function AIDiscoverBlock() {
           </div>
         )}
 
-        {error && <p style={{ color: '#fc8181', fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</p>}
+        {error && (
+          <p style={{ color: '#fc8181', fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', marginBottom: '1rem' }}>
+            {error}
+          </p>
+        )}
 
-        {/* Loading */}
         {loading && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '0.75rem' }}>
             {Array.from({ length: 5 }, (_, i) => (
@@ -303,7 +432,6 @@ function AIDiscoverBlock() {
           </div>
         )}
 
-        {/* Results */}
         {results.length > 0 && (
           <>
             {source && (
@@ -331,8 +459,10 @@ function AIFilmCard({ film }) {
       style={{
         background: hovered ? 'var(--vc-bg-elevated)' : 'var(--vc-bg-surface)',
         border: `1px solid ${hovered ? 'rgba(212,175,55,0.25)' : 'rgba(255,255,255,0.06)'}`,
-        borderRadius: 8, padding: '1.25rem',
-        transition: 'all 180ms', cursor: 'default',
+        borderRadius: 8,
+        padding: '1.25rem',
+        transition: 'all 180ms',
+        cursor: 'default',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -367,34 +497,88 @@ function AIFilmCard({ film }) {
   );
 }
 
+// ─── Journal teaser (additive) ────────────────────────────────────────────────
+function JournalTeaser() {
+  const [articles, setArticles] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    axios.get('/api/journal', { params: { page: 1, limit: 3, sort: 'newest' } })
+      .then(res => {
+        if (!active) return;
+        setArticles(res.data?.data || []);
+      })
+      .catch(() => {
+        if (active) setArticles([]);
+      })
+      .finally(() => {
+        if (active) setLoaded(true);
+      });
+    return () => { active = false; };
+  }, []);
+
+  if (loaded && articles.length === 0) return null;
+
+  return (
+    <section className="vc-home-section">
+      <div className="vc-container">
+        <div className="vc-home-section-head">
+          <div>
+            <span className="vc-section-label">From the World of Cinema</span>
+            <h2>Journal</h2>
+          </div>
+          <Link to="/journal" className="vc-home-see-all">Read the Journal →</Link>
+        </div>
+
+        {!loaded ? (
+          <div className="vc-home-journal-grid">
+            {Array.from({ length: 3 }, (_, i) => (
+              <div key={i} className="vc-skeleton" style={{ height: 280, borderRadius: 12 }} />
+            ))}
+          </div>
+        ) : (
+          <div className="vc-home-journal-grid">
+            {articles.map(article => (
+              <Link key={article._id || article.slug} to={`/journal/${article.slug}`} className="vc-home-journal-card">
+                {article.coverImage || article.image ? (
+                  <img src={article.coverImage || article.image} alt="" loading="lazy" />
+                ) : (
+                  <div style={{ height: 160, background: 'linear-gradient(135deg, #17191e, #22262f)' }} />
+                )}
+                <div className="vc-home-journal-card-body">
+                  <h3>{article.title}</h3>
+                  <p>{article.excerpt || article.summary || article.subtitle || 'An essay from the Visual Cineaste Journal.'}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ─── Hero Featured Card ───────────────────────────────────────────────────────
 function HeroFeatured({ movie }) {
   if (!movie) return null;
-  const title    = movie.title || 'Trending Now';
-  const overview = movie.overview?.slice(0, 160);
+  const title = movie.title || 'Trending Now';
+  const overview = movie.overview?.slice(0, 155);
   const backdrop = movie.backdrop_path ? tmdbImageUrl(movie.backdrop_path, 'w1280') : null;
-  const rating   = movie.vote_average?.toFixed(1);
-  const year     = movie.release_date?.slice(0, 4);
+  const rating = movie.vote_average?.toFixed(1);
+  const year = movie.release_date?.slice(0, 4);
 
   return (
-    <Link to={`/movie/${movie.id}`} style={{ textDecoration: 'none', display: 'block', position: 'absolute', right: '5%', bottom: '12%', width: 'clamp(240px, 22vw, 320px)', zIndex: 5 }}>
-      <div style={{
-        background: 'rgba(10,15,26,0.88)', backdropFilter: 'blur(12px)',
-        border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
-        overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
-        transition: 'transform 200ms, box-shadow 200ms',
-      }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 28px 70px rgba(0,0,0,0.7)'; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.6)'; }}
-      >
-        {backdrop && <img src={backdrop} alt={title} style={{ width: '100%', height: 140, objectFit: 'cover', display: 'block' }} />}
-        <div style={{ padding: '0.875rem' }}>
-          <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.95rem', fontWeight: 700, color: 'var(--vc-cream)', marginBottom: '0.25rem', lineHeight: 1.3 }}>{title}</div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-            {year && <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year}</span>}
-            {rating > 0 && <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-gold)', fontWeight: 700 }}>★ {rating}</span>}
+    <Link to={`/movie/${movie.id}`} className="vc-hero-featured">
+      <div className="vc-hero-featured-card">
+        {backdrop && <img src={backdrop} alt={title} />}
+        <div className="vc-hero-featured-body">
+          <div className="vc-hero-featured-title">{title}</div>
+          <div className="vc-hero-featured-meta">
+            {year && <span className="year">{year}</span>}
+            {rating > 0 && <span className="rating">★ {rating}</span>}
           </div>
-          {overview && <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-slate)', lineHeight: 1.55, margin: 0 }}>{overview}…</p>}
+          {overview && <p className="vc-hero-featured-overview">{overview}…</p>}
         </div>
       </div>
     </Link>
@@ -403,18 +587,17 @@ function HeroFeatured({ movie }) {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
-  const [trending,   setTrending]   = useState([]);
-  const [popular,    setPopular]    = useState([]);
-  const [topRated,   setTopRated]   = useState([]);
-  const [popularTV,  setPopularTV]  = useState([]);
+  const [trending, setTrending] = useState([]);
+  const [popular, setPopular] = useState([]);
+  const [topRated, setTopRated] = useState([]);
+  const [popularTV, setPopularTV] = useState([]);
   const [originalFilms, setOriginalFilms] = useState([]);
-  const [searchQ,    setSearchQ]    = useState('');
-  const [searching,  setSearching]  = useState(false);
-  const [searchRes,  setSearchRes]  = useState([]);
-  const [heroMovie,  setHeroMovie]  = useState(null);
+  const [searchQ, setSearchQ] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchRes, setSearchRes] = useState([]);
+  const [heroMovie, setHeroMovie] = useState(null);
   const debounce = useRef(null);
 
-  // Fetch all discovery sections through the backend proxy.
   useEffect(() => {
     axios.get('/api/original-films')
       .then(response => setOriginalFilms(response.data?.results || []))
@@ -441,8 +624,6 @@ export default function HomePage() {
     fetchAll();
   }, []);
 
-
-  // Debounced search
   useEffect(() => {
     if (debounce.current) clearTimeout(debounce.current);
     if (!searchQ.trim()) { setSearchRes([]); setSearching(false); return; }
@@ -472,243 +653,163 @@ export default function HomePage() {
     };
   }, [searchQ]);
 
-
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--vc-bg-base)', color: 'var(--vc-cream)' }}>
+    <div className="vc-home" style={{ minHeight: '100vh' }}>
       <Navbar />
 
-      {/* ── HERO ─────────────────────────────────────────────────── */}
-      <section className="vc-home-hero" style={{
-        position: 'relative', minHeight: '95vh', display: 'flex', alignItems: 'center',
-        overflow: 'hidden', background: 'linear-gradient(135deg, #060912 0%, #0a0f1a 50%, #0d1420 100%)',
-      }}>
-        {/* Three.js particle canvas */}
+      <section className="vc-home-hero">
         <Suspense fallback={null}>
           <HeroCanvas />
         </Suspense>
 
-        {/* Cinematic backdrop image */}
         {heroMovie?.backdrop_path && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none' }}>
             <img
               src={tmdbImageUrl(heroMovie.backdrop_path, 'original')}
               alt=""
-              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.14, filter: 'grayscale(0.5) contrast(1.05)' }}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.12, filter: 'saturate(0.8) contrast(1.08)' }}
             />
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to right, rgba(6,9,18,0.96) 40%, rgba(6,9,18,0.4) 100%)' }} />
-            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(6,9,18,1) 0%, transparent 50%)' }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(13,13,15,0.97) 28%, rgba(13,13,15,0.55) 55%, rgba(13,13,15,0.22) 78%, rgba(13,13,15,0.45) 100%)' }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(13,13,15,0.25) 0%, transparent 38%, rgba(13,13,15,0.88) 100%)' }} />
           </div>
         )}
 
-        {/* Hero content */}
-        <div className="vc-container vc-home-hero-content" style={{ position: 'relative', zIndex: 10, paddingTop: '6rem', paddingBottom: '4rem' }}>
-          {/* Label */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-            <div style={{ width: 32, height: 2, background: 'linear-gradient(90deg, var(--vc-gold), transparent)' }} />
+        <div className="vc-container vc-home-hero-content">
+          <div className="vc-home-hero-brand">
+            <div className="vc-home-hero-brand-rule" />
             <BrandLogo style={{ width: 180, opacity: 0.9 }} />
           </div>
 
-          {/* Headline */}
-          <h1 className="vc-home-hero-title" style={{
-            fontFamily: 'var(--vc-font-display)',
-            fontSize: 'clamp(3rem, 7vw, 6rem)',
-            fontWeight: 900, lineHeight: 1.05, marginBottom: '1.5rem',
-            letterSpacing: '-0.03em', maxWidth: 800,
-            textShadow: '0 4px 30px rgba(0,0,0,0.5)',
-          }}>
+          <h1 className="vc-home-hero-title">
             Cinema,
             <br />
-            <em style={{ fontStyle: 'italic', color: 'var(--vc-gold)' }}>rediscovered.</em>
+            <em>rediscovered.</em>
           </h1>
 
-          <p className="vc-home-hero-description" style={{
-            fontFamily: 'var(--vc-font-body)', fontSize: 'clamp(1.1rem, 1.8vw, 1.25rem)',
-            color: 'var(--vc-slate)', maxWidth: 520, lineHeight: 1.8, marginBottom: '3rem',
-            fontWeight: 400,
-          }}>
+          <p className="vc-home-hero-description">
             Discover films by director, vision, and aesthetic —<br />not just genre. Track, review, and share your cinematic journey.
           </p>
 
-          {/* Search */}
-          <div style={{ position: 'relative', maxWidth: 600, marginBottom: '1.5rem' }}>
-            <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-              <svg style={{ position: 'absolute', left: 16, color: 'var(--vc-slate)', width: 18, height: 18, pointerEvents: 'none' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="vc-home-search">
+            <div className="vc-home-search-field">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
                 <circle cx={11} cy={11} r={8} /><path d="M21 21l-4.35-4.35" />
               </svg>
               <input
                 className="vc-input"
-                style={{ 
-                  padding: '1rem 3.5rem 1rem 3rem',
-                  fontSize: '1rem', 
-                  background: 'rgba(255,255,255,0.08)', 
-                  backdropFilter: 'blur(16px)', 
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: '12px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.3)'
-                }}
                 placeholder="Search movies, shows, people…"
                 value={searchQ}
                 onChange={e => setSearchQ(e.target.value)}
+                aria-label="Search movies, shows, people"
               />
               {searchQ && (
                 <button
+                  type="button"
+                  className="vc-home-search-clear"
                   onClick={() => { setSearchQ(''); setSearchRes([]); setSearching(false); }}
-                  style={{ position: 'absolute', right: 14, background: 'rgba(255,255,255,0.1)', border: 'none', color: 'var(--vc-slate)', cursor: 'pointer', fontSize: '1.25rem', width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-                  onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-                >×</button>
+                  aria-label="Clear search"
+                >
+                  ×
+                </button>
               )}
             </div>
 
-            {/* Search results dropdown */}
             {searching && searchRes.length > 0 && (
-              <div style={{
-                position: 'absolute', top: 'calc(100% + 8px)', left: 0, right: 0, zIndex: 50,
-                background: 'rgba(15, 20, 30, 0.95)', backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 12, overflow: 'hidden', 
-                boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-                maxHeight: 400, overflowY: 'auto',
-              }}>
+              <div className="vc-home-search-dropdown">
                 {searchRes.slice(0, 10).map(r => {
-                  const isTV   = r.media_type === 'tv';
+                  const isTV = r.media_type === 'tv';
                   const isPerson = r.media_type === 'person';
-                  const title  = r.title || r.name || '';
-                  const year   = (r.release_date || r.first_air_date || r.releaseYear || '').toString().slice(0, 4);
-                  const poster = r.poster_path || r.profile_path ? IMG(r.poster_path || r.profile_path, 'w92') : null;
+                  const title = r.title || r.name || '';
+                  const year = (r.release_date || r.first_air_date || r.releaseYear || '').toString().slice(0, 4);
+                  const poster = r.poster_path || r.profile_path
+                    ? (String(r.poster_path || r.profile_path).startsWith('/') && !String(r.poster_path || r.profile_path).startsWith('/original')
+                      ? IMG(r.poster_path || r.profile_path, 'w92')
+                      : mediaPath(r.poster_path || r.profile_path))
+                    : null;
+                  const to = isPerson
+                    ? `/person/${r.id || r.slug}`
+                    : r.source === 'original' && r.slug
+                      ? `/movie/${r.slug}`
+                      : isTV
+                        ? `/tv/${r.id}`
+                        : `/movie/${r.id}`;
                   return (
                     <Link
-                      key={`${r.media_type || 'movie'}-${r.id}`}
-                      to={isPerson ? `/person/${r.id}` : isTV ? `/tv/${r.id}` : `/movie/${r.id}`}
+                      key={`${r.media_type || 'movie'}-${r.id || r.slug}`}
+                      to={to}
+                      className="vc-home-search-item"
                       onClick={() => { setSearchQ(''); setSearchRes([]); }}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: '0.75rem',
-                        padding: '0.6rem 0.875rem', textDecoration: 'none',
-                        borderBottom: '1px solid rgba(255,255,255,0.04)',
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(212,175,55,0.07)'}
-                      onMouseLeave={e => e.currentTarget.style.background = ''}
                     >
                       {poster
-                        ? <img src={poster} alt={title} style={{ width: 32, height: 48, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
-                        : <div style={{ width: 32, height: 48, background: 'var(--vc-bg-card)', borderRadius: 3, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>🎬</div>
-                      }
+                        ? <img src={poster} alt="" style={{ width: 32, height: 48, objectFit: 'cover', borderRadius: 3, flexShrink: 0 }} />
+                        : <div style={{ width: 32, height: 48, background: 'var(--vc-bg-card)', borderRadius: 3, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>🎬</div>}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.875rem', color: 'var(--vc-cream)', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</div>
-                        <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>{year || (isPerson ? 'Person' : '')}{isPerson ? ' · Person' : isTV ? ' · TV' : ' · Film'}</div>
+                        <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', color: 'var(--vc-slate)' }}>
+                          {year || (isPerson ? 'Person' : '')}{isPerson ? ' · Person' : isTV ? ' · TV' : ' · Film'}
+                        </div>
                       </div>
-                      {r.vote_average > 0 && <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-gold)', fontWeight: 700, flexShrink: 0 }}>★ {r.vote_average.toFixed(1)}</span>}
+                      {r.vote_average > 0 && (
+                        <span style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-gold)', fontWeight: 700, flexShrink: 0 }}>
+                          ★ {r.vote_average.toFixed(1)}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
-                <Link to="/discover" onClick={() => { setSearchQ(''); setSearchRes([]); }} style={{ display: 'block', padding: '0.6rem 0.875rem', textAlign: 'center', fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', color: 'var(--vc-gold)', textDecoration: 'none', background: 'rgba(212,175,55,0.05)' }}>
+                <Link
+                  to="/discover"
+                  onClick={() => { setSearchQ(''); setSearchRes([]); }}
+                  style={{ display: 'block', padding: '0.6rem 0.875rem', textAlign: 'center', fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', color: 'var(--vc-gold)', textDecoration: 'none', background: 'rgba(212,175,55,0.05)' }}
+                >
                   Advanced search & filters →
                 </Link>
               </div>
             )}
           </div>
 
-          {/* CTA row */}
-          <div className="vc-home-hero-actions" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <Link 
-              to="/discover" 
-              className="vc-btn vc-btn-primary"
-              style={{
-                padding: '1rem 2rem',
-                fontSize: '1rem',
-                fontWeight: 600,
-                borderRadius: '50px',
-                background: 'linear-gradient(135deg, var(--vc-gold), #c9a227)',
-                border: 'none',
-                boxShadow: '0 8px 24px rgba(212, 175, 55, 0.3)',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 32px rgba(212, 175, 55, 0.4)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 8px 24px rgba(212, 175, 55, 0.3)'; }}
-            >
-              Discover Films
-            </Link>
-            <Link 
-              to="/trending" 
-              className="vc-btn vc-btn-outline"
-              style={{
-                padding: '1rem 2rem',
-                fontSize: '1rem',
-                fontWeight: 600,
-                borderRadius: '50px',
-                background: 'transparent',
-                border: '2px solid rgba(255,255,255,0.2)',
-                color: 'var(--vc-cream)',
-                transition: 'all 0.3s ease'
-              }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)'; }}
-            >
-              What's Trending
-            </Link>
+          <div className="vc-home-hero-actions">
+            <Link to="/discover" className="vc-home-cta-primary">Discover Films</Link>
+            <Link to="/trending" className="vc-home-cta-secondary">What&apos;s Trending</Link>
           </div>
         </div>
 
-        {/* Featured card (desktop) */}
         <div className="hidden-mobile">
           <HeroFeatured movie={heroMovie} />
         </div>
       </section>
 
-      {/* ── TRENDING THIS WEEK ─────────────────────────────────── */}
-      <div style={{ paddingTop: '4rem' }}>
-        <Strip title="Trending This Week" label="🔥 Live" items={trending} linkTo="/trending" size="normal" />
-      </div>
+      <Strip title="Trending This Week" label="Live" items={trending} linkTo="/trending" size="large" showCaption />
 
-      {originalFilms.length > 0 && (
-        <div style={{ paddingTop: '1rem' }}>
-          <Strip title="Original Short Films" label="🎥 Visual Cineaste" items={originalFilms} size="normal" />
-        </div>
-      )}
+      <OriginalShortFilms films={originalFilms} />
 
-      {/* ── NOW PLAYING (editorial grid) ──────────────────────── */}
-      <section style={{ paddingBottom: '4rem', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <section className="vc-home-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="vc-container">
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+          <div className="vc-home-section-head">
             <div>
-              <span className="vc-section-label">🏆 Charts</span>
-              <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.5rem, 2.8vw, 2rem)', fontWeight: 700, margin: 0 }}>Top Rated</h2>
+              <span className="vc-section-label">Charts</span>
+              <h2>Top Rated</h2>
             </div>
-            <Link to="/top-movies" style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-gold)', textDecoration: 'none', letterSpacing: '0.1em', fontWeight: 600 }}>See all →</Link>
+            <Link to="/top-movies" className="vc-home-see-all">View all →</Link>
           </div>
           <EditorialGrid items={topRated} />
         </div>
       </section>
 
-      {/* ── POPULAR MOVIES ─────────────────────────────────────── */}
-      <div style={{ paddingTop: '4rem' }}>
-        <Strip title="Popular Now" label="🎬 Movies" items={popular} linkTo="/popular-movies" size="normal" />
-      </div>
+      <Strip title="Popular Now" label="Movies" items={popular} linkTo="/popular-movies" size="large" showCaption />
 
-      {/* ── AI DISCOVER ────────────────────────────────────────── */}
       <AIDiscoverBlock />
 
-      {/* ── POPULAR TV ─────────────────────────────────────────── */}
-      <div style={{ paddingTop: '4rem', paddingBottom: '4rem' }}>
-        <Strip title="Popular on TV" label="📺 Series" items={popularTV} linkTo="/popular-tv" size="small" />
-      </div>
+      <Strip title="Popular on TV" label="Series" items={popularTV} linkTo="/popular-tv" size="normal" showCaption />
 
-      {/* ── FOOTER CTA ─────────────────────────────────────────── */}
-      <section style={{
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        padding: '5rem 0',
-        background: 'linear-gradient(to bottom, var(--vc-bg-base), var(--vc-bg-deep))',
-        textAlign: 'center',
-      }}>
+      <JournalTeaser />
+
+      <section className="vc-home-footer-cta">
         <div className="vc-container">
           <span className="vc-section-label" style={{ display: 'block', textAlign: 'center', marginBottom: '0.75rem' }}>Your Film Life</span>
-          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: 'clamp(1.75rem, 3.5vw, 2.75rem)', fontWeight: 800, marginBottom: '1rem' }}>
-            Track. Review. Discover.
-          </h2>
-          <p style={{ fontFamily: 'var(--vc-font-body)', color: 'var(--vc-slate)', fontSize: '0.95rem', marginBottom: '2rem', maxWidth: 400, margin: '0 auto 2rem' }}>
-            Join visual.cineaste and build a record of everything you've watched, loved, and want to see.
-          </p>
-          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <h2>Track. Review. Discover.</h2>
+          <p>Join visual.cineaste and build a record of everything you&apos;ve watched, loved, and want to see.</p>
+          <div className="vc-home-footer-cta-actions">
             <Link to="/watchlist" className="vc-btn vc-btn-primary">Start Watchlist</Link>
             <Link to="/cinematic-picks" className="vc-btn vc-btn-outline">Cinematic Picks</Link>
           </div>
@@ -716,12 +817,6 @@ export default function HomePage() {
       </section>
 
       <Footer />
-
-      {/* Hide hero featured card on mobile */}
-      <style>{`
-        @media (max-width: 900px) { .hidden-mobile { display: none !important; } }
-        .vc-input:focus { border-color: var(--vc-gold) !important; }
-      `}</style>
     </div>
   );
 }

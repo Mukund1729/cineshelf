@@ -1,12 +1,6 @@
 /**
- * HeroCanvas.jsx — Full 3D Three.js cinematic scene
- *
- * Scene:
- *  - A curved 3D film strip (rotating cylinder of poster planes) that wraps around
- *  - 3D floating movie poster cards arranged in depth (z-axis parallax)
- *  - Dynamic bokeh/light particles
- *  - Mouse-driven camera tilt
- *  - Warm amber/gold lighting from below (like a projector beam)
+ * HeroCanvas — cinematic Three.js backdrop for the homepage hero.
+ * Dense poster arc, soft dust, warm projector light — fills the right side.
  */
 
 import { useEffect, useRef } from 'react';
@@ -18,8 +12,8 @@ async function fetchPosterPaths() {
     const data = await tmdbGet('/movie/popular', { page: 1 });
     return (data.results || [])
       .filter(m => m.poster_path)
-      .slice(0, 20)
-      .map(m => tmdbImageUrl(m.poster_path, 'w342'));
+      .slice(0, 18)
+      .map(m => tmdbImageUrl(m.poster_path, 'w500'));
   } catch {
     return [];
   }
@@ -27,13 +21,17 @@ async function fetchPosterPaths() {
 
 function loadTexture(loader, url) {
   return new Promise(resolve => {
-    loader.load(
-      url,
-      t => resolve(t),
-      undefined,
-      () => resolve(null)
-    );
+    loader.load(url, t => resolve(t), undefined, () => resolve(null));
   });
+}
+
+function prefersReducedMotion() {
+  return typeof window !== 'undefined'
+    && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function isMobile() {
+  return typeof window !== 'undefined' && window.innerWidth < 768;
 }
 
 export default function HeroCanvas() {
@@ -41,287 +39,308 @@ export default function HeroCanvas() {
 
   useEffect(() => {
     const container = mountRef.current;
-    if (!container) return;
+    if (!container || prefersReducedMotion()) return undefined;
 
-    let animId;
+    let animId = 0;
     let disposed = false;
+    let visible = true;
+    const mobile = isMobile();
 
-    // ── Renderer ────────────────────────────────────────────────
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({
+      antialias: !mobile,
+      alpha: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ReinhardToneMapping;
-    renderer.toneMappingExposure = 1.2;
+    renderer.setClearColor(0x000000, 0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
     container.appendChild(renderer.domElement);
 
-    // ── Scene & Camera ───────────────────────────────────────────
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x060912, 0.06);
+    scene.fog = new THREE.FogExp2(0x0d0d0f, 0.032);
 
     const camera = new THREE.PerspectiveCamera(
-      55,
-      container.clientWidth / container.clientHeight,
+      mobile ? 56 : 48,
+      container.clientWidth / Math.max(container.clientHeight, 1),
       0.1,
-      200
+      120
     );
-    camera.position.set(0, 0, 14);
+    // Bias camera toward the right so the poster arc fills the empty side
+    camera.position.set(mobile ? 1.2 : 2.4, 0.55, mobile ? 13.5 : 11.8);
 
-    // ── Lights ──────────────────────────────────────────────────
-    // Ambient — very dim
-    scene.add(new THREE.AmbientLight(0x1a1a2e, 0.4));
+    scene.add(new THREE.AmbientLight(0x2a261f, 0.7));
 
-    // Projector beam — warm gold from below-left
-    const projector = new THREE.SpotLight(0xffd700, 4, 50, Math.PI / 5, 0.6, 2);
-    projector.position.set(-10, -8, 12);
-    projector.target.position.set(0, 2, 0);
+    const projector = new THREE.SpotLight(0xd5b23d, 4.2, 60, Math.PI / 5, 0.65, 1.4);
+    projector.position.set(-6, -5, 10);
+    projector.target.position.set(3, 1.2, -1);
     scene.add(projector);
     scene.add(projector.target);
 
-    // Fill light — cool blue tint from right
-    const fill = new THREE.PointLight(0x4488ff, 1.2, 40);
-    fill.position.set(12, 6, 8);
-    scene.add(fill);
+    const warmFill = new THREE.PointLight(0xf5ebd0, 0.85, 50);
+    warmFill.position.set(6, 3.5, 5);
+    scene.add(warmFill);
 
-    // Rim light — red/orange from behind
-    const rim = new THREE.PointLight(0xff4400, 0.8, 30);
-    rim.position.set(-8, 4, -10);
+    const rim = new THREE.DirectionalLight(0xc4b48a, 0.45);
+    rim.position.set(-2, 7, -4);
     scene.add(rim);
-    
-    // Top light — soft white from above
-    const topLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    topLight.position.set(0, 15, 5);
-    scene.add(topLight);
 
-    // ── Poster Planes Group ──────────────────────────────────────
     const postersGroup = new THREE.Group();
+    postersGroup.position.set(mobile ? 0.5 : 1.8, 0.2, 0);
     scene.add(postersGroup);
 
-    // Placeholder geometry (shown immediately, replaced with poster textures)
-    const CARD_W = 1.5;
-    const CARD_H = 2.25;
+    const CARD_W = mobile ? 1.55 : 1.85;
+    const CARD_H = CARD_W * 1.5;
+    const NUM_CARDS = mobile ? 12 : 16;
+    const ARC_RADIUS = mobile ? 9.2 : 9.8;
+    const cardMeshes = [];
+
     const placeholderMat = new THREE.MeshStandardMaterial({
-      color: 0x1a2236,
+      color: 0x1a1c22,
       roughness: 0.8,
       metalness: 0.1,
       transparent: true,
       opacity: 0.9,
     });
 
-    // Arrange cards on an arc
-    const NUM_CARDS = 18;
-    const ARC_RADIUS = 11;
-    const cardMeshes = [];
-
     for (let i = 0; i < NUM_CARDS; i++) {
-      const angle = (i / NUM_CARDS) * Math.PI * 2;
+      // Bias posters to the right/front of the arc (visible behind featured card)
+      const tArc = i / NUM_CARDS;
+      const angle = -0.55 + tArc * Math.PI * 1.55;
       const x = Math.sin(angle) * ARC_RADIUS;
-      const z = Math.cos(angle) * ARC_RADIUS * 0.6 - 6; // ellipse depth
-      const y = (Math.sin(i * 0.7) * 2) + 0.8;
+      const z = Math.cos(angle) * ARC_RADIUS * 0.72 - 3.2;
+      const y = Math.sin(i * 0.9) * 1.15 + 0.35;
 
-      const geo  = new THREE.PlaneGeometry(CARD_W, CARD_H, 2, 2);
-      const mesh = new THREE.Mesh(geo, placeholderMat.clone());
-
+      const mesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(CARD_W, CARD_H, 1, 1),
+        placeholderMat.clone()
+      );
       mesh.position.set(x, y, z);
-      mesh.rotation.y = -angle + Math.PI * 0.5;
-      mesh.rotation.z = (Math.random() - 0.5) * 0.2;
-      mesh.rotation.x = (Math.random() - 0.5) * 0.1;
-      mesh.userData = { baseY: y, speed: 0.4 + Math.random() * 0.5, phase: Math.random() * Math.PI * 2 };
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-
+      mesh.lookAt(2.2, y * 0.2, 6);
+      mesh.userData = {
+        baseX: x,
+        baseY: y,
+        baseZ: z,
+        phase: (i / NUM_CARDS) * Math.PI * 2,
+        bob: 0.18 + (i % 5) * 0.028,
+        sway: 0.01 + (i % 3) * 0.003,
+      };
       postersGroup.add(mesh);
       cardMeshes.push(mesh);
+
+      // Thin gold edge frame for depth
+      const edge = new THREE.Mesh(
+        new THREE.PlaneGeometry(CARD_W + 0.06, CARD_H + 0.06),
+        new THREE.MeshBasicMaterial({
+          color: 0xd5b23d,
+          transparent: true,
+          opacity: 0.18,
+          side: THREE.BackSide,
+        })
+      );
+      edge.position.z = -0.02;
+      mesh.add(edge);
     }
 
-    // ── Film Strip ───────────────────────────────────────────────
-    // A flat strip of darker frames in the background
+    // Secondary strip of smaller cards deeper back — fills void
     const stripGroup = new THREE.Group();
+    stripGroup.position.set(2.5, -0.4, 0);
     scene.add(stripGroup);
-
     const stripMat = new THREE.MeshStandardMaterial({
-      color: 0x0d1117,
+      color: 0x15171d,
       roughness: 0.9,
-      metalness: 0.2,
+      metalness: 0.06,
       transparent: true,
       opacity: 0.7,
     });
-
-    for (let i = -10; i <= 10; i++) {
-      // Film frame
+    const stripCount = mobile ? 8 : 11;
+    for (let i = 0; i < stripCount; i++) {
+      const offset = i - (stripCount - 1) / 2;
       const frame = new THREE.Mesh(
-        new THREE.BoxGeometry(1.8, 2.6, 0.02),
-        stripMat
+        new THREE.PlaneGeometry(1.35, 2.0),
+        stripMat.clone()
       );
-      frame.position.set(i * 2.1, -3, -8 + Math.sin(i * 0.4) * 1.5);
-      frame.rotation.y = Math.sin(i * 0.3) * 0.2;
-      frame.rotation.z = Math.sin(i * 0.5) * 0.05;
+      frame.position.set(offset * 1.7, -2.6 + Math.sin(i * 0.55) * 0.35, -7.5 + Math.cos(i * 0.4) * 0.8);
+      frame.rotation.y = Math.sin(i * 0.4) * 0.18;
       stripGroup.add(frame);
-
-      // Sprocket holes (top and bottom)
-      [-1.2, 1.2].forEach(dy => {
-        [-0.6, 0, 0.6].forEach(dx => {
-          const hole = new THREE.Mesh(
-            new THREE.BoxGeometry(0.12, 0.18, 0.04),
-            new THREE.MeshStandardMaterial({ color: 0x060912 })
-          );
-          hole.position.set(frame.position.x + dx, frame.position.y + dy, frame.position.z + 0.01);
-          hole.rotation.y = frame.rotation.y;
-          stripGroup.add(hole);
-        });
-      });
     }
 
-    // ── Particle Field (floating dust/bokeh) ─────────────────────
-    const PARTICLE_COUNT = 1500;
-    const pGeo  = new THREE.BufferGeometry();
-    const pPos  = new Float32Array(PARTICLE_COUNT * 3);
-    const pSizes = new Float32Array(PARTICLE_COUNT);
-    const pColors = new Float32Array(PARTICLE_COUNT * 3);
-
-    const colors = [0xd4af37, 0x4488ff, 0xff4400, 0xffffff];
+    const PARTICLE_COUNT = mobile ? 180 : 360;
+    const pGeo = new THREE.BufferGeometry();
+    const pPos = new Float32Array(PARTICLE_COUNT * 3);
+    const pPhase = new Float32Array(PARTICLE_COUNT);
     for (let i = 0; i < PARTICLE_COUNT; i++) {
-      pPos[i * 3]     = (Math.random() - 0.5) * 40;
-      pPos[i * 3 + 1] = (Math.random() - 0.5) * 25;
-      pPos[i * 3 + 2] = (Math.random() - 0.5) * 25 - 8;
-      pSizes[i] = Math.random() * 4 + 0.5;
-      
-      const color = new THREE.Color(colors[Math.floor(Math.random() * colors.length)]);
-      pColors[i * 3] = color.r;
-      pColors[i * 3 + 1] = color.g;
-      pColors[i * 3 + 2] = color.b;
+      pPos[i * 3] = (Math.random() - 0.2) * 28;
+      pPos[i * 3 + 1] = (Math.random() - 0.5) * 16;
+      pPos[i * 3 + 2] = (Math.random() - 0.5) * 18 - 4;
+      pPhase[i] = Math.random() * Math.PI * 2;
     }
     pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
-    pGeo.setAttribute('size', new THREE.BufferAttribute(pSizes, 1));
-    pGeo.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
-
-    const pMat = new THREE.PointsMaterial({
-      size: 0.06,
-      sizeAttenuation: true,
-      transparent: true,
-      opacity: 0.5,
-      depthWrite: false,
-      vertexColors: true,
-      blending: THREE.AdditiveBlending,
-    });
-    const particles = new THREE.Points(pGeo, pMat);
+    const particles = new THREE.Points(
+      pGeo,
+      new THREE.PointsMaterial({
+        color: 0xd5b23d,
+        size: mobile ? 0.05 : 0.065,
+        sizeAttenuation: true,
+        transparent: true,
+        opacity: 0.35,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      })
+    );
     scene.add(particles);
 
-    // ── Load real poster textures ─────────────────────────────────
     const loader = new THREE.TextureLoader();
     loader.crossOrigin = 'anonymous';
-
-    fetchPosterPaths().then(async (urls) => {
-      if (disposed || urls.length === 0) return;
+    fetchPosterPaths().then(async urls => {
+      if (disposed || !urls.length) return;
       for (let i = 0; i < Math.min(urls.length, cardMeshes.length); i++) {
         if (disposed) break;
         const tex = await loadTexture(loader, urls[i]);
-        if (!disposed && tex && cardMeshes[i]) {
-          tex.colorSpace = THREE.SRGBColorSpace;
-          const mat = new THREE.MeshStandardMaterial({
-            map: tex,
-            roughness: 0.4,
-            metalness: 0.15,
-            transparent: true,
-            opacity: 0.95,
-          });
-          cardMeshes[i].material = mat;
-          cardMeshes[i].material.needsUpdate = true;
-        }
+        if (disposed || !tex || !cardMeshes[i]) continue;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = Math.min(renderer.capabilities.getMaxAnisotropy(), 8);
+        const mat = new THREE.MeshStandardMaterial({
+          map: tex,
+          roughness: 0.48,
+          metalness: 0.06,
+          transparent: true,
+          opacity: 0,
+          emissive: new THREE.Color(0xd5b23d),
+          emissiveIntensity: 0.06,
+        });
+        cardMeshes[i].material.dispose();
+        cardMeshes[i].material = mat;
+        cardMeshes[i].userData.fade = 0;
+        cardMeshes[i].userData.fadeTarget = 1;
+      }
+
+      // Also texture a few strip frames if we have leftover posters
+      const stripKids = stripGroup.children;
+      for (let i = 0; i < Math.min(stripKids.length, urls.length); i++) {
+        if (disposed) break;
+        const tex = await loadTexture(loader, urls[(i + 3) % urls.length]);
+        if (disposed || !tex) continue;
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const mat = new THREE.MeshStandardMaterial({
+          map: tex,
+          roughness: 0.7,
+          metalness: 0.05,
+          transparent: true,
+          opacity: 0.55,
+        });
+        stripKids[i].material.dispose();
+        stripKids[i].material = mat;
       }
     });
 
-    // ── Mouse parallax ───────────────────────────────────────────
-    let targetRotX = 0, targetRotY = 0;
-    let currRotX   = 0, currRotY   = 0;
-
-    const handleMouse = (e) => {
-      targetRotY = ((e.clientX / window.innerWidth) - 0.5) * 0.6;
-      targetRotX = ((e.clientY / window.innerHeight) - 0.5) * -0.35;
+    let targetRotX = 0;
+    let targetRotY = 0;
+    let currRotX = 0;
+    let currRotY = 0;
+    const handlePointer = e => {
+      const x = 'clientX' in e ? e.clientX : e.touches?.[0]?.clientX;
+      const y = 'clientY' in e ? e.clientY : e.touches?.[0]?.clientY;
+      if (x == null || y == null) return;
+      targetRotY = ((x / window.innerWidth) - 0.5) * 0.38;
+      targetRotX = ((y / window.innerHeight) - 0.5) * -0.2;
     };
-    window.addEventListener('mousemove', handleMouse, { passive: true });
+    window.addEventListener('mousemove', handlePointer, { passive: true });
+    window.addEventListener('touchmove', handlePointer, { passive: true });
 
-    // ── Resize ───────────────────────────────────────────────────
     const handleResize = () => {
       if (!container || disposed) return;
       const w = container.clientWidth;
-      const h = container.clientHeight;
+      const h = Math.max(container.clientHeight, 1);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, w < 768 ? 1.5 : 2));
     };
     window.addEventListener('resize', handleResize);
 
-    // ── Animation ────────────────────────────────────────────────
+    const io = typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; }, { threshold: 0.05 })
+      : null;
+    if (io) io.observe(container);
+
     const clock = new THREE.Clock();
+    let last = 0;
 
-    const animate = () => {
+    const animate = (now) => {
       animId = requestAnimationFrame(animate);
+      if (disposed || !visible) return;
+      if (now - last < 14) return;
+      last = now;
+
       const t = clock.getElapsedTime();
+      currRotX += (targetRotX - currRotX) * 0.06;
+      currRotY += (targetRotY - currRotY) * 0.06;
 
-      // Smooth camera rotation
-      currRotX += (targetRotX - currRotX) * 0.05;
-      currRotY += (targetRotY - currRotY) * 0.05;
+      postersGroup.rotation.y = t * 0.022 + currRotY * 0.45;
+      postersGroup.rotation.x = currRotX * 0.18;
+      postersGroup.rotation.z = Math.sin(t * 0.07) * 0.02;
 
-      // Rotate poster arc slowly
-      postersGroup.rotation.y = t * 0.05 + currRotY * 0.6;
-      postersGroup.rotation.x = currRotX * 0.3;
-      postersGroup.rotation.z = Math.sin(t * 0.1) * 0.05;
-
-      // Float each card with more complex motion
-      cardMeshes.forEach((m, i) => {
-        m.position.y = m.userData.baseY + Math.sin(t * m.userData.speed + m.userData.phase) * 0.35;
-        m.position.x += Math.sin(t * 0.3 + i) * 0.002;
-        m.rotation.y += 0.001;
-      });
-
-      // Film strip drift
-      stripGroup.position.x = Math.sin(t * 0.08) * 0.8;
-      stripGroup.rotation.z = Math.sin(t * 0.06) * 0.03;
-      stripGroup.rotation.y = Math.sin(t * 0.04) * 0.02;
-
-      // Particle drift with more movement
-      particles.rotation.y = t * 0.02;
-      particles.rotation.x = t * 0.01;
-      particles.position.y = Math.sin(t * 0.15) * 0.5;
-      
-      // Animate particle sizes
-      const sizes = particles.geometry.attributes.size.array;
-      for (let i = 0; i < sizes.length; i++) {
-        sizes[i] = (Math.random() * 4 + 0.5) * (1 + Math.sin(t * 2 + i) * 0.3);
+      for (let i = 0; i < cardMeshes.length; i++) {
+        const m = cardMeshes[i];
+        const u = m.userData;
+        m.position.x = u.baseX + Math.sin(t * 0.32 + u.phase) * u.sway * 7;
+        m.position.y = u.baseY + Math.sin(t * 0.5 + u.phase) * u.bob;
+        m.position.z = u.baseZ;
+        if (u.fadeTarget != null && u.fade < u.fadeTarget) {
+          u.fade = Math.min(u.fadeTarget, u.fade + 0.03);
+          m.material.opacity = u.fade;
+        }
       }
-      particles.geometry.attributes.size.needsUpdate = true;
 
-      // Projector light pulsate with more variation
-      projector.intensity = 3 + Math.sin(t * 1.5) * 0.8 + Math.sin(t * 0.7) * 0.4;
-      projector.angle = Math.PI / 5 + Math.sin(t * 0.3) * 0.05;
-      
-      // Fill light variation
-      fill.intensity = 1.2 + Math.sin(t * 0.8) * 0.3;
-      
-      // Rim light variation
-      rim.intensity = 0.8 + Math.sin(t * 1.2) * 0.3;
+      stripGroup.position.x = 2.5 + Math.sin(t * 0.05) * 0.4;
+      stripGroup.rotation.y = Math.sin(t * 0.04) * 0.04;
 
-      // Camera gentle float with more movement
-      camera.position.y = Math.sin(t * 0.2) * 0.4 + Math.sin(t * 0.4) * 0.2;
-      camera.position.x = Math.sin(t * 0.15) * 0.3;
-      camera.rotation.x = currRotX * 0.12;
-      camera.rotation.y = currRotY * 0.08;
+      particles.rotation.y = t * 0.01;
+      const arr = particles.geometry.attributes.position.array;
+      for (let i = 0; i < PARTICLE_COUNT; i++) {
+        arr[i * 3 + 1] += Math.sin(t * 0.35 + pPhase[i]) * 0.0007;
+      }
+      particles.geometry.attributes.position.needsUpdate = true;
 
+      projector.intensity = 3.8 + Math.sin(t * 0.85) * 0.4;
+      warmFill.intensity = 0.75 + Math.sin(t * 0.5) * 0.1;
+
+      camera.position.x = (mobile ? 1.2 : 2.4) + Math.sin(t * 0.1) * 0.15 + currRotY * 0.7;
+      camera.position.y = 0.55 + Math.sin(t * 0.16) * 0.18 + currRotX * -0.5;
+      camera.lookAt(2.5, 0.5, -1.5);
       renderer.render(scene, camera);
     };
 
-    animate();
+    animId = requestAnimationFrame(animate);
 
-    // ── Cleanup ──────────────────────────────────────────────────
     return () => {
       disposed = true;
       cancelAnimationFrame(animId);
-      window.removeEventListener('mousemove', handleMouse);
+      window.removeEventListener('mousemove', handlePointer);
+      window.removeEventListener('touchmove', handlePointer);
       window.removeEventListener('resize', handleResize);
+      if (io) io.disconnect();
+      cardMeshes.forEach(m => {
+        m.geometry.dispose();
+        if (m.material?.map) m.material.map.dispose();
+        m.material?.dispose();
+        m.children.forEach(c => {
+          c.geometry?.dispose();
+          c.material?.dispose();
+        });
+      });
+      pGeo.dispose();
+      particles.material.dispose();
+      stripGroup.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material?.map) obj.material.map.dispose();
+        if (obj.material) obj.material.dispose();
+      });
       renderer.dispose();
-      if (container && renderer.domElement.parentNode === container) {
+      if (renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement);
       }
     };
@@ -330,6 +349,7 @@ export default function HeroCanvas() {
   return (
     <div
       ref={mountRef}
+      aria-hidden="true"
       style={{
         position: 'absolute',
         inset: 0,
@@ -337,6 +357,9 @@ export default function HeroCanvas() {
         height: '100%',
         pointerEvents: 'none',
         zIndex: 0,
+        opacity: 1,
+        maskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.25) 30%, rgba(0,0,0,0.95) 52%, #000 100%)',
+        WebkitMaskImage: 'linear-gradient(90deg, transparent 0%, rgba(0,0,0,0.25) 30%, rgba(0,0,0,0.95) 52%, #000 100%)',
       }}
     />
   );

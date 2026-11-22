@@ -71,37 +71,48 @@ export default function GlobalChat() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [loadVersion, setLoadVersion] = useState(0);
+  const [activityCount, setActivityCount] = useState(0);
 
   const openInbox = useCallback(() => {
     setOpen(true);
     setSelectedFriend(null);
   }, []);
 
+  // Existing sakha feed powers inbox + activity badge (no new messaging API)
   useEffect(() => {
-    let active = true;
-    if (!open || !hasAuthSession()) return undefined;
+    if (!hasAuthSession()) {
+      setActivityCount(0);
+      if (!open) return undefined;
+    }
 
-    const loadFriends = async () => {
-      setLoading(true);
-      setError('');
+    let active = true;
+    const loadFriends = async ({ withSpinner = false } = {}) => {
+      if (!hasAuthSession()) return;
+      if (withSpinner) {
+        setLoading(true);
+        setError('');
+      }
       try {
         const token = localStorage.getItem('token');
         const response = await axios.get('/api/people/sakha', {
           headers: { Authorization: `Bearer ${token}` },
           withCredentials: true,
         });
-        if (active) setFriends(response.data?.data || []);
+        if (!active) return;
+        const list = response.data?.data || [];
+        setActivityCount(list.filter(friend => friend.lastMessage && !friend.lastMessage.fromMe).length);
+        if (open) setFriends(list);
       } catch (requestError) {
-        if (active) {
+        if (active && open) {
           setError(requestError.response?.data?.error || 'Could not load your friends.');
         }
       } finally {
-        if (active) setLoading(false);
+        if (active && withSpinner) setLoading(false);
       }
     };
 
-    loadFriends();
-    const intervalId = window.setInterval(loadFriends, 30000);
+    loadFriends({ withSpinner: open });
+    const intervalId = window.setInterval(() => loadFriends({ withSpinner: false }), open ? 30000 : 60000);
     return () => {
       active = false;
       window.clearInterval(intervalId);
@@ -227,9 +238,15 @@ export default function GlobalChat() {
 
       <button
         type="button"
-        className={`vc-messages-launcher${open ? ' is-open' : ''}`}
+        className={`vc-messages-launcher${open ? ' is-open' : ''}${activityCount > 0 && !open ? ' has-activity' : ''}`}
         onClick={() => (open ? closeInbox() : openInbox())}
-        aria-label={open ? 'Close messages' : 'Open messages'}
+        aria-label={
+          open
+            ? 'Close messages'
+            : activityCount > 0
+              ? `Open messages, ${activityCount} active conversations`
+              : 'Open messages'
+        }
         aria-expanded={open}
       >
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -237,6 +254,11 @@ export default function GlobalChat() {
           <path d="M8 10h8M8 13h5" />
         </svg>
         <span>Messages</span>
+        {activityCount > 0 && !open && (
+          <span className="vc-messages-badge" aria-hidden="true">
+            {activityCount > 9 ? '9+' : activityCount}
+          </span>
+        )}
       </button>
     </div>
   );

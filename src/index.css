@@ -1152,9 +1152,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .vc-site-footer {
-  padding: 2rem 0 1.25rem;
-  background: #171e2a;
-  border-top: 1px solid rgba(255,255,255,0.07);
+  padding: 2.25rem 0 1.5rem;
+  background: #0d0d0f;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .vc-site-footer-main {
