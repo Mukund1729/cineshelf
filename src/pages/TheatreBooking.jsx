@@ -3,7 +3,7 @@
  * Steps: Seats → Snacks → Review → Pay → Ticket
  * Fixes: single stable renderer, no wall pass-through, seat-view camera, real data
  */
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import * as THREE from 'three';
 import { CSS3DObject, CSS3DRenderer } from 'three/addons/renderers/CSS3DRenderer.js';
@@ -13,6 +13,8 @@ import { tmdbGet, tmdbImageUrl } from '../api/tmdb';
 // ── Hall geometry ──────────────────────────────────────────────────────────────
 function buildHall(theatre) {
   const { rowCount, seatWidth, rowSpacing, ceilingHeight } = theatre.layout;
+  // Scale the demo hall up so the room reads as a real multiplex auditorium.
+  const scale = 1.22;
   const defaultSections = theatre.layout.sections || [4, 8, 4];
   const rowSections = theatre.layout.rowSections || Array.from(
     { length: rowCount },
@@ -20,27 +22,29 @@ function buildHall(theatre) {
   );
   const maxSeatsPerRow = Math.max(...rowSections.map(sections => sections.reduce((sum, count) => sum + count, 0)));
   const balconyRowCount = 3;
-  const balconyFloorY = Math.min(ceilingHeight - 2.4, Math.max(3.2, ceilingHeight * 0.42));
-  const balconyStartZ = 0.8 + (rowCount - 1) * rowSpacing + 2;
-  const balconyCenterZ = balconyStartZ + ((balconyRowCount - 1) * rowSpacing) / 2;
-  const seatW = seatWidth * 1.16;
+  const hallH = ceilingHeight * scale;
+  const spacing = rowSpacing * scale;
+  const balconyFloorY = Math.min(hallH - 2.6, Math.max(3.6, hallH * 0.44));
+  const balconyStartZ = 1.1 + (rowCount - 1) * spacing + 2.6;
+  const balconyCenterZ = balconyStartZ + ((balconyRowCount - 1) * spacing) / 2;
+  const seatW = seatWidth * 1.22 * scale;
   const aisleWidth = seatW * (theatre.layout.aisleMultiplier || 1.45);
-  const seatD = 0.92;
-  const hallD = Math.max(20, (rowCount - 1) * rowSpacing + 18);
-  const screenZ = 2 - 6.2;
-  const screenY = Math.min(4.5, ceilingHeight * 0.45);
-  const hallW = (maxSeatsPerRow * seatW + (Math.max(...rowSections.map(sections => sections.length)) - 1) * aisleWidth) / 2 + 2.1;
-  const maxScreenH = Math.max(3, Math.min(screenY - 0.55, ceilingHeight - screenY - 0.6) * 2);
-  const screenW = Math.min(23.8, hallW * 2.08, maxScreenH * 2.12);
-  const curveRadius = Math.max(14, hallW * 1.45);
+  const seatD = 0.98 * scale;
+  const hallD = Math.max(26, (rowCount - 1) * spacing + 22);
+  const screenZ = 2 - 7.4;
+  const screenY = Math.min(5.4, hallH * 0.46);
+  const hallW = (maxSeatsPerRow * seatW + (Math.max(...rowSections.map(sections => sections.length)) - 1) * aisleWidth) / 2 + 2.6;
+  const maxScreenH = Math.max(3.4, Math.min(screenY - 0.55, hallH - screenY - 0.6) * 2);
+  const screenW = Math.min(28.5, hallW * 2.15, maxScreenH * 2.12);
+  const curveRadius = Math.max(18, hallW * 1.55);
   const rows = Array.from({ length: rowCount }, (_, index) => {
     const position = index / Math.max(1, rowCount - 1);
     const cat = position > 0.78 ? 'recliner' : position > 0.5 ? 'premium' : 'standard';
     return {
       id: String.fromCharCode(65 + index),
       label: String.fromCharCode(65 + index),
-      z: 0.8 + index * rowSpacing,
-      floorY: index * 0.18,
+      z: 1.1 + index * spacing,
+      floorY: index * 0.2,
       cat,
       price: cat === 'recliner' ? 450 : cat === 'premium' ? 280 : 180,
       sections: rowSections[index],
@@ -55,8 +59,8 @@ function buildHall(theatre) {
   const balconyRows = Array.from({ length: balconyRowCount }, (_, index) => ({
     id: `BA${index + 1}`,
     label: `BA${index + 1}`,
-    z: balconyStartZ + index * rowSpacing,
-    floorY: balconyFloorY + index * 0.12,
+    z: balconyStartZ + index * spacing,
+    floorY: balconyFloorY + index * 0.14,
     cat: 'balcony',
     price: 320,
     sections: balconySections,
@@ -73,7 +77,7 @@ function buildHall(theatre) {
     screenW,
     screenH: screenW / 2.12,
     hallW,
-    hallH: ceilingHeight,
+    hallH,
     hallD,
     curveRadius,
     balconyFloorY,
@@ -86,20 +90,21 @@ function buildHall(theatre) {
 function buildCameraPresets(hall) {
   return {
     overview: {
-      pos: [0, Math.min(10, hall.hallH - 0.8), hall.balconyStartZ - 1.5],
-      look: [0, hall.screenY + 0.1, 4.5],
+      // Pull back + up so the full rake of seats is clear of the bottom dock.
+      pos: [0, Math.min(12.5, hall.hallH - 0.55), hall.balconyStartZ + 1.8],
+      look: [0, hall.screenY * 0.55, hall.screenZ + 8],
     },
     fromStage: {
-      pos: [0, 1.8, hall.screenZ + 2.4],
-      look: [0, hall.screenY, 2.4],
+      pos: [0, 2.1, hall.screenZ + 3.2],
+      look: [0, hall.screenY, 3.2],
     },
     balcony: {
-      pos: [hall.balconyAisleX, Math.min(hall.hallH - 1, hall.balconyFloorY + 2), hall.balconyCenterZ],
+      pos: [hall.balconyAisleX, Math.min(hall.hallH - 1, hall.balconyFloorY + 2.2), hall.balconyCenterZ + 0.6],
       look: [0, hall.screenY, hall.screenZ],
     },
     birdsEye: {
-      pos: [0, hall.hallH - 0.65, 1.5],
-      look: [0, 0, 0],
+      pos: [0, hall.hallH - 0.5, 2.2],
+      look: [0, 0.4, hall.screenZ + 6],
     },
   };
 }
@@ -215,14 +220,24 @@ const BOOKMYSHOW_CITY_SLUGS = {
   Hisar: 'hisar',
 };
 
-function getBookMyShowUrl(city) {
-  const cityKey = city.replace(/[\s-]/g, '').toLowerCase();
+function getBookMyShowCitySlug(city) {
+  const cityKey = String(city || '').replace(/[\s-]/g, '').toLowerCase();
   const cityEntry = Object.entries(BOOKMYSHOW_CITY_SLUGS)
     .find(([name]) => name.replace(/[\s-]/g, '').toLowerCase() === cityKey);
-  const citySlug = cityEntry?.[1] || city.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return citySlug
+  return cityEntry?.[1]
+    || String(city || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function getBookMyShowUrl(city, movieTitle = '') {
+  const citySlug = getBookMyShowCitySlug(city);
+  const base = citySlug
     ? `https://in.bookmyshow.com/explore/movies-${citySlug}`
     : 'https://in.bookmyshow.com/explore/movies';
+  // BookMyShow has no public showtimes API — deep-link into their city explore,
+  // optionally prefilled with the film title so live listings open faster.
+  if (!movieTitle) return base;
+  const query = new URLSearchParams({ q: movieTitle });
+  return `${base}?${query.toString()}`;
 }
 
 async function fetchWithTimeout(url, options, timeoutMs = 12000) {
@@ -247,7 +262,36 @@ async function fetchWithTimeout(url, options, timeoutMs = 12000) {
   }
 }
 
+function cinemaCacheKey(city) {
+  return `vc-cinemas-v1:${String(city || '').trim().toLowerCase()}`;
+}
+
+function readCinemaCache(city) {
+  try {
+    const raw = sessionStorage.getItem(cinemaCacheKey(city));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.at || !Array.isArray(parsed.items)) return null;
+    // Fresh for 30 minutes — avoids re-hitting Overpass on every visit.
+    if (Date.now() - parsed.at > 30 * 60 * 1000) return null;
+    return parsed.items;
+  } catch {
+    return null;
+  }
+}
+
+function writeCinemaCache(city, items) {
+  try {
+    sessionStorage.setItem(cinemaCacheKey(city), JSON.stringify({ at: Date.now(), items }));
+  } catch {
+    // Ignore quota / private-mode failures.
+  }
+}
+
 async function findMappedCinemas(city, signal) {
+  const cached = readCinemaCache(city);
+  if (cached) return cached;
+
   const geocodeUrl = new URL('https://nominatim.openstreetmap.org/search');
   geocodeUrl.search = new URLSearchParams({
     q: `${city}, India`,
@@ -259,7 +303,7 @@ async function findMappedCinemas(city, signal) {
   const geocodeResponse = await fetchWithTimeout(geocodeUrl, {
     signal,
     headers: { 'Accept-Language': 'en' },
-  }, 8000);
+  }, 7000);
   if (!geocodeResponse.ok) throw new Error(`Could not locate ${city}. Try another spelling or use the BookMyShow link.`);
   const places = await geocodeResponse.json();
   if (!places.length) throw new Error(`Could not find ${city} on the public map. Try another spelling or use BookMyShow.`);
@@ -269,7 +313,7 @@ async function findMappedCinemas(city, signal) {
     || ['city', 'town'].includes(item.addresstype)
   ) || places[0];
   const { lat, lon, display_name: displayName } = place;
-  const query = `[out:json][timeout:15];nwr(around:50000,${lat},${lon})["amenity"="cinema"];out center tags;`;
+  const query = `[out:json][timeout:12];nwr(around:50000,${lat},${lon})["amenity"="cinema"];out center tags;`;
   const endpoints = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
@@ -283,7 +327,7 @@ async function findMappedCinemas(city, signal) {
       requestUrl.searchParams.set('data', query);
       const response = await fetchWithTimeout(requestUrl, {
         signal,
-      }, 10000);
+      }, 9000);
       if (!response.ok) throw new Error(`The public theatre map returned ${response.status}.`);
       const data = await response.json();
       const found = new Map();
@@ -302,7 +346,9 @@ async function findMappedCinemas(city, signal) {
           source: 'OpenStreetMap',
         });
       }
-      return [...found.values()].sort((a, b) => a.dist - b.dist);
+      const items = [...found.values()].sort((a, b) => a.dist - b.dist);
+      writeCinemaCache(city, items);
+      return items;
     } catch (error) {
       if (error.name === 'AbortError') throw error;
       lastError = error;
@@ -327,14 +373,14 @@ function generateShowtimes(movieId, theatreIdx) {
 
 // ── Snacks menu ────────────────────────────────────────────────────────────────
 const SNACKS = [
-  { id: 's1', name: 'Large Popcorn',      emoji: '🍿', price: 220, desc: 'Buttery salted / caramel',       img: 'https://images.unsplash.com/photo-1585647347384-2593bc35786b?w=200&q=70' },
-  { id: 's2', name: 'Nachos & Salsa',     emoji: '🌮', price: 180, desc: 'Crispy tortilla chips',           img: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?w=200&q=70' },
-  { id: 's3', name: 'Combo Meal',         emoji: '🥤', price: 380, desc: 'Popcorn + 2 drinks',              img: 'https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=200&q=70' },
-  { id: 's4', name: 'Pepsi 500ml',        emoji: '🥤', price: 110, desc: 'Chilled cola',                    img: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=200&q=70' },
-  { id: 's5', name: 'Hot Dog',            emoji: '🌭', price: 150, desc: 'Classic mustard & ketchup',       img: 'https://images.unsplash.com/photo-1515041219749-89347f83291a?w=200&q=70' },
-  { id: 's6', name: 'Chocolate Brownie',  emoji: '🍫', price: 130, desc: 'Warm fudge brownie',              img: 'https://images.unsplash.com/photo-1564355808539-22fda35bed7e?w=200&q=70' },
-  { id: 's7', name: 'Cappuccino',         emoji: '☕', price: 140, desc: 'Fresh brewed, any milk',          img: 'https://images.unsplash.com/photo-1534778101976-62847782c213?w=200&q=70' },
-  { id: 's8', name: 'Mineral Water',      emoji: '💧', price:  40, desc: '500ml bottle',                    img: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=200&q=70' },
+  { id: 's1', name: 'Large Popcorn',     price: 220, desc: 'Buttery salted / caramel', img: 'https://images.unsplash.com/photo-1585647347384-2593bc35786b?w=200&q=70' },
+  { id: 's2', name: 'Nachos & Salsa',    price: 180, desc: 'Crispy tortilla chips',    img: 'https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?w=200&q=70' },
+  { id: 's3', name: 'Combo Meal',        price: 380, desc: 'Popcorn + 2 drinks',       img: 'https://images.unsplash.com/photo-1529543544282-ea669407fca3?w=200&q=70' },
+  { id: 's4', name: 'Pepsi 500ml',       price: 110, desc: 'Chilled cola',             img: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=200&q=70' },
+  { id: 's5', name: 'Hot Dog',           price: 150, desc: 'Classic mustard & ketchup', img: 'https://images.unsplash.com/photo-1515041219749-89347f83291a?w=200&q=70' },
+  { id: 's6', name: 'Chocolate Brownie', price: 130, desc: 'Warm fudge brownie',       img: 'https://images.unsplash.com/photo-1564355808539-22fda35bed7e?w=200&q=70' },
+  { id: 's7', name: 'Cappuccino',        price: 140, desc: 'Fresh brewed, any milk',  img: 'https://images.unsplash.com/photo-1534778101976-62847782c213?w=200&q=70' },
+  { id: 's8', name: 'Mineral Water',     price:  40, desc: '500ml bottle',             img: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=200&q=70' },
 ];
 
 // ── QR code (simple SVG data matrix look) ──────────────────────────────────────
@@ -365,10 +411,10 @@ function QRCode({ ticketId, size = 120 }) {
 
 // ── Colour helpers ──────────────────────────────────────────────────────────────
 const CAT_COLOURS = {
-  standard: { base: 0x4a735e, selected: 0xffd35a, sold: 0x292a30, hover: 0x638d76 },
-  premium:  { base: 0x696076, selected: 0xffd35a, sold: 0x292a30, hover: 0x837896 },
-  recliner: { base: 0x806848, selected: 0xffd35a, sold: 0x292a30, hover: 0x9a805a },
-  balcony:  { base: 0x9a7048, selected: 0xffd35a, sold: 0x292a30, hover: 0xb4875b },
+  standard: { base: 0x3d6f8c, selected: 0xffd35a, sold: 0x23242a, hover: 0x4f88a8 },
+  premium:  { base: 0x6b4f86, selected: 0xffd35a, sold: 0x23242a, hover: 0x8363a0 },
+  recliner: { base: 0x2f6a55, selected: 0xffd35a, sold: 0x23242a, hover: 0x3f856c },
+  balcony:  { base: 0xa67550, selected: 0xffd35a, sold: 0x23242a, hover: 0xc07e62 },
 };
 
 // ── Main component ──────────────────────────────────────────────────────────────
@@ -402,8 +448,12 @@ export default function TheatreBooking() {
       ? demoTheatres
       : [sampleTheatre];
   const theatre = cityTheatres[theatreIdx] || cityTheatres[0] || THEATRES[0];
-  const HALL = buildHall(theatre);
-  const PRESETS = buildCameraPresets(HALL);
+  // Stable key so OSM list refresh does not rebuild the whole WebGL hall mid-drag.
+  const theatreKey = `${theatre?.name || ''}|${theatre?.city || ''}|${theatre?.layout?.rowCount || 0}|${theatreIdx}`;
+  const HALL = useMemo(() => buildHall(theatre), [theatreKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const PRESETS = useMemo(() => buildCameraPresets(HALL), [HALL]);
+  const [sceneError, setSceneError] = useState('');
+  const paintSeatsRef = useRef(null); // (selectedIds: string[]) => void — sync 3D colours
   const [showtimes, setShowtimes]   = useState([]);
   const [showIdx, setShowIdx]       = useState(0);
 
@@ -457,35 +507,47 @@ export default function TheatreBooking() {
     const timeoutId = setTimeout(() => {
       timedOut = true;
       controller.abort();
-    }, 30000);
-    setTheatreLookupLoading(true);
+    }, 24000);
     setTheatreLookupError('');
-    setMappedTheatres([]);
     setTheatreIdx(0);
     selectedSeatsRef.current = [];
     setSelectedSeats([]);
 
-    findMappedCinemas(city.trim(), controller.signal)
-      .then(items => {
-        if (!active) return;
-        setMappedTheatres(items);
-        if (!items.length) setTheatreLookupError(`No named cinemas are mapped near ${city}.`);
-      })
-      .catch(error => {
-        if (!active) return;
-        if (timedOut) {
-          setTheatreLookupError('The cinema search took too long. Try again or open the BookMyShow city listings.');
-        } else if (error.name !== 'AbortError') {
-          setTheatreLookupError(error.message || 'Could not load cinemas from OpenStreetMap.');
-        }
-      })
-      .finally(() => {
-        if (active) setTheatreLookupLoading(false);
-      });
+    // Instant paint from session cache — avoids empty "Searching…" flicker.
+    const cached = readCinemaCache(city.trim());
+    if (cached?.length) {
+      setMappedTheatres(cached);
+      setTheatreLookupLoading(false);
+    } else {
+      setMappedTheatres([]);
+      setTheatreLookupLoading(true);
+    }
+
+    // Slight delay so the WebGL hall can boot before OSM network work competes.
+    const startId = setTimeout(() => {
+      findMappedCinemas(city.trim(), controller.signal)
+        .then(items => {
+          if (!active) return;
+          setMappedTheatres(items);
+          if (!items.length) setTheatreLookupError(`No named cinemas are mapped near ${city}.`);
+        })
+        .catch(error => {
+          if (!active) return;
+          if (timedOut) {
+            setTheatreLookupError('The cinema search took too long. Try again or open the BookMyShow city listings.');
+          } else if (error.name !== 'AbortError') {
+            setTheatreLookupError(error.message || 'Could not load cinemas from OpenStreetMap.');
+          }
+        })
+        .finally(() => {
+          if (active) setTheatreLookupLoading(false);
+        });
+    }, cached?.length ? 0 : 350);
 
     return () => {
       active = false;
       clearTimeout(timeoutId);
+      clearTimeout(startId);
       controller.abort();
     };
   }, [city, cityLookupAttempt]);
@@ -525,27 +587,42 @@ export default function TheatreBooking() {
   // ── Main Three.js effect ───────────────────────────────────────────────────
   useEffect(() => {
     if (loading) return;          // Wait until movie data loaded
+    if (step !== 1) return;       // Tear down when leaving the seat step (avoids detached-canvas crashes)
     const container = mountRef.current;
     if (!container) return;
 
     let animId;
     let disposed = false;
+    setSceneError('');
 
     // ── Renderer ─────────────────────────────────────────────────────────
     // Use fallback dimensions if container hasn't laid out yet
     const getW = () => container.clientWidth  || window.innerWidth;
     const getH = () => container.clientHeight || (window.innerHeight - 160);
 
-    const renderer = new THREE.WebGLRenderer({
-      antialias: true,
-      powerPreference: 'high-performance',
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    let renderer;
+    try {
+      renderer = new THREE.WebGLRenderer({
+        antialias: window.devicePixelRatio < 2,
+        powerPreference: 'high-performance',
+        failIfMajorPerformanceCaveat: false,
+      });
+    } catch (error) {
+      console.error('[TheatreBooking] WebGL init failed', error);
+      setSceneError('3D theatre could not start on this device. Try refreshing, or open BookMyShow for live booking.');
+      return undefined;
+    }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
     renderer.setSize(getW(), getH());
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
     container.appendChild(renderer.domElement);
+    const onContextLost = (event) => {
+      event.preventDefault();
+      setSceneError('Graphics context was lost. Refresh the page to reload the theatre.');
+    };
+    renderer.domElement.addEventListener('webglcontextlost', onContextLost);
     const canvas = renderer.domElement;
     canvas.style.touchAction = 'none';
     // Make canvas fill the container absolutely so it doesn't collapse to 0
@@ -564,26 +641,30 @@ export default function TheatreBooking() {
     container.appendChild(cssRenderer.domElement);
     // ── Scene ─────────────────────────────────────────────────────────────
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x100b10);
-    scene.fog = new THREE.Fog(0x100b10, 23, 42);
+    scene.background = new THREE.Color(0x0c090d);
+    scene.fog = new THREE.FogExp2(0x0c090d, 0.028);
 
     // ── Camera ────────────────────────────────────────────────────────────
     const camera = new THREE.PerspectiveCamera(
-      75, container.clientWidth / container.clientHeight, 0.1, 80
+      58, container.clientWidth / container.clientHeight, 0.1, 120
     );
     camera.position.set(...PRESETS.overview.pos);
     camera.lookAt(...PRESETS.overview.look);
     const cameraLook = new THREE.Vector3(0, 1.5, 0);
 
-    // ── Lighting ──────────────────────────────────────────────────────────
-    scene.add(new THREE.HemisphereLight(0xdce7ff, 0x190b12, 1.15));
-    const houseLight = new THREE.PointLight(0xffc982, 0.85, 32);
-    houseLight.position.set(0, 8.5, 3);
+    // ── Lighting (few lights only — dozens of PointLights tank FPS) ───────
+    scene.add(new THREE.HemisphereLight(0xe8eef8, 0x140a10, 0.95));
+    const houseLight = new THREE.PointLight(0xffc982, 1.05, 36);
+    houseLight.position.set(0, Math.min(8.2, HALL.hallH - 1.2), 2.5);
     scene.add(houseLight);
 
-    const screenGlow = new THREE.PointLight(0x8eabff, 2.6, 30);
+    const screenGlow = new THREE.PointLight(0x9bb6ff, 2.2, 28);
     screenGlow.position.set(0, HALL.screenY, HALL.screenZ + 1.4);
     scene.add(screenGlow);
+
+    const rearFill = new THREE.PointLight(0xffaa78, 0.45, 22);
+    rearFill.position.set(0, HALL.balconyFloorY + 1.2, HALL.balconyCenterZ);
+    scene.add(rearFill);
 
     // ── Cinema screen ─────────────────────────────────────────────────────
     const scrW = HALL.screenW, scrH = HALL.screenH;
@@ -734,15 +815,15 @@ export default function TheatreBooking() {
     scene.add(screenTrim);
 
     // ── Hall structure ─────────────────────────────────────────────────────
-    const wallMat = new THREE.MeshStandardMaterial({ color: 0x24141a, roughness: 0.88 });
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0x18131a, roughness: 0.96 });
-    const ceilMat  = new THREE.MeshStandardMaterial({ color: 0x100d14, roughness: 0.92 });
+    const wallMat = new THREE.MeshStandardMaterial({ color: 0x1f1218, roughness: 0.92, metalness: 0.04 });
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0x121014, roughness: 0.94, metalness: 0.08 });
+    const ceilMat  = new THREE.MeshStandardMaterial({ color: 0x0d0b10, roughness: 0.95 });
 
-    // Floor (tilted for cinema rake)
-    const floorGeo = new THREE.PlaneGeometry(HALL.hallW * 2 + 2, HALL.hallD + 4);
+    // Floor — gentle rake toward the screen
+    const floorGeo = new THREE.PlaneGeometry(HALL.hallW * 2 + 2, HALL.hallD + 4, 1, 8);
     const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.set(0, -0.1, 3);
+    floor.rotation.x = -Math.PI / 2 + 0.035;
+    floor.position.set(0, -0.05, 3);
     floor.receiveShadow = true;
     scene.add(floor);
 
@@ -765,26 +846,22 @@ export default function TheatreBooking() {
     makeWall(HALL.hallW * 2 + 2, HALL.hallH, 0.4, 0, HALL.hallH / 2, HALL.hallD / 2 + 3); // back
     makeWall(HALL.hallW * 2 + 2, HALL.hallH, 0.4, 0, HALL.hallH / 2, HALL.screenZ - 0.5); // front/screen wall
 
-    // Acoustic wall panels and restrained architectural lighting.
+    // Acoustic wall panels + emissive sconces (no per-panel PointLights).
     const panelMat = new THREE.MeshStandardMaterial({
-      color: 0x381c25,
-      roughness: 0.9,
-      emissive: 0x12070a,
+      color: 0x2e171e,
+      roughness: 0.92,
+      emissive: 0x100608,
     });
-    const wallTrimMat = new THREE.MeshBasicMaterial({ color: 0x8d573a });
-    for (let z = HALL.screenZ + 1.5; z < HALL.hallD / 2 + 2; z += 2.2) {
+    const sconceMat = new THREE.MeshBasicMaterial({ color: 0xd4a06a });
+    for (let z = HALL.screenZ + 1.8; z < HALL.hallD / 2 + 1.5; z += 2.6) {
       for (const side of [-1, 1]) {
-        const panel = new THREE.Mesh(new THREE.BoxGeometry(0.07, 4.8, 1.25), panelMat);
+        const panel = new THREE.Mesh(new THREE.BoxGeometry(0.08, 5.1, 1.4), panelMat);
         panel.position.set(side * (HALL.hallW - 0.34), HALL.hallH * 0.42, z);
         scene.add(panel);
 
-        const sconce = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.62, 0.12), trimMat);
-        sconce.position.set(side * (HALL.hallW - 0.46), HALL.hallH * 0.28, z);
+        const sconce = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.55, 0.14), sconceMat);
+        sconce.position.set(side * (HALL.hallW - 0.48), HALL.hallH * 0.3, z);
         scene.add(sconce);
-
-        const wallGlow = new THREE.PointLight(0xffaa61, 0.32, 5);
-        wallGlow.position.set(side * (HALL.hallW - 0.8), HALL.hallH * 0.32, z);
-        scene.add(wallGlow);
       }
     }
 
@@ -836,9 +913,9 @@ export default function TheatreBooking() {
     const seatGeo = new THREE.ExtrudeGeometry(cushionShape, {
       depth: seatDepth,
       bevelEnabled: true,
-      bevelSegments: 2,
-      bevelSize: 0.025,
-      bevelThickness: 0.025,
+      bevelSegments: 1,
+      bevelSize: 0.02,
+      bevelThickness: 0.02,
       steps: 1,
     });
     seatGeo.translate(0, 0, -seatDepth / 2);
@@ -853,10 +930,10 @@ export default function TheatreBooking() {
     const backGeo = new THREE.ExtrudeGeometry(seatBackShape, {
       depth: 0.12,
       bevelEnabled: true,
-      bevelSegments: 2,
+      bevelSegments: 1,
       steps: 1,
-      bevelSize: 0.025,
-      bevelThickness: 0.025,
+      bevelSize: 0.02,
+      bevelThickness: 0.02,
     });
     const armGeo = new THREE.BoxGeometry(0.13, 0.22, HALL.seatD * 0.82);
     const footGeo = new THREE.BoxGeometry(HALL.seatW * 0.68, 0.1, HALL.seatD * 0.56);
@@ -874,15 +951,17 @@ export default function TheatreBooking() {
     const backInstances = {};
     const seatMaterial = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      roughness: 0.78,
-      emissive: 0x1e2a24,
-      emissiveIntensity: 0.6,
+      roughness: 0.62,
+      metalness: 0.08,
+      emissive: 0x141820,
+      emissiveIntensity: 0.35,
     });
     const backMaterial = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      roughness: 0.78,
-      emissive: 0x1e2a24,
-      emissiveIntensity: 0.6,
+      roughness: 0.62,
+      metalness: 0.08,
+      emissive: 0x141820,
+      emissiveIntensity: 0.35,
     });
     Object.entries(CAT_COLOURS).forEach(([cat, cols]) => {
       const seatMesh = new THREE.InstancedMesh(seatGeo, seatMaterial, seatCapacity);
@@ -910,15 +989,18 @@ export default function TheatreBooking() {
 
     const transform = new THREE.Object3D();
     const localTransform = new THREE.Matrix4();
+    const finalMatrix = new THREE.Matrix4();
     const setPartTransform = (mesh, instanceId, x, y, z, rotationY, offsetX, offsetY, offsetZ) => {
       transform.position.set(x, y, z);
       transform.rotation.set(0, rotationY, 0);
       transform.updateMatrix();
       localTransform.makeTranslation(offsetX, offsetY, offsetZ);
-      mesh.setMatrixAt(instanceId, transform.matrix.clone().multiply(localTransform));
+      // Reuse matrices — avoid clone() per seat (was a major hitch on hall build).
+      finalMatrix.copy(transform.matrix).multiply(localTransform);
+      mesh.setMatrixAt(instanceId, finalMatrix);
     };
     const makeCurvedRowGeometry = (width, depth, centerX) => {
-      const geometry = new THREE.BoxGeometry(width, 0.16, depth, 8, 1, 4);
+      const geometry = new THREE.BoxGeometry(width, 0.16, depth, 4, 1, 2);
       const positions = geometry.attributes.position;
       const centerCurve = (centerX * centerX) / (2 * HALL.curveRadius);
       for (let vertex = 0; vertex < positions.count; vertex++) {
@@ -1124,31 +1206,48 @@ export default function TheatreBooking() {
           data.backInstanceId,
           new THREE.Color(data.baseColor)
         );
+        setSeatView(null);
       } else {
-        // Select — move camera to seat view
+        // Select — nudge camera toward the seat without a hard POV slam
+        // (hard seat-eye jumps felt like UI "overlap" with the panel).
         selectedSeatsRef.current = [...selectedSeatsRef.current, seatId];
         mesh.setColorAt(instanceId, new THREE.Color(data.selectedColor));
         backInstances[data.cat].setColorAt(
           data.backInstanceId,
           new THREE.Color(data.selectedColor)
         );
-        // Brief seat-view preview
-        const seatForward = new THREE.Vector3(-data.x, 0, HALL.screenZ - data.z).normalize();
-        const eyePos = new THREE.Vector3(data.x, data.y + 0.68, data.z)
-          .addScaledVector(seatForward, 0.72);
-        eyePos.x = Math.max(-HALL.hallW + 0.5, Math.min(HALL.hallW - 0.5, eyePos.x));
-        eyePos.y = Math.max(0.8, Math.min(HALL.hallH - 0.5, eyePos.y));
-        eyePos.z = Math.max(HALL.screenZ + 0.5, Math.min(HALL.hallD / 2 + 2.5, eyePos.z));
+        const overview = PRESETS.overview;
+        const eyePos = new THREE.Vector3(
+          THREE.MathUtils.clamp(data.x * 0.35, -HALL.hallW * 0.35, HALL.hallW * 0.35),
+          THREE.MathUtils.clamp((overview.pos[1] + data.y) * 0.55, 2.2, HALL.hallH - 1.2),
+          THREE.MathUtils.clamp(data.z + 4.5, HALL.screenZ + 6, HALL.hallD / 2 + 1.5)
+        );
         camTargetPos.current.copy(eyePos);
-        camTargetLook.current.set(0, HALL.screenY, HALL.screenZ);
+        camTargetLook.current.set(data.x * 0.2, HALL.screenY * 0.85, HALL.screenZ);
         setSeatView({ rowId: data.rowId, seatNum: data.seatNum, cat: data.cat });
       }
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       backInstances[data.cat].instanceColor.needsUpdate = true;
-      mesh.instanceMatrix.needsUpdate = true;
-      backInstances[data.cat].instanceMatrix.needsUpdate = true;
 
       setSelectedSeats([...selectedSeatsRef.current]);
+    };
+
+    // Expose a colour sync so "Suggest Best Seats" can update the mesh without remount.
+    paintSeatsRef.current = (selectedIds) => {
+      const selected = new Set(selectedIds);
+      seatMeshes.forEach(mesh => {
+        mesh.userData.seatData.forEach((data, instanceId) => {
+          if (!data || data.sold) return;
+          const id = `${data.rowId}${data.seatNum}`;
+          const color = selected.has(id) ? data.selectedColor : data.baseColor;
+          mesh.setColorAt(instanceId, new THREE.Color(color));
+          backInstances[data.cat].setColorAt(data.backInstanceId, new THREE.Color(color));
+        });
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      });
+      Object.values(backInstances).forEach(mesh => {
+        if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      });
     };
 
     const onPointerUp = (e) => {
@@ -1187,6 +1286,7 @@ export default function TheatreBooking() {
 
     const animate = () => {
       animId = requestAnimationFrame(animate);
+      if (disposed || stepRef.current !== 1) return;
       const now = performance.now();
       const dt  = Math.min(now - lastNow, 100);
       lastNow = now;
@@ -1204,8 +1304,8 @@ export default function TheatreBooking() {
         }
       }
 
-      // Smooth camera
-      const smoothFactor = 1 - Math.exp(-dt / 90);
+      // Smooth camera — slightly snappier so the hall never feels sticky.
+      const smoothFactor = 1 - Math.exp(-dt / 72);
       camera.position.lerp(camTargetPos.current, smoothFactor);
       cameraLook.lerp(camTargetLook.current, smoothFactor);
       camera.lookAt(cameraLook);
@@ -1217,19 +1317,23 @@ export default function TheatreBooking() {
     animate();
 
     // Initial preset
-    const p0 = PRESETS[presetRef.current];
-    camTargetPos.current.set(...p0.pos);
-    camTargetLook.current.set(...p0.look);
-    cameraLook.copy(camTargetLook.current);
+    const p0 = PRESETS[presetRef.current] || PRESETS.overview;
+    if (p0) {
+      camTargetPos.current.set(...p0.pos);
+      camTargetLook.current.set(...p0.look);
+      cameraLook.copy(camTargetLook.current);
+    }
 
     return () => {
       disposed = true;
+      paintSeatsRef.current = null;
       cancelAnimationFrame(animId);
       canvas.removeEventListener('pointerdown', onPointerDown);
       canvas.removeEventListener('pointermove', onPointerMove);
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('pointercancel', onPointerCancel);
-      window .removeEventListener('resize',     onResize);
+      renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
+      window.removeEventListener('resize', onResize);
       ro.disconnect();
       scene.traverse(object => {
         object.geometry?.dispose();
@@ -1249,9 +1353,9 @@ export default function TheatreBooking() {
         container.removeChild(renderer.domElement);
       }
     };
-  // Re-run when loading changes so the 3D scene initializes after data loads
+  // Rebuild when cinema identity changes, or when returning to the seat step.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [movieId, loading, theatreIdx, city, mappedTheatres]);
+  }, [movieId, loading, theatreKey, step]);
 
   // Keep step ref in sync for the closure
   useEffect(() => { stepRef.current = step; }, [step]);
@@ -1370,36 +1474,36 @@ export default function TheatreBooking() {
     // Clear current selection and apply suggestion
     selectedSeatsRef.current = best.map(s => `${s.rowId}${s.seatNum}`);
     setSelectedSeats([...selectedSeatsRef.current]);
+    paintSeatsRef.current?.(selectedSeatsRef.current);
+    setSeatView({
+      rowId: best[0].rowId,
+      seatNum: best[0].seatNum,
+      cat: best[0].row.cat,
+    });
   }, [HALL, movieId, theatreIdx]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#07090f', color: '#f5f0e8' }}>
       <Navbar />
       <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
         @media (max-width: 640px) {
           .theatre-camera-controls {
-            bottom: 76px !important;
-            width: calc(100% - 16px);
-            gap: 0.3rem !important;
-          }
-          .theatre-camera-controls button {
-            padding: 0.38rem 0.52rem !important;
-            font-size: 0.65rem !important;
-          }
-          .theatre-seat-legend {
-            bottom: 18px !important;
-            max-width: calc(100% - 20px);
-            gap: 0.35rem 0.65rem !important;
-            font-size: 0.62rem !important;
-          }
-          .theatre-selection-card {
             top: 8px !important;
             right: 8px !important;
-            min-width: 0 !important;
-            max-width: 190px !important;
-            padding: 0.7rem !important;
+            max-width: 118px !important;
+            gap: 0.28rem !important;
           }
-          .theatre-selection-poster { display: none !important; }
+          .theatre-camera-controls button {
+            padding: 0.32rem 0.55rem !important;
+            font-size: 0.64rem !important;
+          }
+          .theatre-selection-dock {
+            left: 8px !important;
+            right: 8px !important;
+            bottom: 8px !important;
+            padding: 0.55rem 0.65rem !important;
+          }
         }
       `}</style>
 
@@ -1411,8 +1515,12 @@ export default function TheatreBooking() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
           <div style={{ textAlign: 'center', color: '#f5f0e8', fontFamily: 'var(--vc-font-body)' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎬</div>
-            <p style={{ color: 'rgba(245,240,232,0.6)' }}>Loading…</p>
+            <div style={{
+              width: 28, height: 28, margin: '0 auto 1rem', borderRadius: '50%',
+              border: '2px solid rgba(245,240,232,0.18)', borderTopColor: '#d4af37',
+              animation: 'spin 0.7s linear infinite',
+            }} aria-hidden="true" />
+            <p style={{ color: 'rgba(245,240,232,0.6)' }}>Loading theatre…</p>
           </div>
         </div>
       )}
@@ -1494,11 +1602,27 @@ export default function TheatreBooking() {
               </datalist>
             </label>
             <button
+              type="button"
               onClick={searchCityTheatres}
-              disabled={!cityInput.trim()}
-              style={{ ...primaryBtnStyle, padding: '0.55rem 0.9rem', fontSize: '0.75rem', opacity: theatreLookupLoading ? 0.6 : 1 }}
+              disabled={!cityInput.trim() || theatreLookupLoading}
+              style={{
+                ...primaryBtnStyle,
+                padding: '0.55rem 0.9rem',
+                fontSize: '0.75rem',
+                opacity: theatreLookupLoading ? 0.7 : 1,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+              }}
             >
-              {theatreLookupLoading ? 'Searching…' : 'Find theatres'}
+              {theatreLookupLoading && (
+                <span style={{
+                  width: 12, height: 12, borderRadius: '50%',
+                  border: '1.5px solid rgba(10,15,26,0.25)', borderTopColor: '#0a0f1a',
+                  animation: 'spin 0.65s linear infinite', display: 'inline-block',
+                }} aria-hidden="true" />
+              )}
+              {theatreLookupLoading ? 'Finding…' : 'Find theatres'}
             </button>
 
             {/* Demo theatre selector */}
@@ -1553,13 +1677,13 @@ export default function TheatreBooking() {
               ))}
             </div>
             <a
-              href={getBookMyShowUrl(city)}
+              href={getBookMyShowUrl(city, movie?.title)}
               target="_blank"
               rel="noopener noreferrer"
               className="vc-btn vc-btn-primary"
               style={{ padding: '0.45rem 0.85rem', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
             >
-              Find live shows on BookMyShow ↗
+              Live shows on BookMyShow
             </a>
           </div>
           <div style={{
@@ -1587,139 +1711,176 @@ export default function TheatreBooking() {
             {/* 3D canvas */}
             <div ref={mountRef} style={{ width: '100%', height: '100%', cursor: 'grab', touchAction: 'none' }} />
 
-            {/* Camera presets */}
+            {/* Camera presets — top-right rail so the seat rake stays clear */}
             <div style={{
-              position: 'absolute', bottom: 100, left: '50%', transform: 'translateX(-50%)',
-              display: 'flex', gap: '0.4rem', zIndex: 10, flexWrap: 'wrap', justifyContent: 'center',
+              position: 'absolute', top: 12, right: 12, zIndex: 12,
+              display: 'flex', flexDirection: 'column', gap: '0.35rem',
+              alignItems: 'stretch',
+              maxWidth: 140,
             }} className="theatre-camera-controls">
               {Object.keys(PRESETS).map(name => (
-                <button key={name} onClick={() => { goPreset(name); isAutoRef.current = false; setIsAuto(false); }} style={{
-                  padding: '0.4rem 0.85rem',
-                  background: currentPreset === name ? 'rgba(212,175,55,0.2)' : 'rgba(0,0,0,0.6)',
-                  border: currentPreset === name ? '1px solid #d4af37' : '1px solid rgba(255,255,255,0.15)',
-                  borderRadius: 6, color: currentPreset === name ? '#d4af37' : 'rgba(245,240,232,0.7)',
-                  fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', cursor: 'pointer',
-                  textTransform: 'capitalize', backdropFilter: 'blur(8px)',
+                <button key={name} type="button" onClick={() => { goPreset(name); isAutoRef.current = false; setIsAuto(false); }} style={{
+                  padding: '0.38rem 0.7rem',
+                  background: currentPreset === name ? 'rgba(212,175,55,0.22)' : 'rgba(0,0,0,0.62)',
+                  border: currentPreset === name ? '1px solid #d4af37' : '1px solid rgba(255,255,255,0.14)',
+                  borderRadius: 6, color: currentPreset === name ? '#d4af37' : 'rgba(245,240,232,0.75)',
+                  fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', cursor: 'pointer',
+                  textAlign: 'left', backdropFilter: 'blur(8px)',
                 }}>
                   {name === 'birdsEye' ? "Bird's Eye" : name === 'fromStage' ? 'From Stage' : name.charAt(0).toUpperCase() + name.slice(1)}
                 </button>
               ))}
-              <button onClick={() => {
+              <button type="button" onClick={() => {
                 isAutoRef.current = !isAutoRef.current;
                 setIsAuto(a => !a);
                 tourTimer.current = 0;
               }} style={{
-                padding: '0.4rem 0.85rem',
-                background: isAuto ? 'rgba(212,175,55,0.2)' : 'rgba(0,0,0,0.6)',
-                border: isAuto ? '1px solid #d4af37' : '1px solid rgba(255,255,255,0.15)',
-                borderRadius: 6, color: isAuto ? '#d4af37' : 'rgba(245,240,232,0.7)',
-                fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', cursor: 'pointer',
-                backdropFilter: 'blur(8px)',
+                padding: '0.38rem 0.7rem',
+                background: isAuto ? 'rgba(212,175,55,0.22)' : 'rgba(0,0,0,0.62)',
+                border: isAuto ? '1px solid #d4af37' : '1px solid rgba(255,255,255,0.14)',
+                borderRadius: 6, color: isAuto ? '#d4af37' : 'rgba(245,240,232,0.75)',
+                fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem', cursor: 'pointer',
+                textAlign: 'left', backdropFilter: 'blur(8px)',
               }}>
-                {isAuto ? '⏹ Stop Tour' : '▶ Auto Tour'}
+                {isAuto ? 'Stop Tour' : 'Auto Tour'}
               </button>
             </div>
 
-            {/* Legend */}
-            <div style={{
-              position: 'absolute', bottom: 54, left: '50%', transform: 'translateX(-50%)',
-              display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.7rem 1.2rem', zIndex: 10,
-              maxWidth: 'calc(100% - 24px)',
-              fontFamily: 'var(--vc-font-body)', fontSize: '0.7rem',
-              color: 'rgba(245,240,232,0.6)',
-            }} className="theatre-seat-legend">
-              {[
-                ['#31556a', 'Standard ₹180'],
-                ['#5c476c', 'Premium ₹280'],
-                ['#315d4d', 'Recliner ₹450'],
-                ['#9a7048', 'Balcony ₹320'],
-                ['#ffd35a', 'Selected'],
-                ['#292a30', 'Sold'],
-              ].map(([col, label]) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <div style={{ width: 12, height: 12, background: col, borderRadius: 3 }} />
-                  {label}
-                </div>
-              ))}
-            </div>
-
-            {/* Seat view badge */}
+            {/* Seat view badge — top-left */}
             {seatView && (
               <div style={{
-                position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)',
+                position: 'absolute', top: 12, left: 12,
                 background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.4)',
-                borderRadius: 8, padding: '0.4rem 1rem',
+                borderRadius: 8, padding: '0.4rem 0.85rem',
                 fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', color: '#d4af37',
-                zIndex: 10, backdropFilter: 'blur(8px)', whiteSpace: 'nowrap',
+                zIndex: 12, backdropFilter: 'blur(8px)',
+                display: 'flex', alignItems: 'center', gap: '0.65rem',
               }}>
-                👁 View from seat {seatView.rowId}{seatView.seatNum} · {CAT_LABEL[seatView.cat]}
-                <button onClick={() => { goPreset('overview'); setSeatView(null); }}
-                  style={{ marginLeft: '0.75rem', background: 'none', border: 'none', color: '#d4af37', cursor: 'pointer', fontSize: '0.9rem' }}>
-                  ✕
+                <span>Seat {seatView.rowId}{seatView.seatNum} · {CAT_LABEL[seatView.cat]}</span>
+                <button type="button" onClick={() => { goPreset('overview'); setSeatView(null); }}
+                  style={{ background: 'none', border: 'none', color: '#d4af37', cursor: 'pointer', fontSize: '0.78rem', padding: 0 }}>
+                  Reset view
                 </button>
               </div>
             )}
 
-            {/* Selected seats panel */}
-            {selectedSeats.length > 0 && (
+            {sceneError && (
+              <div role="alert" style={{
+                position: 'absolute', inset: 12, zIndex: 20,
+                display: 'grid', placeItems: 'center',
+                background: 'rgba(7,9,15,0.88)', borderRadius: 12,
+                padding: '1.25rem', textAlign: 'center',
+                fontFamily: 'var(--vc-font-body)', color: 'rgba(245,240,232,0.85)',
+              }}>
+                <div>
+                  <p style={{ margin: '0 0 0.85rem' }}>{sceneError}</p>
+                  <a
+                    href={getBookMyShowUrl(city, movie?.title)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#d4af37', fontWeight: 700 }}
+                  >
+                    Open BookMyShow
+                  </a>
+                </div>
+              </div>
+            )}
+
+            {/* Bottom dock — legend lives here so seats stay visible in the 3D view */}
+            <div className="theatre-selection-dock" style={{
+              position: 'absolute', left: 12, right: 12, bottom: 12, zIndex: 14,
+              display: 'grid',
+              gap: '0.55rem',
+              padding: '0.65rem 0.85rem',
+              background: 'rgba(8,10,16,0.94)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 12,
+              backdropFilter: 'blur(14px)',
+              boxShadow: '0 10px 28px rgba(0,0,0,0.45)',
+            }}>
+              <div className="theatre-seat-legend" style={{
+                display: 'flex', flexWrap: 'wrap', gap: '0.45rem 0.85rem',
+                fontFamily: 'var(--vc-font-body)', fontSize: '0.66rem',
+                color: 'rgba(245,240,232,0.62)',
+              }}>
+                {[
+                  ['#3d6f8c', 'Standard ₹180'],
+                  ['#6b4f86', 'Premium ₹280'],
+                  ['#2f6a55', 'Recliner ₹450'],
+                  ['#a67550', 'Balcony ₹320'],
+                  ['#ffd35a', 'Selected'],
+                  ['#23242a', 'Sold'],
+                ].map(([col, label]) => (
+                  <div key={label} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <div style={{ width: 10, height: 10, background: col, borderRadius: 2 }} />
+                    {label}
+                  </div>
+                ))}
+              </div>
               <div style={{
-                position: 'absolute', right: 12, top: 12,
-                background: 'rgba(10,15,26,0.92)', backdropFilter: 'blur(12px)',
-                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12,
-                padding: '1rem', zIndex: 10, minWidth: 180, maxWidth: 240,
-              }} className="theatre-selection-card">
+                display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.65rem 0.85rem',
+              }}>
                 {movie?.poster_path && (
-                  <img className="theatre-selection-poster" src={tmdbImageUrl(movie.poster_path, 'w185')} alt="" style={{
-                    width: '100%', borderRadius: 8, marginBottom: '0.75rem', aspectRatio: '2/3', objectFit: 'cover',
-                  }} />
+                  <img
+                    src={tmdbImageUrl(movie.poster_path, 'w92')}
+                    alt=""
+                    style={{ width: 36, height: 54, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+                  />
                 )}
-                <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '0.9rem', marginBottom: '0.4rem' }}>{movie?.title}</div>
-                <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'rgba(245,240,232,0.6)', marginBottom: '0.5rem' }}>
-                  {show?.time} · {show?.format}<br/>
-                  {theatre?.name}
+                <div style={{ minWidth: 0, flex: '1 1 140px' }}>
+                  <div style={{
+                    fontFamily: 'var(--vc-font-display)', fontSize: '0.92rem', fontWeight: 600,
+                    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                  }}>
+                    {movie?.title || 'Select seats'}
+                  </div>
+                  <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'rgba(245,240,232,0.55)' }}>
+                    {show?.time} · {show?.format} · {theatre?.name}
+                  </div>
+                  <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.74rem', color: 'rgba(245,240,232,0.75)', marginTop: 2 }}>
+                    {selectedSeats.length
+                      ? `Seats ${selectedSeats.join(', ')}`
+                      : 'Drag to rotate · tap a seat to select'}
+                  </div>
                 </div>
-                <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', marginBottom: '0.75rem' }}>
-                  <span style={{ color: 'rgba(245,240,232,0.6)' }}>Seats: </span>
-                  {selectedSeats.join(', ')}
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem' }}>
-                  <span>Total</span>
-                  <span style={{ color: '#d4af37', fontWeight: 700 }}>₹{seatTotal}</span>
+                <div style={{
+                  fontFamily: 'var(--vc-font-body)', fontWeight: 700, fontSize: '0.95rem',
+                  color: '#d4af37', whiteSpace: 'nowrap',
+                }}>
+                  ₹{seatTotal}
                 </div>
                 <button
+                  type="button"
                   onClick={suggestBestSeats}
                   style={{
-                    width: '100%', padding: '0.45rem',
+                    padding: '0.45rem 0.75rem',
                     background: 'rgba(212,175,55,0.08)',
                     border: '1px solid rgba(212,175,55,0.3)', borderRadius: 8, cursor: 'pointer',
-                    fontFamily: 'var(--vc-font-body)', fontWeight: 600, fontSize: '0.78rem',
-                    color: '#d4af37', marginBottom: '0.5rem',
+                    fontFamily: 'var(--vc-font-body)', fontWeight: 600, fontSize: '0.74rem',
+                    color: '#d4af37',
                   }}
                 >
-                  ✦ Suggest Best Seats
+                  Suggest best
                 </button>
                 <button
+                  type="button"
+                  disabled={!selectedSeats.length}
                   onClick={() => setStep(2)}
                   style={{
-                    width: '100%', padding: '0.55rem',
-                    background: 'linear-gradient(135deg,#d4af37,#f5cc50)',
-                    border: 'none', borderRadius: 8, cursor: 'pointer',
-                    fontFamily: 'var(--vc-font-body)', fontWeight: 700, fontSize: '0.82rem',
-                    color: '#0a0f1a',
+                    padding: '0.5rem 1rem',
+                    background: selectedSeats.length
+                      ? 'linear-gradient(135deg,#d4af37,#f5cc50)'
+                      : 'rgba(255,255,255,0.08)',
+                    border: 'none', borderRadius: 8,
+                    cursor: selectedSeats.length ? 'pointer' : 'not-allowed',
+                    fontFamily: 'var(--vc-font-body)', fontWeight: 700, fontSize: '0.8rem',
+                    color: selectedSeats.length ? '#0a0f1a' : 'rgba(245,240,232,0.35)',
+                    opacity: selectedSeats.length ? 1 : 0.7,
                   }}
                 >
-                  Continue →
+                  Continue
                 </button>
               </div>
-            )}
-
-            {/* Drag hint */}
-            <div style={{
-              position: 'absolute', bottom: 30, right: 14, zIndex: 10,
-              fontFamily: 'var(--vc-font-body)', fontSize: '0.68rem',
-              color: 'rgba(245,240,232,0.35)', pointerEvents: 'none',
-            }}>
-              Drag to rotate · Click seat to select
             </div>
           </div>
         </div>
@@ -1731,7 +1892,7 @@ export default function TheatreBooking() {
       {step === 2 && (
         <div style={{ maxWidth: 740, margin: '0 auto', padding: '1.5rem 1rem' }}>
           <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.6rem', marginBottom: '0.4rem' }}>
-            🍿 Add Snacks
+            Add Snacks
           </h2>
           <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'rgba(245,240,232,0.55)', marginBottom: '1.5rem' }}>
             Pre-order at the counter price — no queues!
@@ -1795,7 +1956,7 @@ export default function TheatreBooking() {
       {step === 3 && (
         <div style={{ maxWidth: 560, margin: '0 auto', padding: '1.5rem 1rem' }}>
           <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.6rem', marginBottom: '1.5rem' }}>
-            📋 Order Summary
+            Order Summary
           </h2>
 
           {/* Movie card */}
@@ -1820,7 +1981,7 @@ export default function TheatreBooking() {
           <ReviewLine label="Seat total" value={`₹${seatTotal}`} gold />
           {Object.entries(cart).map(([id, qty]) => {
             const item = SNACKS.find(s => s.id === id);
-            return item ? <ReviewLine key={id} label={`${item.emoji} ${item.name} x${qty}`} value={`₹${item.price * qty}`} /> : null;
+            return item ? <ReviewLine key={id} label={`${item.name} x${qty}`} value={`₹${item.price * qty}`} /> : null;
           })}
           {snackTotal > 0 && <ReviewLine label="Snack total" value={`₹${snackTotal}`} gold />}
 
@@ -1846,7 +2007,7 @@ export default function TheatreBooking() {
       ═══════════════════════════════════════════════════════════════ */}
       {step === 4 && (
         <div style={{ maxWidth: 480, margin: '0 auto', padding: '1.5rem 1rem' }}>
-          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.6rem', marginBottom: '0.5rem' }}>🎟 Demo checkout</h2>
+          <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.6rem', marginBottom: '0.5rem' }}>Demo checkout</h2>
           <p style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'rgba(245,240,232,0.5)', marginBottom: '1.5rem' }}>
             No live ticket inventory or payment provider is connected. This only creates a sample ticket in this browser.
           </p>
@@ -1861,8 +2022,8 @@ export default function TheatreBooking() {
             lineHeight: 1.6,
           }}>
             For real showtimes, seat availability and booking, open the official BookMyShow listings for {city}.
-            <a href={getBookMyShowUrl(city)} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '0.5rem', color: '#d4af37', fontWeight: 700 }}>
-              Search {city} movies on BookMyShow ↗
+            <a href={getBookMyShowUrl(city, movie?.title)} target="_blank" rel="noopener noreferrer" style={{ display: 'block', marginTop: '0.5rem', color: '#d4af37', fontWeight: 700 }}>
+              Open {movie?.title || 'movies'} on BookMyShow
             </a>
           </div>
 
@@ -1889,7 +2050,14 @@ export default function TheatreBooking() {
               }}
             >
               {payLoading ? (
-                <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>↻</span> Creating demo…</>
+                <>
+                  <span style={{
+                    width: 14, height: 14, borderRadius: '50%',
+                    border: '1.5px solid rgba(10,15,26,0.25)', borderTopColor: '#0a0f1a',
+                    animation: 'spin 0.65s linear infinite', display: 'inline-block',
+                  }} aria-hidden="true" />
+                  Creating demo…
+                </>
               ) : 'Create Demo Ticket'}
             </button>
           </div>
@@ -1903,7 +2071,12 @@ export default function TheatreBooking() {
       ═══════════════════════════════════════════════════════════════ */}
       {step === 5 && ticket && (
         <div style={{ maxWidth: 480, margin: '0 auto', padding: '1.5rem 1rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '0.5rem' }}>🎉</div>
+          <div style={{
+            width: 42, height: 42, margin: '0 auto 0.75rem', borderRadius: '50%',
+            background: 'rgba(212,175,55,0.15)', border: '1px solid rgba(212,175,55,0.45)',
+            display: 'grid', placeItems: 'center', color: '#d4af37',
+            fontFamily: 'var(--vc-font-body)', fontWeight: 700, fontSize: '0.85rem',
+          }}>OK</div>
           <h2 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.8rem', marginBottom: '0.3rem' }}>
             Demo ticket created
           </h2>
@@ -1940,7 +2113,7 @@ export default function TheatreBooking() {
 
             {ticket.snacks.length > 0 && (
               <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.75rem', color: 'rgba(245,240,232,0.5)', textAlign: 'left', marginBottom: '1rem' }}>
-                🍿 {ticket.snacks.join(' · ')}
+                Snacks: {ticket.snacks.join(' · ')}
               </div>
             )}
 

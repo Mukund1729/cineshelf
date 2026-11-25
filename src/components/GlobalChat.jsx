@@ -68,6 +68,9 @@ function FriendAvatar({ friend, sizeClass = 'vc-messages-avatar-wrap' }) {
 export default function GlobalChat() {
   const location = useLocation();
   const navigate = useNavigate();
+  // Hide the floating launcher on immersive 3D booking surfaces so it
+  // cannot cover seat totals / continue CTAs.
+  const hideLauncher = /^\/(booking|panorama)(\/|$)/.test(location.pathname);
   const [open, setOpen] = useState(false);
   const [friends, setFriends] = useState([]);
   const [selectedFriend, setSelectedFriend] = useState(null);
@@ -232,6 +235,13 @@ export default function GlobalChat() {
     setOpen(false);
     setSelectedFriend(null);
   };
+
+  useEffect(() => {
+    if (hideLauncher && open) closeInbox();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hideLauncher]);
+
+  if (hideLauncher) return null;
 
   return (
     <div className={`vc-messages-widget${open ? ' is-open' : ''}`}>

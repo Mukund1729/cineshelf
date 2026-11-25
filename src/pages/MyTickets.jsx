@@ -69,7 +69,7 @@ export default function MyTickets() {
       <div style={{ maxWidth: 740, margin: '0 auto', padding: '2rem 1rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
           <h1 style={{ fontFamily: 'var(--vc-font-display)', fontSize: '2rem', margin: 0 }}>
-            🎟 My Tickets
+            My Tickets
           </h1>
           <Link to="/popular-movies" style={{
             padding: '0.45rem 1.1rem',
@@ -104,7 +104,10 @@ export default function MyTickets() {
             background: 'rgba(255,255,255,0.03)', borderRadius: 16,
             border: '1px solid rgba(255,255,255,0.06)',
           }}>
-            <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>🎬</div>
+            <div style={{
+              width: 48, height: 48, margin: '0 auto 1rem', borderRadius: 12,
+              background: 'rgba(212,175,55,0.1)', border: '1px solid rgba(212,175,55,0.28)',
+            }} aria-hidden="true" />
             <div style={{ fontFamily: 'var(--vc-font-display)', fontSize: '1.3rem', marginBottom: '0.5rem' }}>
               No tickets yet
             </div>

@@ -290,8 +290,8 @@ export default function PanoramaHero() {
 
       const hitIdx = hits[0].object.userData.index;
       if (hitIdx === frontIdxRef.current) {
-        // Front screen → open movie page
-        navigate(`/movie/${movies[hitIdx].id}`);
+        // Front screen → booking flow (details stay on the Details CTA)
+        navigate(`/booking/${movies[hitIdx].id}`);
       } else {
         // Side screen → bring to front
         snapToIndex(hitIdx);
@@ -366,7 +366,8 @@ export default function PanoramaHero() {
 
         mesh.position.x = Math.sin(total) * RADIUS;
         mesh.position.z = Math.cos(total) * RADIUS - RADIUS * 0.3;
-        mesh.position.y = -0.1;
+        // Keep posters above the bottom dock so titles never sit on the art.
+        mesh.position.y = 0.55;
         mesh.rotation.y = -total;
 
         // Face-angle from camera forward (angle=0 is front)
@@ -389,11 +390,22 @@ export default function PanoramaHero() {
         }
       });
 
-      // Gentle camera breathe
+      // Keep title in sync while the ring is still lerping / being dragged.
+      {
+        const normalised = ((-curAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+        const nearest = Math.round(normalised / anglePerScreen) % N;
+        if (nearest !== frontIdxRef.current) {
+          frontIdxRef.current = nearest;
+          setFrontIdx(nearest);
+          setTargetBg(skyColours.current[nearest]);
+        }
+      }
+
+      // Gentle camera breathe — aimed slightly up toward raised posters
       const t = now * 0.0005;
-      camera.position.y = 0.5 + Math.sin(t * 0.7) * 0.12;
-      camera.position.x = Math.sin(t * 0.4) * 0.08;
-      camera.lookAt(0, 0, 0);
+      camera.position.y = 0.85 + Math.sin(t * 0.7) * 0.08;
+      camera.position.x = Math.sin(t * 0.4) * 0.06;
+      camera.lookAt(0, 0.35, 0);
 
       // Sky colour interpolation
       bgCurrent.lerp(bgTarget, 0.03);
@@ -592,12 +604,13 @@ export default function PanoramaHero() {
                   }}
                 />
               ))}
+              </div>
             </div>
 
             {/* Auto-rotate progress bar (only when auto) */}
             <div style={{
               position: 'absolute', bottom: 0, left: 0, right: 0,
-              height: '2px', background: 'rgba(255,255,255,0.06)', zIndex: 10,
+              height: '2px', background: 'rgba(255,255,255,0.06)', zIndex: 12,
             }}>
               <div style={{
                 width: `${progress}%`, height: '100%',

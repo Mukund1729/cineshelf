@@ -23,7 +23,7 @@ const TicketIcon = () => (
 );
 
 const USER_LINKS = [
-  { to: '/my-tickets', label: '🎟 My Tickets' },
+  { to: '/my-tickets', label: 'My Tickets' },
   { to: '/watchlist',  label: 'Watchlist' },
   { to: '/lists',      label: 'Lists' },
   { to: '/reviews',    label: 'Reviews' },

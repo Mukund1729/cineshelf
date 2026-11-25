@@ -1141,6 +1141,15 @@
   max-width: 36rem;
 }
 
+.cs-browse-teaser {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem 1.1rem;
+  padding: 1rem 0 0.25rem;
+  border-top: 1px solid rgba(241, 237, 229, 0.06);
+}
+
 .cs-browse-count {
   display: flex;
   align-items: center;
