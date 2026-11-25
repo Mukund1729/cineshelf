@@ -45,7 +45,10 @@ function ListCard({ list, onSelect, selected }) {
 function MoviePosterMini({ item, onRemove }) {
   return (
     <div style={{ position: 'relative', width: '90px' }}>
-      <Link to={`/movie/${item.tmdbId}`} style={{ textDecoration: 'none', display: 'block' }}>
+      <Link
+        to={`/${item.mediaType === 'tv' || item.media_type === 'tv' ? 'tv' : 'movie'}/${item.tmdbId}`}
+        style={{ textDecoration: 'none', display: 'block' }}
+      >
         {item.poster ? (
           <img src={tmdbImageUrl(item.poster, 'w185')} alt={item.title} style={{ width: 90, height: 135, objectFit: 'cover', borderRadius: 8, display: 'block' }} />
         ) : (

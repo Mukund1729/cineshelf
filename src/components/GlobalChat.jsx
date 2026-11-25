@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import axios from 'axios';
+import { useLocation, useNavigate } from 'react-router-dom';
 import Chat from './Chat';
 import { apiUrl } from '../api/config';
 import { hasAuthSession } from '../api/session';
@@ -65,6 +66,8 @@ function FriendAvatar({ friend, sizeClass = 'vc-messages-avatar-wrap' }) {
 }
 
 export default function GlobalChat() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [friends, setFriends] = useState([]);
   const [selectedFriend, setSelectedFriend] = useState(null);
@@ -72,11 +75,41 @@ export default function GlobalChat() {
   const [error, setError] = useState('');
   const [loadVersion, setLoadVersion] = useState(0);
   const [activityCount, setActivityCount] = useState(0);
+  const [pendingChatId, setPendingChatId] = useState('');
 
   const openInbox = useCallback(() => {
     setOpen(true);
     setSelectedFriend(null);
   }, []);
+
+  const openConversation = useCallback((friendId) => {
+    if (!friendId || !hasAuthSession()) return;
+    setPendingChatId(String(friendId));
+    setOpen(true);
+    setLoadVersion(version => version + 1);
+  }, []);
+
+  // Notifications and deep links: ?chat=userId or CustomEvent('open-messages')
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const chatId = params.get('chat');
+    if (chatId && /^[a-f\d]{24}$/i.test(chatId)) {
+      openConversation(chatId);
+      params.delete('chat');
+      const next = params.toString();
+      navigate(`${location.pathname}${next ? `?${next}` : ''}${location.hash || ''}`, { replace: true });
+    }
+  }, [location.search, location.pathname, location.hash, navigate, openConversation]);
+
+  useEffect(() => {
+    const handler = event => {
+      const friendId = event.detail?.friendId;
+      if (friendId) openConversation(friendId);
+      else openInbox();
+    };
+    window.addEventListener('open-messages', handler);
+    return () => window.removeEventListener('open-messages', handler);
+  }, [openConversation, openInbox]);
 
   // Existing sakha feed powers inbox + activity badge (no new messaging API)
   useEffect(() => {
@@ -101,7 +134,14 @@ export default function GlobalChat() {
         if (!active) return;
         const list = response.data?.data || [];
         setActivityCount(list.filter(friend => friend.lastMessage && !friend.lastMessage.fromMe).length);
-        if (open) setFriends(list);
+        if (open || pendingChatId) setFriends(list);
+        if (pendingChatId) {
+          const match = list.find(friend => String(friend._id) === String(pendingChatId));
+          if (match) {
+            setSelectedFriend(match);
+            setPendingChatId('');
+          }
+        }
       } catch (requestError) {
         if (active && open) {
           setError(requestError.response?.data?.error || 'Could not load your friends.');
@@ -117,7 +157,7 @@ export default function GlobalChat() {
       active = false;
       window.clearInterval(intervalId);
     };
-  }, [open, loadVersion]);
+  }, [open, loadVersion, pendingChatId]);
 
   useEffect(() => {
     // Intentional right-edge swipe only — avoid firing on light carousel scrolls

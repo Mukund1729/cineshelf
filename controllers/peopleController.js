@@ -124,7 +124,8 @@ export const sendFriendRequest = async (req, res) => {
         fromUser: req.user.id,
         relatedId: request._id,
         data: { requestId: request._id.toString(), fromUserId: req.user.id },
-        link: '/people',
+        // Open the sender's profile; People remains available for accepting.
+        link: `/people/${req.user.id}`,
       });
     } catch (notificationError) {
       if (reusingRequest) {
@@ -183,7 +184,7 @@ export const acceptFriendRequest = async (req, res) => {
       fromUser: req.user.id,
       relatedId: request._id,
       data: { requestId: request._id.toString(), fromUserId: req.user.id },
-      link: '/people',
+      link: `/people/${req.user.id}`,
     });
 
     res.json({ success: true, message: 'Friend request accepted' });

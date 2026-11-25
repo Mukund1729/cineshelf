@@ -4,9 +4,12 @@ import User from '../models/User.js';
 // Get user notifications
 export const getNotifications = async (req, res) => {
   try {
+    // fromUser is populated so the bell can link the actor to their profile
+    // without a second round-trip per notification.
     const notifications = await Notification.find({ user: req.user.id })
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(50)
+      .populate('fromUser', 'username name avatar');
     res.json(notifications);
   } catch (error) {
     console.error('Get notifications error:', error);

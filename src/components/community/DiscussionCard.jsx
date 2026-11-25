@@ -1,8 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import SpoilerContent from './SpoilerContent';
+import MentionText from '../MentionText';
+import { UserLink } from '../EntityLink';
 import { apiUrl } from '../../api/config';
 import { tmdbImageUrl } from '../../api/tmdb';
+import { mediaPath } from '../../lib/entityPaths';
 
 function avatarUrl(user) {
   if (!user?.avatar) return '';
@@ -40,9 +43,9 @@ export default function DiscussionCard({
           <span className="cs-avatar cs-avatar-fallback">{(author.username || author.name || 'U')[0]}</span>
         )}
         <div>
-          <Link to={author._id ? `/people/${author._id}` : '/people'}>
+          <UserLink user={author}>
             {author.name || author.username || 'Member'}
-          </Link>
+          </UserLink>
           <div className="cs-post-sub">
             {community.slug ? (
               <Link to={`/community/${community.slug}`}>{community.name}</Link>
@@ -67,11 +70,17 @@ export default function DiscussionCard({
       </h3>
 
       <SpoilerContent active={post.spoiler}>
-        <div className="cs-post-body">{post.body}</div>
+        <MentionText text={post.body} className="cs-post-body" as="div" />
       </SpoilerContent>
 
       {post.movie?.tmdbId ? (
-        <Link className="cs-post-movie" to={`/movie/${post.movie.tmdbId}`}>
+        <Link
+          className="cs-post-movie"
+          to={mediaPath({
+            tmdbId: post.movie.tmdbId,
+            mediaType: post.movie.mediaType === 'tv' ? 'tv' : 'movie',
+          }) || `/movie/${post.movie.tmdbId}`}
+        >
           {post.movie.posterPath && (
             <img
               src={post.movie.posterPath.startsWith('http')

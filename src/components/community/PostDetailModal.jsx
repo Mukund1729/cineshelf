@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import SpoilerContent from './SpoilerContent';
+import MentionText from '../MentionText';
+import MentionComposer from '../MentionComposer';
+import { UserLink } from '../EntityLink';
 import { apiUrl } from '../../api/config';
 import {
   communityAuthHeaders,
@@ -127,9 +130,9 @@ export default function PostDetailModal({ postId, onClose, onUpdated, onDeleted 
         {!loading && post && (
           <>
             <div className="cs-post-sub" style={{ marginBottom: 10 }}>
-              <Link to={post.author?._id ? `/people/${post.author._id}` : '/people'}>
+              <UserLink user={post.author}>
                 {post.author?.name || post.author?.username}
-              </Link>
+              </UserLink>
               {' · '}
               {post.community?.slug && (
                 <Link to={`/community/${post.community.slug}`}>{post.community.name}</Link>
@@ -168,7 +171,7 @@ export default function PostDetailModal({ postId, onClose, onUpdated, onDeleted 
               </div>
             )}
             <SpoilerContent active={post.spoiler}>
-              <div className="cs-post-body">{post.body}</div>
+              <MentionText text={post.body} className="cs-post-body" as="div" />
             </SpoilerContent>
 
             <h3 style={{ fontFamily: 'var(--vc-font-display)', margin: '1.4rem 0 0.75rem' }}>
@@ -189,7 +192,7 @@ export default function PostDetailModal({ postId, onClose, onUpdated, onDeleted 
                     </div>
                   </div>
                   <SpoilerContent active={item.spoiler}>
-                    <div className="cs-post-body">{item.body}</div>
+                    <MentionText text={item.body} className="cs-post-body" as="div" />
                   </SpoilerContent>
                   <button
                     type="button"
@@ -203,7 +206,7 @@ export default function PostDetailModal({ postId, onClose, onUpdated, onDeleted 
                     <div key={reply._id} style={{ marginLeft: 18, marginTop: 10, paddingLeft: 10, borderLeft: '1px solid rgba(241,237,229,0.12)' }}>
                       <strong>{reply.author?.name || reply.author?.username}</strong>
                       <SpoilerContent active={reply.spoiler}>
-                        <div className="cs-post-body">{reply.body}</div>
+                        <MentionText text={reply.body} className="cs-post-body" as="div" />
                       </SpoilerContent>
                     </div>
                   ))}
@@ -223,12 +226,13 @@ export default function PostDetailModal({ postId, onClose, onUpdated, onDeleted 
               )}
               <label>
                 Add a comment
-                <textarea
+                <MentionComposer
                   value={comment}
-                  onChange={event => setComment(event.target.value)}
+                  onChange={setComment}
                   rows={3}
-                  placeholder="Share your take… use @username to mention"
+                  placeholder="Share your take… type @ to mention someone"
                   required
+                  aria-label="Add a comment"
                 />
               </label>
               <button type="submit" className="cs-btn cs-btn-primary" disabled={saving}>

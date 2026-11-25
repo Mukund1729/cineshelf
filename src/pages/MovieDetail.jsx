@@ -4,6 +4,9 @@ import axios from 'axios';
 import BoxOfficeChart from '../components/BoxOfficeChart';
 import TrailerEmbed from '../components/TrailerEmbed';
 import Navbar from '../components/Navbar';
+import { UserLink } from '../components/EntityLink';
+import usePageTitle from '../hooks/usePageTitle';
+import { shareOrCopy } from '../lib/share';
 import { hasAuthSession } from '../api/session';
 import { searchMovies, searchPeople, tmdbGet, tmdbImageUrl } from '../api/tmdb';
 import './movie-detail.css';
@@ -95,6 +98,7 @@ const MovieDetail = () => {
   }, [searchQuery, showSearchBar]);
 
   const [movie, setMovie] = useState(null);
+  usePageTitle(movie?.title);
   const [movieLoading, setMovieLoading] = useState(true);
   const [movieError, setMovieError] = useState('');
   useEffect(() => {
@@ -160,17 +164,12 @@ const MovieDetail = () => {
   };
 
   const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: movie.title, url: window.location.href });
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        setShareNotice('Link copied.');
-      }
-    } catch (error) {
-      if (error.name !== 'AbortError') setShareNotice('Could not share this link.');
+    const result = await shareOrCopy({ title: movie?.title, path: `/movie/${movie?.id || id}` });
+    if (result.method === 'clipboard') setShareNotice('Link copied.');
+    else if (result.method === 'failed') setShareNotice('Could not share this link.');
+    if (result.method !== 'share' && result.method !== 'cancelled') {
+      setTimeout(() => setShareNotice(''), 2500);
     }
-    setTimeout(() => setShareNotice(''), 2500);
   };
 
   const [reviews, setReviews] = useState([]);
@@ -1027,21 +1026,21 @@ const MovieDetail = () => {
                       <p className="md-empty">No reviews found.</p>
                     ) : (
                       reviews.map((review, index) => (
-                        <Link
+                        <article
                           key={review._id || review.id || index}
-                          to={`/review/${review._id}`}
                           className={`md-review-card${String(review._id) === String(myReviewId) ? ' is-mine' : ''}`}
-                          aria-label={`Read ${review.user?.name || review.user?.username || 'member'}'s full review`}
                         >
-                          <div className="md-avatar">
+                          <UserLink user={review.user} className="md-avatar" aria-label={`Open ${(review.user?.name || review.user?.username || 'member')}'s profile`}>
                             {(review.user?.name || review.user?.username || 'U')[0]?.toUpperCase()}
-                          </div>
+                          </UserLink>
                           <div>
                             <div className="md-review-meta">
                               <span className="rating">★ {review.rating}/10</span>
-                              <strong>
-                                {review.user?.name || (review.user?.username ? `@${review.user.username}` : 'CineShelf member')}
-                              </strong>
+                              <UserLink user={review.user}>
+                                <strong>
+                                  {review.user?.name || (review.user?.username ? `@${review.user.username}` : 'CineShelf member')}
+                                </strong>
+                              </UserLink>
                               {String(review._id) === String(myReviewId) && (
                                 <span className="md-saved-pill">Your review</span>
                               )}
@@ -1049,10 +1048,15 @@ const MovieDetail = () => {
                             <div className="md-review-body">{review.review || 'Rating only'}</div>
                             <div className="md-review-time">
                               {review.createdAt ? new Date(review.createdAt).toLocaleString() : ''}
-                              {review.review ? ' · Read full review →' : ''}
+                              {review._id && (
+                                <>
+                                  {' · '}
+                                  <Link to={`/review/${review._id}`}>Read full review →</Link>
+                                </>
+                              )}
                             </div>
                           </div>
-                        </Link>
+                        </article>
                       ))
                     )}
                   </div>

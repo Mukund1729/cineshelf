@@ -246,12 +246,13 @@ export default function Watchlist() {
             {movies.map(movie => {
               const id = movie.tmdbId || movie.id;
               const routeId = movie.source === 'original' ? movie.originalId || movie.id : id;
+              const mediaType = movie.mediaType === 'tv' || movie.media_type === 'tv' ? 'tv' : 'movie';
               const poster = movie.poster || movie.posterUrl || '';
               const title = movie.title || 'Unknown';
               const year = movie.releaseDate ? movie.releaseDate.slice(0, 4) : '';
               return (
                 <div key={id} style={{ position: 'relative' }}>
-                  <Link to={`/movie/${routeId}`} style={{ textDecoration: 'none', display: 'block' }}>
+                  <Link to={`/${mediaType}/${routeId}`} style={{ textDecoration: 'none', display: 'block' }}>
                     <div className="vc-poster-card" style={{ aspectRatio: '2/3' }}>
                       {poster ? (
                         <img src={tmdbImageUrl(poster, 'w300')} alt={title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

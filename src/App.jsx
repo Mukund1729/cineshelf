@@ -112,6 +112,7 @@ const CommunityPage   = lazy(() => import('./pages/CommunityPage'));
 const CommunityDetailPage = lazy(() => import('./pages/CommunityDetailPage'));
 const CommunityCreatePage = lazy(() => import('./pages/CommunityCreatePage'));
 const CommunitySettingsPage = lazy(() => import('./pages/CommunitySettingsPage'));
+const UsernameRedirect = lazy(() => import('./pages/UsernameRedirect'));
 const ChangePassword  = lazy(() => import('./pages/ChangePassword'));
 const AdminDashboard  = lazy(() => import('./pages/AdminDashboard'));
 const PersonBoxOffice = lazy(() => import('./pages/PersonBoxOffice'));
@@ -188,6 +189,7 @@ function AppWrapper() {
             <Route path="/diary" element={<Diary />} />
             <Route path="/people" element={<People />} />
             <Route path="/people/:userId" element={<PeopleProfile />} />
+            <Route path="/u/:username" element={<UsernameRedirect />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/community" element={<CommunityPage />} />
             <Route path="/community/new" element={<CommunityCreatePage />} />

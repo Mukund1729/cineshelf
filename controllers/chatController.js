@@ -139,7 +139,9 @@ export const sendMessage = async (req, res) => {
         fromUser: req.user.id,
         relatedId: message._id,
         data: { senderId: req.user.id },
-        link: `/people?chat=${req.user.id}`,
+        // Profile of the sender, with chat= so the Messages widget can open
+        // the conversation on any page that mounts GlobalChat.
+        link: `/people/${req.user.id}?chat=${req.user.id}`,
       });
     } catch (notificationError) {
       console.error('Create chat notification error; message was retained:', notificationError);

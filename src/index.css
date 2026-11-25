@@ -1830,6 +1830,151 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* ── ENTITY LINKS & MENTIONS ──────────────── */
+
+.vc-entity-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color var(--vc-transition);
+}
+
+.vc-entity-link:hover,
+.vc-entity-link:focus-visible {
+  color: var(--vc-gold-light);
+}
+
+.vc-entity-link:focus-visible,
+.vc-mention-link:focus-visible,
+.vc-media-ref-link:focus-visible {
+  outline: 2px solid var(--vc-gold);
+  outline-offset: 2px;
+}
+
+.vc-mention-link,
+.vc-media-ref-link {
+  color: var(--vc-gold);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.35);
+}
+
+.vc-mention-link:hover,
+.vc-media-ref-link:hover {
+  color: var(--vc-gold-light);
+  border-bottom-color: var(--vc-gold-light);
+}
+
+.vc-mention-composer {
+  position: relative;
+}
+
+.vc-mention-composer textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: var(--vc-bg-deep);
+  color: var(--vc-cream);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.vc-mention-composer textarea:focus {
+  outline: none;
+  border-color: rgba(212, 175, 55, 0.55);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.12);
+}
+
+.vc-mention-suggestions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  z-index: 40;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: var(--vc-bg-elevated);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.vc-mention-option {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--vc-cream);
+  text-align: left;
+  cursor: pointer;
+}
+
+.vc-mention-option.is-active,
+.vc-mention-option:hover {
+  background: rgba(212, 175, 55, 0.12);
+}
+
+.vc-mention-option img,
+.vc-mention-fallback {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.vc-mention-fallback {
+  display: grid;
+  place-items: center;
+  background: rgba(212, 175, 55, 0.18);
+  color: var(--vc-gold);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.vc-mention-option strong {
+  display: block;
+  font-size: 0.86rem;
+}
+
+.vc-mention-option small {
+  display: block;
+  color: var(--vc-slate);
+  font-size: 0.72rem;
+}
+
+.vc-mention-error {
+  margin: 0.35rem 0 0;
+  color: #fc8181;
+  font-size: 0.75rem;
+}
+
+.cs-comm .vc-mention-composer textarea {
+  border-radius: 2px;
+  background: var(--cs-bg, #0d0d0e);
+  border-color: rgba(241, 237, 229, 0.12);
+}
+
+.md-review-card .md-avatar {
+  text-decoration: none;
+}
+
+.vc-review-comment-text {
+  margin: 0;
+  color: var(--vc-cream);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 /* ── LEGACY COMPAT ────────────────────────── */
 
 .font-poppins { font-family: var(--vc-font-body); }

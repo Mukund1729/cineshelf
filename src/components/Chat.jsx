@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { apiUrl } from '../api/config';
+import MentionText from './MentionText';
+import { userPath } from '../lib/entityPaths';
 
 const ONLINE_WINDOW_MS = 5 * 60 * 1000;
 
@@ -166,6 +169,7 @@ export default function Chat({
     : '';
   const online = lastActive && Date.now() - new Date(lastActive).getTime() < ONLINE_WINDOW_MS;
   const statusLabel = formatLastSeen(lastActive);
+  const profileTo = userPath(friendId);
 
   return (
     <div className={`vc-chat-overlay${docked ? ' vc-chat-overlay--docked' : ''}`}>
@@ -181,23 +185,52 @@ export default function Chat({
               ‹
             </button>
           )}
-          <span className="vc-chat-header-avatar">
-            {avatar && !brokenAvatar ? (
-              <img
-                className="vc-chat-avatar"
-                src={avatar}
-                alt=""
-                onError={() => setBrokenAvatar(true)}
-              />
-            ) : (
-              <span className="vc-chat-avatar-fallback" aria-hidden="true">
-                {(friendName || 'U')[0].toUpperCase()}
-              </span>
-            )}
-            {online && <span className="vc-messages-online-dot" aria-hidden="true" />}
-          </span>
+          {profileTo ? (
+            <Link
+              to={profileTo}
+              className="vc-chat-header-avatar"
+              aria-label={`Open ${friendName}'s profile`}
+              title="View profile"
+            >
+              {avatar && !brokenAvatar ? (
+                <img
+                  className="vc-chat-avatar"
+                  src={avatar}
+                  alt=""
+                  onError={() => setBrokenAvatar(true)}
+                />
+              ) : (
+                <span className="vc-chat-avatar-fallback" aria-hidden="true">
+                  {(friendName || 'U')[0].toUpperCase()}
+                </span>
+              )}
+              {online && <span className="vc-messages-online-dot" aria-hidden="true" />}
+            </Link>
+          ) : (
+            <span className="vc-chat-header-avatar">
+              {avatar && !brokenAvatar ? (
+                <img
+                  className="vc-chat-avatar"
+                  src={avatar}
+                  alt=""
+                  onError={() => setBrokenAvatar(true)}
+                />
+              ) : (
+                <span className="vc-chat-avatar-fallback" aria-hidden="true">
+                  {(friendName || 'U')[0].toUpperCase()}
+                </span>
+              )}
+              {online && <span className="vc-messages-online-dot" aria-hidden="true" />}
+            </span>
+          )}
           <div className="vc-chat-header-copy">
-            <div className="vc-chat-header-title">{friendName}</div>
+            <div className="vc-chat-header-title">
+              {profileTo ? (
+                <Link to={profileTo} className="vc-entity-link" style={{ color: 'inherit', textDecoration: 'none' }}>
+                  {friendName}
+                </Link>
+              ) : friendName}
+            </div>
             <div className={`vc-chat-header-status${online ? ' is-online' : ''}`} role="status">
               {statusLabel}
             </div>
@@ -232,7 +265,7 @@ export default function Chat({
                 key={message._id}
                 className={`vc-chat-bubble${mine ? ' is-mine' : ' is-theirs'}`}
               >
-                <div className="vc-chat-bubble-text">{message.text}</div>
+                <MentionText text={message.text} className="vc-chat-bubble-text" as="div" />
                 <time className="vc-chat-bubble-time" dateTime={message.createdAt}>
                   {new Date(message.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </time>

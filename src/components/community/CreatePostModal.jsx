@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import MentionComposer from '../MentionComposer';
 import { communityAuthHeaders, requireCommunityAuth } from '../../api/community';
 
 const TYPES = [
@@ -135,7 +136,14 @@ export default function CreatePostModal({
           </label>
           <label>
             Body
-            <textarea name="body" value={form.body} onChange={update} rows={5} required />
+            <MentionComposer
+              value={form.body}
+              onChange={value => setForm(current => ({ ...current, body: value }))}
+              rows={5}
+              required
+              placeholder="Write the discussion… type @ to mention someone"
+              aria-label="Discussion body"
+            />
           </label>
           {form.type === 'poll' && (
             <label>

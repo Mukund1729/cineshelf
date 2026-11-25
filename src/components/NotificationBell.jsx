@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { hasAuthSession } from '../api/session';
+import { UserAvatarLink } from './EntityLink';
+import { userPath } from '../lib/entityPaths';
 import './NotificationBell.css';
 
 function formatRelativeTime(value) {
@@ -24,14 +26,31 @@ function notificationIcon(type) {
     case 'new_message':
       return '💬';
     case 'friend_request':
+    case 'friend_accepted':
     case 'friend_accept':
       return '👥';
     case 'review_like':
     case 'review_comment':
       return '★';
+    case 'community_post':
+    case 'community_comment':
+    case 'community_mention':
+      return '◎';
+    case 'list_share':
+    case 'watchlist_update':
+      return '☰';
+    case 'system':
+      return '●';
     default:
       return '●';
   }
+}
+
+function destinationFor(notification) {
+  if (notification?.link?.startsWith('/')) return notification.link;
+  const fromId = notification?.fromUser?._id || notification?.data?.fromUserId || notification?.data?.senderId;
+  if (fromId) return userPath(fromId) || '/people';
+  return '/people';
 }
 
 export default function NotificationBell() {
@@ -96,7 +115,18 @@ export default function NotificationBell() {
       }
     }
     setOpen(false);
-    navigate(notification.link?.startsWith('/') ? notification.link : '/people');
+
+    // Open the Messages widget for chat notifications (existing chat system).
+    if (notification.type === 'new_message') {
+      const friendId = notification.fromUser?._id
+        || notification.data?.senderId
+        || notification.data?.fromUserId;
+      if (friendId) {
+        window.dispatchEvent(new CustomEvent('open-messages', { detail: { friendId: String(friendId) } }));
+      }
+    }
+
+    navigate(destinationFor(notification));
   };
 
   const markAllRead = async () => {
@@ -156,28 +186,39 @@ export default function NotificationBell() {
           <div className="vc-notify-list">
             {notifications.length === 0 ? (
               <p className="vc-notify-empty">No notifications yet.</p>
-            ) : notifications.map(notification => (
-              <button
-                type="button"
-                key={notification._id}
-                className={`vc-notify-item${!notification.isRead ? ' is-unread' : ''}`}
-                onClick={() => markRead(notification)}
-              >
-                <span className="vc-notify-icon" aria-hidden="true">
-                  {notificationIcon(notification.type)}
-                </span>
-                <span className="vc-notify-body">
-                  <span className="vc-notify-title-row">
-                    <span className="vc-notify-title">{notification.title || 'Notification'}</span>
-                    {!notification.isRead && <span className="vc-notify-dot" aria-label="Unread" />}
-                  </span>
-                  <span className="vc-notify-message">{notification.message}</span>
-                  <time className="vc-notify-time" dateTime={notification.createdAt}>
-                    {formatRelativeTime(notification.createdAt)}
-                  </time>
-                </span>
-              </button>
-            ))}
+            ) : notifications.map(notification => {
+              const actor = notification.fromUser;
+              return (
+                <div
+                  key={notification._id}
+                  className={`vc-notify-item${!notification.isRead ? ' is-unread' : ''}`}
+                >
+                  {actor?._id ? (
+                    <UserAvatarLink user={actor} size={36} stopPropagation className="vc-notify-actor" />
+                  ) : (
+                    <span className="vc-notify-icon" aria-hidden="true">
+                      {notificationIcon(notification.type)}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="vc-notify-body-btn"
+                    onClick={() => markRead(notification)}
+                  >
+                    <span className="vc-notify-body">
+                      <span className="vc-notify-title-row">
+                        <span className="vc-notify-title">{notification.title || 'Notification'}</span>
+                        {!notification.isRead && <span className="vc-notify-dot" aria-label="Unread" />}
+                      </span>
+                      <span className="vc-notify-message">{notification.message}</span>
+                      <time className="vc-notify-time" dateTime={notification.createdAt}>
+                        {formatRelativeTime(notification.createdAt)}
+                      </time>
+                    </span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </section>
       )}

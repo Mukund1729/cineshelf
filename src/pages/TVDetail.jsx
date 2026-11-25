@@ -5,6 +5,8 @@ import { searchMovies, searchPeople, tmdbClient, tmdbImageUrl } from '../api/tmd
 import EpisodeList from '../components/EpisodeList';
 import Navbar from '../components/Navbar';
 import TrailerEmbed from '../components/TrailerEmbed';
+import usePageTitle from '../hooks/usePageTitle';
+import { shareOrCopy } from '../lib/share';
 import { hasAuthSession } from '../api/session';
 import './movie-detail.css';
 
@@ -24,6 +26,7 @@ const CREW_SECTIONS = [
 export default function TVDetail() {
   const { id } = useParams();
   const [show, setShow] = useState(null);
+  usePageTitle(show?.name || show?.original_name);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reviews, setReviews] = useState([]);
@@ -374,17 +377,13 @@ export default function TVDetail() {
   };
 
   const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ title: show.name || show.original_name, url: window.location.href });
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        setShareNotice('Link copied.');
-      }
-    } catch (shareError) {
-      if (shareError.name !== 'AbortError') setShareNotice('Could not share this link.');
+    const title = show?.name || show?.original_name;
+    const result = await shareOrCopy({ title, path: `/tv/${show?.id || id}` });
+    if (result.method === 'clipboard') setShareNotice('Link copied.');
+    else if (result.method === 'failed') setShareNotice('Could not share this link.');
+    if (result.method !== 'share' && result.method !== 'cancelled') {
+      window.setTimeout(() => setShareNotice(''), 2500);
     }
-    window.setTimeout(() => setShareNotice(''), 2500);
   };
 
   const resolveProviderUrl = provider => {

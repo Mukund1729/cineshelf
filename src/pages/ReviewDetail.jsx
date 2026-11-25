@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import axios from 'axios';
 import Navbar from '../components/Navbar';
+import MentionText from '../components/MentionText';
+import MentionComposer from '../components/MentionComposer';
+import usePageTitle from '../hooks/usePageTitle';
 import { hasAuthSession } from '../api/session';
 
 const getCurrentUserId = () => {
@@ -16,6 +19,7 @@ const getCurrentUserId = () => {
 export default function ReviewDetail() {
   const { reviewId } = useParams();
   const [review, setReview] = useState(null);
+  usePageTitle(review?.title ? `Review · ${review.title}` : 'Review');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [relation, setRelation] = useState('');
@@ -313,7 +317,9 @@ export default function ReviewDetail() {
                 whiteSpace: 'pre-wrap',
                 overflowWrap: 'anywhere',
               }}>
-                {review.review || 'This member shared a rating without a written review.'}
+                {review.review
+                  ? <MentionText text={review.review} as="div" />
+                  : 'This member shared a rating without a written review.'}
               </div>
               <section style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
                 <button
@@ -332,27 +338,16 @@ export default function ReviewDetail() {
                     Comments ({review.commentCount ?? comments.length})
                   </h2>
                   <form onSubmit={submitComment}>
-                    <textarea
+                    <MentionComposer
                       value={commentText}
-                      onChange={event => {
-                        setCommentText(event.target.value);
+                      onChange={value => {
+                        setCommentText(value);
                         setCommentError('');
                       }}
                       maxLength={1000}
                       rows={3}
-                      placeholder="Share your thoughts about this review…"
+                      placeholder="Share your thoughts… type @ to mention someone"
                       aria-label="Write a comment"
-                      style={{
-                        display: 'block',
-                        width: '100%',
-                        resize: 'vertical',
-                        padding: '0.8rem 1rem',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        borderRadius: 10,
-                        background: 'var(--vc-bg-deep)',
-                        color: 'var(--vc-cream)',
-                        font: 'inherit',
-                      }}
                     />
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginTop: '0.65rem' }}>
                       <span style={{ color: 'var(--vc-slate-dark)', fontSize: '0.75rem' }}>{commentText.length}/1000</span>
@@ -390,9 +385,11 @@ export default function ReviewDetail() {
                             </time>
                           )}
                         </div>
-                        <p style={{ margin: 0, color: 'var(--vc-cream)', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                          {comment.text}
-                        </p>
+                        <MentionText
+                          text={comment.text}
+                          as="p"
+                          className="vc-review-comment-text"
+                        />
                       </article>
                     ))}
                   </div>

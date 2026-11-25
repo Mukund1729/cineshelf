@@ -20,6 +20,7 @@ import {
   votePoll,
 } from '../api/community';
 import { COMMUNITY_PRIVACY } from '../../data/communityOptions.js';
+import usePageTitle from '../hooks/usePageTitle';
 import './community.css';
 
 const TABS = [
@@ -128,6 +129,7 @@ export default function CommunityDetailPage() {
   }, [searchParams]);
 
   const community = detail?.community;
+  usePageTitle(community?.name || gate?.preview?.name);
   const viewer = detail?.viewer || {};
   const isOwner = community?.role === 'owner';
   const needsApproval = community && community.privacy !== 'public';

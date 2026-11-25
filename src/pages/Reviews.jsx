@@ -232,9 +232,14 @@ export default function Reviews() {
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                 {friends.slice(0, 8).map(friend => (
-                  <div key={friend._id} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Link
+                    key={friend._id}
+                    to={`/people/${friend._id}`}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', textDecoration: 'none', color: 'inherit' }}
+                    aria-label={`Open ${friend.username || friend.name || 'friend'}'s profile`}
+                  >
                     {friend.avatar ? (
-                      <img src={friend.avatar.startsWith('/') ? apiUrl(friend.avatar) : friend.avatar} alt={friend.username} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                      <img src={friend.avatar.startsWith('/') ? apiUrl(friend.avatar) : friend.avatar} alt="" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
                     ) : (
                       <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--vc-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#0a0f1a', flexShrink: 0 }}>
                         {(friend.username || friend.name || 'U')[0].toUpperCase()}
@@ -244,7 +249,7 @@ export default function Reviews() {
                       <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.85rem', color: 'var(--vc-cream)' }}>{friend.username}</div>
                       {friend.bio && <div style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.72rem', color: 'var(--vc-slate)', lineHeight: 1.3 }}>{friend.bio.slice(0, 40)}</div>}
                     </div>
-                  </div>
+                  </Link>
                 ))}
                 <Link to="/people" style={{ fontFamily: 'var(--vc-font-body)', fontSize: '0.78rem', color: 'var(--vc-cyan)', textDecoration: 'none', marginTop: '0.25rem' }}>
                   View all friends →
