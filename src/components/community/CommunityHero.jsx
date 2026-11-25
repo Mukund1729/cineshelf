@@ -6,11 +6,11 @@ export default function CommunityHero({ onExplore, onStartDiscussion }) {
       <div className="cs-comm-hero-media" aria-hidden="true" />
       <div className="cs-comm-wrap">
         <div className="cs-comm-hero-inner">
-          <span className="cs-comm-kicker">The Cinematic Society</span>
-          <h1>Cinema is better when shared.</h1>
-          <p className="lead">Find your people. Share your perspective.</p>
+          <span className="cs-comm-kicker">Community</span>
+          <h1>Rooms for people who watch closely.</h1>
+          <p className="lead">Discuss films, join societies, keep the argument going after the credits.</p>
           <p className="desc">
-            A space for film lovers to connect, discuss, debate and celebrate cinema beyond the screen.
+            Public groups, private circles, and long threads about craft — connected to the same films and people you already follow on CineShelf.
           </p>
           <div className="cs-comm-actions">
             <button type="button" className="cs-btn cs-btn-primary" onClick={onExplore}>

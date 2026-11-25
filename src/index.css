@@ -23,9 +23,9 @@
   --vc-cyan:          #01b4e4;
   --vc-red:           #e53e3e;
 
-  /* Typography — quiet editorial pair (not Playfair/Outfit/Inter) */
-  --vc-font-display:  'Cormorant', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
-  --vc-font-body:     'Manrope', 'Helvetica Neue', Helvetica, sans-serif;
+  /* Typography — film-lab editorial (not Cormorant/Manrope or Inter/Playfair) */
+  --vc-font-display:  'Newsreader', 'Palatino Linotype', 'Book Antiqua', Georgia, serif;
+  --vc-font-body:     'IBM Plex Sans', 'Helvetica Neue', Helvetica, sans-serif;
   --vc-font-mono:     'IBM Plex Mono', 'Courier New', Courier, monospace;
 
   /* Spacing */

@@ -2,103 +2,138 @@ import Community from '../models/Community.js';
 import CommunityMember from '../models/CommunityMember.js';
 import User from '../models/User.js';
 
-const FEATURED = [
-  {
-    name: 'The Nolanverse',
-    slug: 'the-nolanverse',
-    description: 'Chronology, craft and cold geometry — a salon for Nolan devotees.',
-    category: 'auteur',
-    coverImage: 'https://image.tmdb.org/t/p/w1280/rAiYTfKGqDCR3uUW01hBObAvzCS.jpg',
-    avatar: 'https://image.tmdb.org/t/p/w185/xuAIuYSmsUzKlUMBFGVZaWsY3DZ.jpg',
-    rules: ['Mark spoilers clearly.', 'Argue with evidence, not insults.', 'Keep posts about Nolan’s filmography and craft.'],
-  },
-  {
-    name: 'Indian Frames',
-    slug: 'indian-frames',
-    description: 'From parallel cinema to contemporary blockbusters — India’s moving image culture.',
-    category: 'regional',
-    coverImage: 'https://image.tmdb.org/t/p/w1280/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
-    avatar: 'https://image.tmdb.org/t/p/w185/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
-    rules: ['Respect language diversity.', 'Credit regional industries fairly.', 'Spoilers behind the veil.'],
-  },
-  {
-    name: 'Beyond the Frame',
-    slug: 'beyond-the-frame',
-    description: 'Form, theory and criticism for people who watch with a notebook open.',
-    category: 'theory',
-    coverImage: 'https://image.tmdb.org/t/p/w1280/9n2tJBplPbgR2ca05hS5JAVeI0e.jpg',
-    avatar: 'https://image.tmdb.org/t/p/w185/gEU2QniE6E77NI6lCU6MxlNBvVQ.jpg',
-    rules: ['Cite scenes and sources.', 'Welcome beginners without condescension.'],
-  },
+// Curated public societies shown on the Community page.
+// Older seeded societies stay in the database; they are only un-featured.
+export const FEATURED = [
   {
     name: 'Midnight Screening',
     slug: 'midnight-screening',
-    description: 'Horror, cult and late-night rituals for the sleepless cinephile.',
+    tagline: 'Late-night horror, cult and the films that keep you awake.',
+    description: 'Horror, cult and midnight cinema for people who stay for the credits — and the nightmares after.\n\nTalk craft, atmosphere and the titles that refuse to leave the room.',
     category: 'midnight',
-    coverImage: 'https://image.tmdb.org/t/p/w1280/6FfCtAuGA9Wetg99kUAXyFKmvR.jpg',
-    avatar: 'https://image.tmdb.org/t/p/w185/wVYREutTvI2tmxr6ujrHT704wGF.jpg',
-    rules: ['Content warnings for graphic material.', 'No gore for shock alone — discuss craft.'],
+    topics: ['horror', 'cult', 'midnight movies'],
+    // Hereditary (2018)
+    coverImage: 'https://image.tmdb.org/t/p/w1280/pS9Aub8MPyQbENblGD8mHeaqMuv.jpg',
+    avatar: 'https://image.tmdb.org/t/p/w185/4GFPuL14eXi66V96xBWY73Y9PfR.jpg',
+    rules: [
+      'Content warnings for graphic material.',
+      'No gore for shock alone — discuss craft.',
+    ],
   },
   {
-    name: 'The Auteur Club',
-    slug: 'the-auteur-club',
-    description: 'Directors as authors — signatures, obsessions and complete filmographies.',
-    category: 'auteur',
-    coverImage: 'https://image.tmdb.org/t/p/w1280/5P8SmZzCdYYmgQd2bLFZ3Lfjb5.jpg',
-    avatar: 'https://image.tmdb.org/t/p/w185/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg',
-    rules: ['One filmmaker deep-dives welcome.', 'Compare across eras with care.'],
+    name: 'Rajamouliverse',
+    slug: 'rajamouliverse',
+    tagline: 'Scale, emotion and the SS Rajamouli cut.',
+    description: 'A society for Baahubali, RRR, Eega and every Rajamouli set-piece that feels bigger than the screen.\n\nBreak down the action, the emotion, the music cues and why Telugu mass cinema travels the world.',
+    category: 'directors',
+    topics: ['rajamouli', 'tollywood', 'rrr', 'baahubali'],
+    // RRR (2022) + Rajamouli portrait
+    coverImage: 'https://image.tmdb.org/t/p/w1280/i0Y0wP8H6SRgjr6QmuwbtQbS24D.jpg',
+    avatar: 'https://image.tmdb.org/t/p/w185/qPskSZxvoYflC8Bye4tGNBSroy5.jpg',
+    rules: [
+      'Spoilers for recent releases stay behind the spoiler toggle.',
+      'Argue about craft and scale, not language wars.',
+    ],
   },
   {
-    name: 'Anime After Hours',
-    slug: 'anime-after-hours',
-    description: 'Animation as cinema — Studio Ghibli to experimental shorts after midnight.',
-    category: 'anime',
-    coverImage: 'https://image.tmdb.org/t/p/w1280/bOGkgRGdHRJYCy70bZD8bQYChk.jpg',
-    avatar: 'https://image.tmdb.org/t/p/w185/39wmItkW3BOjdwPRiMZmX9vtFIz.jpg',
-    rules: ['Distinguish anime and Western animation thoughtfully.', 'Spoiler tags for finales.'],
+    name: 'Vanga Room',
+    slug: 'vanga-room',
+    tagline: 'Rage, romance and Sandeep Reddy Vanga.',
+    description: 'Arjun Reddy, Kabir Singh, Animal and the arguments Vanga films force into the open.\n\nTalk performances, score, editing and the line between intensity and excess — without turning the room into a pile-on.',
+    category: 'directors',
+    topics: ['vanga', 'animal', 'arjun reddy', 'indian cinema'],
+    // Animal (2023) + Vanga portrait
+    coverImage: 'https://image.tmdb.org/t/p/w1280/lprsAHkwMxk2iC6VZxNmV0H7g1t.jpg',
+    avatar: 'https://image.tmdb.org/t/p/w185/ik1rXY6ci6i7LDm9cV178W3txgb.jpg',
+    rules: [
+      'Mark heavy spoilers and violence.',
+      'Critique the film; do not attack other members.',
+    ],
   },
 ];
 
-export async function ensureFeaturedCommunities() {
-  const existing = await Community.countDocuments({ isFeatured: true });
-  if (existing >= FEATURED.length) return { seeded: false, count: existing };
+const FEATURED_SLUGS = FEATURED.map(item => item.slug);
 
+function ruleItemsFrom(strings = []) {
+  return strings.filter(Boolean).map(title => ({ title, body: '' }));
+}
+
+async function resolveOwner() {
   let owner = await User.findOne({ isAdmin: true }).select('_id').lean();
   if (!owner) owner = await User.findOne().sort({ createdAt: 1 }).select('_id').lean();
+  return owner;
+}
+
+/**
+ * Keeps the three curated societies featured and up to date.
+ * Does not delete older communities — only clears isFeatured on the rest.
+ */
+export async function ensureFeaturedCommunities() {
+  const owner = await resolveOwner();
   if (!owner) {
     console.warn('[Community] Skip featured seed — no users exist yet.');
     return { seeded: false, count: 0 };
   }
 
   let created = 0;
+  let updated = 0;
+
   for (const item of FEATURED) {
     const found = await Community.findOne({ slug: item.slug });
-    if (found) {
-      if (!found.isFeatured) {
-        found.isFeatured = true;
-        await found.save();
-      }
-      continue;
-    }
-    const community = await Community.create({
-      ...item,
-      owner: owner._id,
-      moderators: [owner._id],
+    const payload = {
+      name: item.name,
+      tagline: item.tagline || '',
+      description: item.description,
+      category: item.category,
+      topics: item.topics || [],
+      coverImage: item.coverImage,
+      avatar: item.avatar,
+      rules: item.rules || [],
+      ruleItems: ruleItemsFrom(item.rules),
       privacy: 'public',
       isFeatured: true,
+      isActive: true,
+    };
+
+    if (found) {
+      await Community.updateOne({ _id: found._id }, { $set: payload });
+      updated += 1;
+      continue;
+    }
+
+    const community = await Community.create({
+      ...payload,
+      slug: item.slug,
+      owner: owner._id,
+      moderators: [owner._id],
       memberCount: 1,
       discussionCount: 0,
       lastActivityAt: new Date(),
     });
-    await CommunityMember.create({
-      community: community._id,
-      user: owner._id,
-      role: 'owner',
-      status: 'active',
-    });
+    await CommunityMember.updateOne(
+      { community: community._id, user: owner._id },
+      { $setOnInsert: { role: 'owner', status: 'active', joinedAt: new Date() } },
+      { upsert: true }
+    );
     created += 1;
   }
 
-  console.log(`[Community] Featured communities ready (${created} created).`);
-  return { seeded: created > 0, count: created };
+  // Older editorial seeds stay in the DB; they just leave the featured rail.
+  const unfeature = await Community.updateMany(
+    { slug: { $nin: FEATURED_SLUGS }, isFeatured: true },
+    { $set: { isFeatured: false } }
+  );
+
+  if (created || updated || unfeature.modifiedCount) {
+    console.log(
+      `[Community] Featured sync — created ${created}, refreshed ${updated}, unfeatured ${unfeature.modifiedCount}.`
+    );
+  }
+
+  return {
+    seeded: created > 0,
+    count: created,
+    updated,
+    unfeatured: unfeature.modifiedCount || 0,
+  };
 }

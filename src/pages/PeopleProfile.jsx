@@ -52,7 +52,7 @@ function getDefaultAvatar(name) {
       <rect width="120" height="120" fill="#1a1a1a"/>
       <circle cx="60" cy="40" r="15" fill="#4a5568"/>
       <path d="M10 100C10 85 22 73 37 73H83C98 73 110 85 110 100V110H10V100Z" fill="#4a5568"/>
-      <text x="60" y="65" font-family="Manrope, Helvetica Neue, sans-serif" font-size="24" font-weight="bold" fill="#e2e8f0" text-anchor="middle">${initials}</text>
+      <text x="60" y="65" font-family="IBM Plex Sans, Helvetica Neue, sans-serif" font-size="24" font-weight="bold" fill="#e2e8f0" text-anchor="middle">${initials}</text>
     </svg>
   `)}`;
 }

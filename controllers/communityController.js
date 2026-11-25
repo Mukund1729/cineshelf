@@ -6,7 +6,7 @@ import CommunityComment from '../models/CommunityComment.js';
 import CommunityBookmark from '../models/CommunityBookmark.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
-import { ensureFeaturedCommunities } from '../services/communitySeedService.js';
+import { FEATURED, ensureFeaturedCommunities } from '../services/communitySeedService.js';
 import { communityCategoryLabel, summarizeCommunityText } from '../data/communityOptions.js';
 import {
   escapeRegex,
@@ -249,10 +249,19 @@ export const getCommunityHome = async (req, res) => {
       }),
       // Private communities never appear in discovery rails.
       Community.find({ isActive: true, isFeatured: true, privacy: { $ne: 'private' } })
-        .sort({ memberCount: -1 }).limit(8).lean(),
+        .limit(8).lean(),
       Community.find({ isActive: true, privacy: { $ne: 'private' } })
         .sort({ lastActivityAt: -1, memberCount: -1 }).limit(8).lean(),
     ]);
+
+    // Keep the curated Featured order (Midnight → Rajamouli → Vanga).
+    const featuredOrder = new Map(FEATURED.map((item, index) => [item.slug, index]));
+    featured.sort((a, b) => {
+      const ai = featuredOrder.has(a.slug) ? featuredOrder.get(a.slug) : 99;
+      const bi = featuredOrder.has(b.slug) ? featuredOrder.get(b.slug) : 99;
+      if (ai !== bi) return ai - bi;
+      return (b.memberCount || 0) - (a.memberCount || 0);
+    });
 
     // Every membership record (so cards can show "Requested"); only approved
     // ones count as joined.

@@ -8,8 +8,8 @@
   --md-text: #f5f0e8;
   --md-muted: #94a3b8;
   --md-border: rgba(245, 240, 232, 0.12);
-  --md-serif: var(--vc-font-display, 'Cormorant', Georgia, serif);
-  --md-sans: var(--vc-font-body, 'Manrope', 'Helvetica Neue', sans-serif);
+  --md-serif: var(--vc-font-display, 'Newsreader', Georgia, serif);
+  --md-sans: var(--vc-font-body, 'IBM Plex Sans', 'Helvetica Neue', sans-serif);
   position: relative;
   min-height: 100vh;
   width: 100%;
@@ -58,7 +58,8 @@
   position: fixed;
   top: 5.25rem;
   right: 1rem;
-  z-index: 40;
+  /* Below the sticky navbar (100) while closed; overlay takes over when open. */
+  z-index: 90;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -810,12 +811,14 @@
 .md-search-overlay {
   position: fixed;
   inset: 0;
-  z-index: 60;
-  background: rgba(0, 0, 0, 0.45);
+  /* Must sit above the sticky Navbar (z-index 100) or the panel clips under it. */
+  z-index: 250;
+  background: rgba(0, 0, 0, 0.55);
   display: flex;
   justify-content: flex-end;
   align-items: flex-start;
-  padding: 1.25rem;
+  padding: calc(58px + 0.85rem) 1.25rem 1.25rem;
+  -webkit-overflow-scrolling: touch;
 }
 
 .md-search-panel {
@@ -824,6 +827,7 @@
   border: 1px solid var(--md-border);
   padding: 0.9rem;
   position: relative;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
 
 .md-search-row {
@@ -907,6 +911,10 @@
     right: 0.65rem;
     width: 38px;
     height: 38px;
+  }
+
+  .md-search-overlay {
+    padding: calc(56px + 0.75rem) 0.75rem 0.75rem;
   }
 
   .md-backdrop,

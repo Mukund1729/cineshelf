@@ -1,23 +1,36 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { COMMUNITY_PRIVACY, communityCategoryLabel } from '../../../data/communityOptions.js';
 
 export function CommunityAvatar({ community, size, className = '' }) {
+  const [broken, setBroken] = useState(false);
   const style = size ? { width: size, height: size, fontSize: size > 60 ? '1.6rem' : undefined } : undefined;
-  if (community.avatar) {
-    return <img className={`cs-avatar ${className}`} style={style} src={community.avatar} alt="" loading="lazy" />;
+  const letter = (community.name || 'C').trim()[0] || 'C';
+  if (community.avatar && !broken) {
+    return (
+      <img
+        className={`cs-avatar ${className}`}
+        style={style}
+        src={community.avatar}
+        alt=""
+        loading="lazy"
+        onError={() => setBroken(true)}
+      />
+    );
   }
   return (
     <span className={`cs-avatar cs-avatar-fallback ${className}`} style={style} aria-hidden="true">
-      {(community.name || 'C').trim()[0] || 'C'}
+      {letter}
     </span>
   );
 }
 
 export function communityCoverStyle(community) {
-  return community.coverImage
-    ? { backgroundImage: `url(${JSON.stringify(community.coverImage)})` }
-    : undefined;
+  if (!community?.coverImage) return undefined;
+  // Quote the URL safely for CSS — JSON.stringify wraps the whole value in
+  // quotes which breaks some browsers when nested inside url(...).
+  const src = String(community.coverImage).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  return { backgroundImage: `url("${src}")` };
 }
 
 /**

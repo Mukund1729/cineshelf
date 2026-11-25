@@ -31,16 +31,27 @@ export default function CommunityBrowser({ onJoin, joiningId, refreshKey = 0, on
     return () => clearTimeout(timer);
   }, [query]);
 
+  const filtered = Boolean(search || category || topic);
+
   useEffect(() => {
     const controller = new AbortController();
     setLoading(true);
     setError('');
-    // After a join the whole visible range is reloaded so every card is current.
-    fetchCommunityList({ q: search, category, topic, page: 1, limit: PAGE_SIZE * page }, controller.signal)
+    // Empty state: only load facets so Featured is not repeated below.
+    // Results appear once the person searches or picks a filter.
+    const params = filtered
+      ? { q: search, category, topic, page: 1, limit: PAGE_SIZE * page }
+      : { page: 1, limit: 1 };
+    fetchCommunityList(params, controller.signal)
       .then(data => {
-        setRows(data.communities || []);
-        setTotal(data.total || 0);
         if (data.facets) setFacets(data.facets);
+        if (filtered) {
+          setRows(data.communities || []);
+          setTotal(data.total || 0);
+        } else {
+          setRows([]);
+          setTotal(data.total || 0);
+        }
       })
       .catch(err => {
         if (controller.signal.aborted) return;
@@ -50,13 +61,12 @@ export default function CommunityBrowser({ onJoin, joiningId, refreshKey = 0, on
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [search, category, topic, page, refreshKey]);
+  }, [search, category, topic, page, refreshKey, filtered]);
 
   const pick = (setter, value) => {
     setter(current => (current === value ? '' : value));
     setPage(1);
   };
-  const filtered = Boolean(search || category || topic);
   const clear = () => {
     setQuery('');
     setSearch('');
@@ -135,25 +145,29 @@ export default function CommunityBrowser({ onJoin, joiningId, refreshKey = 0, on
 
         {error && <p className="cs-error" role="alert">{error}</p>}
 
-        {!error && !loading && !rows.length && (
+        {!filtered && !error && !loading && (
+          <p className="cs-quiet cs-browse-hint">
+            {total > 0
+              ? `${total} public communities live here. Search or pick a filter to browse beyond Featured.`
+              : 'No public communities yet — found one?'}
+          </p>
+        )}
+
+        {!error && filtered && !loading && !rows.length && (
           <div className="cs-empty">
-            {filtered ? 'No communities match that search.' : 'No communities yet.'}
+            No communities match that search.
             <div className="cs-comm-actions" style={{ justifyContent: 'center', marginTop: '1rem' }}>
-              {filtered && (
-                <button type="button" className="cs-btn cs-btn-ghost" onClick={clear}>Clear filters</button>
-              )}
+              <button type="button" className="cs-btn cs-btn-ghost" onClick={clear}>Clear filters</button>
               <button type="button" className="cs-btn cs-btn-primary" onClick={onCreate}>Found a Society</button>
             </div>
           </div>
         )}
 
-        {rows.length > 0 && (
+        {filtered && rows.length > 0 && (
           <>
             <p className="cs-browse-count" aria-live="polite">
               {total} {total === 1 ? 'community' : 'communities'}
-              {filtered && (
-                <button type="button" className="cs-link-btn" onClick={clear}>Clear filters</button>
-              )}
+              <button type="button" className="cs-link-btn" onClick={clear}>Clear filters</button>
             </p>
             <div className="cs-browse-grid" aria-busy={loading}>
               {rows.map(community => (
@@ -168,7 +182,7 @@ export default function CommunityBrowser({ onJoin, joiningId, refreshKey = 0, on
           </>
         )}
 
-        {loading && !rows.length && (
+        {loading && filtered && !rows.length && (
           <div className="cs-browse-grid">
             {[0, 1, 2].map(item => <div key={item} className="cs-skeleton" style={{ minHeight: 220 }} />)}
           </div>
