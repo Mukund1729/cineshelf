@@ -446,11 +446,19 @@ export default function PanoramaHero() {
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexDirection: 'column', gap: '1.2rem',
         }}>
-          <div style={{ fontSize: '3.5rem', animation: 'spin 2s linear infinite' }}>🎬</div>
+          <div className="vc-spin" aria-hidden="true" />
           <p style={{ fontFamily: 'var(--vc-font-body)', color: 'rgba(245,240,232,0.55)', fontSize: '0.9rem' }}>
             Loading cinema…
           </p>
-          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          <style>{`
+            .vc-spin {
+              width: 28px; height: 28px; border-radius: 50%;
+              border: 2px solid rgba(245,240,232,0.18);
+              border-top-color: #d4af37;
+              animation: vc-spin 0.7s linear infinite;
+            }
+            @keyframes vc-spin { to { transform: rotate(360deg); } }
+          `}</style>
         </div>
       ) : (
         <>
@@ -474,76 +482,97 @@ export default function PanoramaHero() {
               color: 'rgba(245,240,232,0.42)', zIndex: 10, pointerEvents: 'none',
               letterSpacing: '0.08em', textTransform: 'uppercase',
             }}>
-              ← Drag or swipe to explore · Tap to select →
+              Drag or swipe to explore · Tap to select
             </div>
 
-            {/* Movie info overlay */}
-            {currentMovie && (
-              <div style={{
-                position: 'absolute', bottom: 80, left: '50%', transform: 'translateX(-50%)',
-                textAlign: 'center', zIndex: 10, pointerEvents: 'none',
-                width: '100%', maxWidth: '480px', padding: '0 1.5rem',
-              }}>
-                <div style={{
-                  fontFamily: 'var(--vc-font-display)',
-                  fontSize: 'clamp(1.3rem, 5vw, 2.1rem)',
-                  fontWeight: 700,
-                  textShadow: '0 2px 20px rgba(0,0,0,0.9)',
-                  marginBottom: '0.35rem',
-                  letterSpacing: '-0.01em',
-                }}>
-                  {currentMovie.title}
-                </div>
-                <div style={{
-                  fontFamily: 'var(--vc-font-body)',
-                  fontSize: '0.85rem',
-                  color: 'rgba(245,240,232,0.6)',
-                  marginBottom: '1.2rem',
-                }}>
-                  {currentMovie.year} · ★ {currentMovie.rating}
-                </div>
-                <div style={{ pointerEvents: 'auto', display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-                  <Link
-                    to={`/booking/${currentMovie.id}`}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                      padding: '0.6rem 1.6rem',
-                      background: 'linear-gradient(135deg, #d4af37, #f5cc50)',
-                      borderRadius: '999px', color: '#0a0f1a',
-                      fontFamily: 'var(--vc-font-body)', fontWeight: 700,
-                      fontSize: '0.85rem', textDecoration: 'none',
-                      boxShadow: '0 4px 20px rgba(212,175,55,0.5)',
-                    }}
-                  >
-                    🎟 Book Tickets
-                  </Link>
-                  <Link
-                    to={`/movie/${currentMovie.id}`}
-                    style={{
-                      display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
-                      padding: '0.6rem 1.4rem',
-                      background: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      borderRadius: '999px', color: '#f5f0e8',
-                      fontFamily: 'var(--vc-font-body)', fontWeight: 500,
-                      fontSize: '0.85rem', textDecoration: 'none',
-                      backdropFilter: 'blur(8px)',
-                    }}
-                  >
-                    ▶ Details
-                  </Link>
-                </div>
-              </div>
-            )}
-
-            {/* Dot nav */}
+            {/* Bottom dock — sits under the poster plane so titles never collide with art */}
             <div style={{
-              position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)',
-              display: 'flex', gap: '0.5rem', zIndex: 10, alignItems: 'center',
+              position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 10,
+              pointerEvents: 'none',
+              background: 'linear-gradient(180deg, transparent 0%, rgba(6,8,14,0.55) 28%, rgba(6,8,14,0.96) 72%)',
+              padding: '4.5rem 1.25rem 1.1rem',
             }}>
+              {currentMovie && (
+                <div style={{
+                  textAlign: 'center',
+                  width: '100%', maxWidth: '420px', margin: '0 auto 0.85rem',
+                }}>
+                  <div style={{
+                    fontFamily: 'var(--vc-font-body)',
+                    fontSize: '0.72rem',
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(245,240,232,0.45)',
+                    marginBottom: '0.35rem',
+                  }}>
+                    Now showing
+                  </div>
+                  <div style={{
+                    fontFamily: 'var(--vc-font-display)',
+                    fontSize: 'clamp(1.15rem, 3.6vw, 1.75rem)',
+                    fontWeight: 600,
+                    lineHeight: 1.15,
+                    marginBottom: '0.3rem',
+                    letterSpacing: '-0.01em',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}>
+                    {currentMovie.title}
+                  </div>
+                  <div style={{
+                    fontFamily: 'var(--vc-font-body)',
+                    fontSize: '0.8rem',
+                    color: 'rgba(245,240,232,0.55)',
+                    marginBottom: '0.95rem',
+                  }}>
+                    {currentMovie.year}
+                    {currentMovie.rating ? ` · ${currentMovie.rating}/10` : ''}
+                  </div>
+                  <div style={{ pointerEvents: 'auto', display: 'flex', gap: '0.65rem', justifyContent: 'center' }}>
+                    <Link
+                      to={`/booking/${currentMovie.id}`}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                        padding: '0.58rem 1.45rem',
+                        background: 'linear-gradient(135deg, #d4af37, #f5cc50)',
+                        borderRadius: '999px', color: '#0a0f1a',
+                        fontFamily: 'var(--vc-font-body)', fontWeight: 700,
+                        fontSize: '0.84rem', textDecoration: 'none',
+                        boxShadow: '0 4px 20px rgba(212,175,55,0.45)',
+                      }}
+                    >
+                      Book Tickets
+                    </Link>
+                    <Link
+                      to={`/movie/${currentMovie.id}`}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                        padding: '0.58rem 1.25rem',
+                        background: 'rgba(255,255,255,0.08)',
+                        border: '1px solid rgba(255,255,255,0.18)',
+                        borderRadius: '999px', color: '#f5f0e8',
+                        fontFamily: 'var(--vc-font-body)', fontWeight: 500,
+                        fontSize: '0.84rem', textDecoration: 'none',
+                        backdropFilter: 'blur(8px)',
+                      }}
+                    >
+                      Details
+                    </Link>
+                  </div>
+                </div>
+              )}
+
+              {/* Dot nav */}
+              <div style={{
+                display: 'flex', gap: '0.45rem', justifyContent: 'center', alignItems: 'center',
+                pointerEvents: 'auto',
+              }}>
               {movies.map((_, i) => (
                 <button
                   key={i}
+                  type="button"
+                  aria-label={`Show movie ${i + 1}`}
                   onClick={() => {
                     frontIdxRef.current = i;
                     targetAngleRef.current = -(i / movies.length) * Math.PI * 2;
