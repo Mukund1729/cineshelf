@@ -609,7 +609,7 @@ const Profile = () => {
         {list.map(community => (
           <Link key={community._id} to={`/community/${community.slug}`} className="vc-profile-list-card">
             <div className="vc-profile-list-title">{community.name}</div>
-            <p className="vc-profile-muted">{community.description}</p>
+            <p className="vc-profile-muted">{community.summary ?? community.description}</p>
             <div className="vc-profile-muted vc-profile-list-meta">
               {community.role || 'member'} · {community.memberCount || 0} members
             </div>

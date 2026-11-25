@@ -1,4 +1,12 @@
 import mongoose from 'mongoose';
+import { ALL_COMMUNITY_CATEGORY_KEYS, COMMUNITY_LIMITS } from '../data/communityOptions.js';
+
+// Structured rule. `rules` (plain strings) is the original field and is kept in
+// sync with the rule titles so older readers keep working.
+const communityRuleSchema = new mongoose.Schema({
+  title: { type: String, required: true, trim: true, maxlength: COMMUNITY_LIMITS.ruleTitleMax },
+  body: { type: String, trim: true, maxlength: COMMUNITY_LIMITS.ruleBodyMax, default: '' },
+});
 
 const communitySchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, maxlength: 80 },
@@ -10,24 +18,24 @@ const communitySchema = new mongoose.Schema({
     trim: true,
     match: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
   },
-  description: { type: String, required: true, trim: true, maxlength: 600 },
+  // Optional one-line pitch shown on cards. Older communities default to ''.
+  tagline: { type: String, trim: true, maxlength: COMMUNITY_LIMITS.taglineMax, default: '' },
+  // "About" text. Limit raised from 600 so longer descriptions are possible;
+  // every existing value remains valid.
+  description: { type: String, required: true, trim: true, maxlength: COMMUNITY_LIMITS.descriptionMax },
   category: {
     type: String,
     required: true,
-    enum: [
-      'auteur',
-      'genre',
-      'regional',
-      'theory',
-      'anime',
-      'midnight',
-      'general',
-    ],
+    // Original keys first, followed by the categories added with the setup flow.
+    enum: ALL_COMMUNITY_CATEGORY_KEYS,
     default: 'general',
   },
+  // Optional topic tags. Older communities default to [].
+  topics: [{ type: String, trim: true, lowercase: true, maxlength: COMMUNITY_LIMITS.topicMax }],
   coverImage: { type: String, default: '' },
   avatar: { type: String, default: '' },
   rules: [{ type: String, trim: true, maxlength: 300 }],
+  ruleItems: [communityRuleSchema],
   privacy: {
     type: String,
     enum: ['public', 'private', 'restricted'],

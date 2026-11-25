@@ -3,26 +3,35 @@ import axios from 'axios';
 import { Link } from 'react-router-dom';
 import SpoilerContent from './SpoilerContent';
 import { apiUrl } from '../../api/config';
-import { communityAuthHeaders, requireCommunityAuth } from '../../api/community';
+import {
+  communityAuthHeaders,
+  deleteCommunityPost,
+  requireCommunityAuth,
+  toggleLockPost,
+  togglePinPost,
+} from '../../api/community';
 
 function avatarUrl(user) {
   if (!user?.avatar) return '';
   return user.avatar.startsWith('/') ? apiUrl(user.avatar) : user.avatar;
 }
 
-export default function PostDetailModal({ postId, onClose, onUpdated }) {
+export default function PostDetailModal({ postId, onClose, onUpdated, onDeleted }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [comment, setComment] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [moderating, setModerating] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!postId) return undefined;
     let cancelled = false;
     setLoading(true);
     setError('');
+    setConfirmDelete(false);
     axios.get(`/api/community/posts/${postId}`, {
       headers: communityAuthHeaders(),
       withCredentials: true,
@@ -70,7 +79,36 @@ export default function PostDetailModal({ postId, onClose, onUpdated }) {
     }
   };
 
+  // Pin, lock and delete. The server decides who may do each of these; the
+  // buttons only appear when it says the viewer can.
+  const moderate = async action => {
+    setModerating(action);
+    setError('');
+    try {
+      if (action === 'delete') {
+        await deleteCommunityPost(postId);
+        setConfirmDelete(false);
+        if (onDeleted) onDeleted(postId);
+        else {
+          onUpdated?.();
+          onClose?.();
+        }
+        return;
+      }
+      const patch = action === 'pin'
+        ? { isPinned: (await togglePinPost(postId)).isPinned }
+        : { isLocked: (await toggleLockPost(postId)).isLocked };
+      setData(current => ({ ...current, post: { ...current.post, ...patch } }));
+      onUpdated?.();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Could not update this discussion.');
+    } finally {
+      setModerating('');
+    }
+  };
+
   const post = data?.post;
+  const viewer = data?.viewer || {};
   const comments = data?.comments || [];
   const roots = comments.filter(item => !item.parent);
   const replies = comments.filter(item => item.parent);
@@ -96,7 +134,39 @@ export default function PostDetailModal({ postId, onClose, onUpdated }) {
               {post.community?.slug && (
                 <Link to={`/community/${post.community.slug}`}>{post.community.name}</Link>
               )}
+              {post.isPinned ? ' · Pinned' : ''}
+              {post.isLocked ? ' · Locked' : ''}
             </div>
+            {(viewer.canModerate || viewer.canDelete) && (
+              <div className="cs-mod-bar">
+                {viewer.canModerate && (
+                  <>
+                    <button type="button" className="cs-action" disabled={Boolean(moderating)} onClick={() => moderate('pin')}>
+                      {post.isPinned ? 'Unpin' : 'Pin'}
+                    </button>
+                    <button type="button" className="cs-action" disabled={Boolean(moderating)} onClick={() => moderate('lock')}>
+                      {post.isLocked ? 'Unlock comments' : 'Lock comments'}
+                    </button>
+                  </>
+                )}
+                {viewer.canDelete && !confirmDelete && (
+                  <button type="button" className="cs-action" disabled={Boolean(moderating)} onClick={() => setConfirmDelete(true)}>
+                    Delete
+                  </button>
+                )}
+                {confirmDelete && (
+                  <span className="cs-mod-confirm" role="alert">
+                    Delete this discussion and its comments? This cannot be undone.
+                    <button type="button" className="cs-action is-danger" disabled={Boolean(moderating)} onClick={() => moderate('delete')}>
+                      {moderating === 'delete' ? 'Deleting…' : 'Delete'}
+                    </button>
+                    <button type="button" className="cs-action" disabled={Boolean(moderating)} onClick={() => setConfirmDelete(false)}>
+                      Keep
+                    </button>
+                  </span>
+                )}
+              </div>
+            )}
             <SpoilerContent active={post.spoiler}>
               <div className="cs-post-body">{post.body}</div>
             </SpoilerContent>

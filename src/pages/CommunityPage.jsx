@@ -8,7 +8,7 @@ import YourCircle from '../components/community/YourCircle';
 import DiscussionFeed from '../components/community/DiscussionFeed';
 import TrendingCommunities from '../components/community/TrendingCommunities';
 import MovieDiscussionSpotlight from '../components/community/MovieDiscussionSpotlight';
-import CreateCommunityModal from '../components/community/CreateCommunityModal';
+import CommunityBrowser from '../components/community/CommunityBrowser';
 import CreatePostModal from '../components/community/CreatePostModal';
 import PostDetailModal from '../components/community/PostDetailModal';
 import {
@@ -38,7 +38,8 @@ export default function CommunityPage() {
   const [spotlight, setSpotlight] = useState(null);
   const [spotlightPosts, setSpotlightPosts] = useState([]);
   const [joiningId, setJoiningId] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
+  const [browseKey, setBrowseKey] = useState(0);
+  const [notice, setNotice] = useState('');
   const [postOpen, setPostOpen] = useState(false);
   const [defaultMovie, setDefaultMovie] = useState(null);
   const [activePostId, setActivePostId] = useState(searchParams.get('post') || null);
@@ -103,11 +104,19 @@ export default function CommunityPage() {
     return [...map.values()];
   }, [home]);
 
+  // Opens the multi-step community setup page.
+  const openCommunitySetup = () => navigate('/community/new');
+
   const handleJoin = async community => {
     setJoiningId(community._id);
+    setNotice('');
     try {
       const data = await joinCommunity(community.slug);
       if (!data) return;
+      if (data.pending) {
+        setNotice(`Request sent to ${community.name}. You will be notified when it is approved.`);
+      }
+      setBrowseKey(current => current + 1);
       await loadHome();
     } catch (err) {
       window.alert(err.response?.data?.error || 'Could not join community.');
@@ -185,7 +194,7 @@ export default function CommunityPage() {
       return;
     }
     if (!communityChoices.length) {
-      setCreateOpen(true);
+      openCommunitySetup();
       return;
     }
     setDefaultMovie(movie || null);
@@ -215,6 +224,19 @@ export default function CommunityPage() {
         joiningId={joiningId}
       />
 
+      {notice && (
+        <div className="cs-comm-wrap">
+          <p className="cs-notice is-ok" role="status">{notice}</p>
+        </div>
+      )}
+
+      <CommunityBrowser
+        onJoin={handleJoin}
+        joiningId={joiningId}
+        refreshKey={browseKey}
+        onCreate={openCommunitySetup}
+      />
+
       <YourCircle
         circle={home?.circle}
         onJoin={handleJoin}
@@ -233,7 +255,7 @@ export default function CommunityPage() {
               <p>Editorial conversations from across the society.</p>
             </div>
             <div className="cs-comm-actions">
-              <button type="button" className="cs-btn cs-btn-ghost" onClick={() => setCreateOpen(true)}>
+              <button type="button" className="cs-btn cs-btn-ghost" onClick={openCommunitySetup}>
                 Found a Society
               </button>
               <button type="button" className="cs-btn cs-btn-primary" onClick={() => startDiscussion()}>
@@ -266,15 +288,6 @@ export default function CommunityPage() {
         spotlight={spotlight}
         posts={spotlightPosts}
         onStartDiscussion={startDiscussion}
-      />
-
-      <CreateCommunityModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onCreated={community => {
-          loadHome();
-          if (community?.slug) navigate(`/community/${community.slug}`);
-        }}
       />
 
       <CreatePostModal

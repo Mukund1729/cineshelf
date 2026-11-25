@@ -58,7 +58,7 @@ export default function TrendingCommunities({
             <Link key={item._id} className="cs-side-item" to={`/community/${item.slug}`}>
               <div>
                 <strong>{item.name}</strong>
-                <span>{item.category}</span>
+                <span>{item.categoryLabel || item.category}</span>
               </div>
             </Link>
           ))

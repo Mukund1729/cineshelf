@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { communityAuthHeaders, requireCommunityAuth } from '../../api/community';
 
@@ -18,6 +18,7 @@ export default function CreatePostModal({
   communities = [],
   defaultCommunitySlug = '',
   defaultMovie = null,
+  defaults = null,
   onCreated,
 }) {
   const [form, setForm] = useState({
@@ -35,6 +36,24 @@ export default function CreatePostModal({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  // The modal stays mounted, so the community and any suggested starting text
+  // (for example a welcome post) are applied each time it opens. Text the
+  // person already typed is never overwritten.
+  useEffect(() => {
+    if (!open) return;
+    setError('');
+    setForm(current => ({
+      ...current,
+      communitySlug: current.communitySlug || defaultCommunitySlug || communities[0]?.slug || '',
+      ...(defaults ? {
+        type: defaults.type || current.type,
+        title: current.title || defaults.title || '',
+        body: current.body || defaults.body || '',
+      } : {}),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   if (!open) return null;
 
@@ -78,6 +97,9 @@ export default function CreatePostModal({
         headers: communityAuthHeaders(),
         withCredentials: true,
       });
+      // Clear the text so the next discussion starts empty and a second click
+      // cannot publish the same post again.
+      setForm(current => ({ ...current, title: '', body: '', imageUrl: '', spoiler: false, type: 'discussion' }));
       onCreated?.(data.post);
       onClose?.();
     } catch (err) {
